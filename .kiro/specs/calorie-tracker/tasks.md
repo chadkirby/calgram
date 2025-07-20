@@ -7,28 +7,28 @@
   - Configure TypeScript types for new dependencies
   - _Requirements: 6.1, 6.2_
 
-- [ ] 2. Update Jazz Schema for Calorie Tracking
-  - [ ] 2.1 Create MealEntry schema with all required fields
+- [x] 2. Update Jazz Schema for Calorie Tracking
+  - [x] 2.1 Create MealEntry schema with all required fields
     - Define MealEntry CoMap with timestamp, foodName, foodCategory, caloriesPerGram, weightInGrams, notes, and calculated totalCalories
     - Add proper Zod validation for all fields
     - _Requirements: 1.2_
   
-  - [ ] 2.2 Create WeightEntry schema
+  - [x] 2.2 Create WeightEntry schema
     - Define WeightEntry CoMap with timestamp, weightValue, and optional notes
     - Add Zod validation for weight measurements
     - _Requirements: 3.2_
   
-  - [ ] 2.3 Create FoodIntelligence schema for auto-completion
+  - [x] 2.3 Create FoodIntelligence schema for auto-completion
     - Define FoodIntelligence CoMap with recentFoods list, recentCategories list, and foodData record
     - Create nested schema for food metadata (CPG, category, usage stats)
     - _Requirements: 2.1, 2.2, 2.4_
   
-  - [ ] 2.4 Update CalorieTrackerRoot schema
+  - [x] 2.4 Update CalorieTrackerRoot schema
     - Extend AccountRoot to include mealEntries CoList, weightEntries CoList, and foodIntelligence CoMap
     - Update CalorieTrackerProfile to include name and firstName fields
     - _Requirements: 1.2, 3.2, 7.1_
   
-  - [ ] 2.5 Update account migration logic
+  - [x] 2.5 Update account migration logic
     - Modify JazzAccount migration to initialize new CoLists and CoMaps
     - Ensure proper Group creation and permissions for private data
     - Test migration with existing accounts
