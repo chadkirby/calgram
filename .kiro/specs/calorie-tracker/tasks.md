@@ -34,22 +34,22 @@
     - Test migration with existing accounts
     - _Requirements: 7.1, 7.2_
 
-- [ ] 3. Create Business Logic and Utility Functions
-  - [ ] 3.1 Implement CalorieCalculator utility class
+- [x] 3. Create Business Logic and Utility Functions
+  - [x] 3.1 Implement CalorieCalculator utility class
     - Create calculateMealCalories function (weight * CPG)
     - Create calculateDailyTotal function for date-based meal aggregation
     - Create calculateCategoryBreakdown function for pie chart data
     - Add comprehensive unit tests for all calculations
     - _Requirements: 1.5, 4.3, 4.4_
   
-  - [ ] 3.2 Implement FoodIntelligenceManager utility class
+  - [x] 3.2 Implement FoodIntelligenceManager utility class
     - Create updateFoodData function to maintain recent foods and categories
     - Create getRecentFoods function returning 12 most recent food names
     - Create getRecentCategories function for category suggestions
     - Create getFoodSuggestions function for auto-populating CPG and category
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
   
-  - [ ] 3.3 Implement TrendAnalyzer utility class
+  - [x] 3.3 Implement TrendAnalyzer utility class
     - Create calculateLOWESSTrend function for trend line smoothing
     - Create prepareDailyCalorieData function for chart data formatting
     - Create prepareWeightData function for weight trend visualization
