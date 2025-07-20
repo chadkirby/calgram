@@ -166,27 +166,27 @@
     - _Requirements: 4.5, 4.6_
 
 - [ ] 8. Build TrendPage Component with Analytics
-  - [ ] 8.1 Create TrendPage component structure
+  - [x] 8.1 Create TrendPage component structure
     - Set up page layout with "Calorie Trend" header
     - Add time range selector using shadcn/ui Select (default 30 days)
     - Create chart container with proper responsive sizing
     - _Requirements: 5.1, 5.2_
   
-  - [ ] 8.2 Implement dual-axis trend chart
+  - [x] 8.2 Implement dual-axis trend chart
     - Integrate Recharts ComposedChart with Bar and Line components
     - Configure left axis for calories (greenish bars) and right axis for weight (blueish dots)
     - Use TrendAnalyzer.prepareDailyCalorieData and prepareWeightData for chart data
     - Ensure proper scaling and labeling for both axes
     - _Requirements: 5.3, 5.4_
   
-  - [ ] 8.3 Add LOWESS trend lines
+  - [x] 8.3 Add LOWESS trend lines
     - Implement TrendAnalyzer.calculateLOWESSTrend for both calorie and weight data
     - Overlay smoothed trend lines on the chart (greenish for calories, blueish for weight)
     - Handle cases with insufficient data points for trend calculation
     - Make trend lines visually distinct from raw data points
     - _Requirements: 5.5_
   
-  - [ ] 8.4 Add chart interactivity and responsiveness
+  - [x] 8.4 Add chart interactivity and responsiveness
     - Implement tooltip showing detailed information on hover
     - Add chart responsiveness for different screen sizes
     - Handle loading states while calculating trends
