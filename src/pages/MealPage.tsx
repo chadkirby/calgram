@@ -10,7 +10,8 @@ import { useAccount } from "jazz-tools/react";
 import { JazzAccount, MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { FoodIntelligenceManager } from "../utils/FoodIntelligenceManager";
-import { Info, Check } from "lucide-react";
+import { DataImporter } from "../utils/DataImporter";
+import { Info, Check, Upload } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
 
@@ -116,8 +117,76 @@ export function MealPage() {
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitSuccess, setSubmitSuccess] = React.useState(false);
+  const [importStatus, setImportStatus] = React.useState<{
+    isImporting: boolean;
+    success: boolean;
+    message: string;
+  }>({
+    isImporting: false,
+    success: false,
+    message: "",
+  });
 
+  // File input ref for import functionality
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Handle data import
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !me) {
+      return;
+    }
+
+    setImportStatus({
+      isImporting: true,
+      success: false,
+      message: "Importing data...",
+    });
+
+    try {
+      // Read file content
+      const fileContent = await file.text();
+
+      // Parse JSON data
+      const jsonData = DataImporter.parseJsonFile(fileContent);
+
+      // Import data
+      const result = await DataImporter.importData(jsonData, me);
+
+      setImportStatus({
+        isImporting: false,
+        success: true,
+        message: `Successfully imported ${result.mealCount} meals and ${result.weightCount} weight entries!`,
+      });
+
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setImportStatus(prev => ({ ...prev, success: false, message: "" }));
+      }, 5000);
+
+    } catch (error) {
+      console.error("Import failed:", error);
+      setImportStatus({
+        isImporting: false,
+        success: false,
+        message: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setImportStatus(prev => ({ ...prev, message: "" }));
+      }, 5000);
+    }
+
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,9 +268,48 @@ export function MealPage() {
     <div className="space-y-6">
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl">Log Meal for {userName}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl">Log Meal for {userName}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleImportClick}
+                disabled={importStatus.isImporting}
+                className="flex items-center gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                {importStatus.isImporting ? "Importing..." : "Import Data"}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleFileImport}
+                className="hidden"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Import Status Alert */}
+          {importStatus.message && (
+            <Alert className={importStatus.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+              {importStatus.success ? (
+                <Check className="h-4 w-4 text-green-600" />
+              ) : (
+                <Info className="h-4 w-4 text-red-600" />
+              )}
+              <AlertTitle className={importStatus.success ? "text-green-800" : "text-red-800"}>
+                {importStatus.success ? "Import Successful!" : "Import Failed"}
+              </AlertTitle>
+              <AlertDescription className={importStatus.success ? "text-green-700" : "text-red-700"}>
+                {importStatus.message}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Food Name</label>
