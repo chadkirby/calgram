@@ -27,3 +27,7 @@ dist-ssr
 
 playwright-report
 .env.keys
+
+# wrangler files
+.wrangler
+.dev.vars*
