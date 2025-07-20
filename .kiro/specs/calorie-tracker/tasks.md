@@ -114,21 +114,21 @@
     - Clear form and show success feedback after logging
     - _Requirements: 1.7, 8.1, 8.2, 8.3_
 
-- [ ] 6. Build WeightPage Component and Form
-  - [ ] 6.1 Create WeightPage component structure
+- [x] 6. Build WeightPage Component and Form
+  - [x] 6.1 Create WeightPage component structure
     - Set up page layout using shadcn/ui Card
     - Add "Record Weight for <username>" header
     - Create form container with proper styling
     - _Requirements: 3.1, 6.3_
   
-  - [ ] 6.2 Implement weight entry form
+  - [x] 6.2 Implement weight entry form
     - Create date Input field with current date default
     - Add weight Input field with number validation and proper units
     - Add optional notes Textarea field
     - Implement form validation with appropriate error messages
     - _Requirements: 3.2, 8.1, 8.2_
   
-  - [ ] 6.3 Implement weight entry submission
+  - [x] 6.3 Implement weight entry submission
     - Create "Record Weight" Button with loading states
     - Implement weight entry creation and CoList updates
     - Clear form and show success feedback after recording
