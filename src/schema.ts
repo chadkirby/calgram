@@ -10,7 +10,7 @@ export const MealEntry = co.map({
   timestamp: z.date(),
   foodName: z.string().min(1, "Food name is required"),
   foodCategory: z.string().min(1, "Food category is required"),
-  caloriesPerGram: z.number().positive("Calories per gram must be positive"),
+  caloriesPerGram: z.number().nonnegative("Calories per gram cannot be negative"),
   weightInGrams: z.number(),
   notes: z.string().optional(),
   totalCalories: z.number(),
@@ -29,7 +29,7 @@ export type WeightEntryType = z.infer<typeof WeightEntry>;
 
 /** Food metadata schema for storing food intelligence data */
 export const FoodMetadata = co.map({
-  lastUsedCPG: z.number().positive("Calories per gram must be positive"),
+  lastUsedCPG: z.number().nonnegative("Calories per gram cannot be negative"),
   lastUsedCategory: z.string().min(1, "Category is required"),
   usageCount: z.number().nonnegative("Usage count cannot be negative"),
   lastUsed: z.date(),

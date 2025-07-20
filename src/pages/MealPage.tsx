@@ -81,19 +81,21 @@ export function MealPage() {
 
   // Handle food selection to auto-populate fields
   const handleFoodSelection = (foodName: string) => {
-    if (!foodIntelligence) return;
+    // Always update the foodName in form data
+    setFormData(prev => ({ ...prev, foodName }));
 
-    const foodData = foodIntelligence.foodData?.[foodName];
-    if (foodData) {
-      // Auto-populate calories per gram and category from previous usage
-      setFormData(prev => ({
-        ...prev,
-        foodName,
-        caloriesPerGram: foodData.lastUsedCPG,
-        foodCategory: foodData.lastUsedCategory,
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, foodName }));
+    // If we have food intelligence data, try to auto-populate other fields
+    if (foodIntelligence) {
+      const foodData = foodIntelligence.foodData?.[foodName];
+      if (foodData) {
+        // Auto-populate calories per gram and category from previous usage
+        setFormData(prev => ({
+          ...prev,
+          foodName,
+          caloriesPerGram: foodData.lastUsedCPG,
+          foodCategory: foodData.lastUsedCategory,
+        }));
+      }
     }
   };
 
@@ -189,6 +191,7 @@ export function MealPage() {
   };
 
   const onSubmit = async (e: React.FormEvent) => {
+    console.log("Submitting meal form:", formData);
     e.preventDefault();
     if (!me?.root) return;
 
@@ -347,24 +350,6 @@ export function MealPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Calories per Gram</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={formData.caloriesPerGram || ""}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setFormData(prev => ({ ...prev, caloriesPerGram: value }));
-                    validateField('caloriesPerGram', value);
-                  }}
-                />
-                {errors.caloriesPerGram && (
-                  <p className="text-sm text-destructive">{errors.caloriesPerGram}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
                 <label className="text-sm font-medium">Weight (grams)</label>
                 <Input
                   type="number"
@@ -379,6 +364,24 @@ export function MealPage() {
                 />
                 {errors.weightInGrams && (
                   <p className="text-sm text-destructive">{errors.weightInGrams}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Calories per Gram</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.caloriesPerGram || ""}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setFormData(prev => ({ ...prev, caloriesPerGram: value }));
+                    validateField('caloriesPerGram', value);
+                  }}
+                />
+                {errors.caloriesPerGram && (
+                  <p className="text-sm text-destructive">{errors.caloriesPerGram}</p>
                 )}
               </div>
             </div>

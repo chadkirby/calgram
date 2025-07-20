@@ -43,15 +43,38 @@ export function Combobox({
   }, [value]);
 
   const handleSelect = (selectedValue: string) => {
-    const newValue = selectedValue === value ? "" : selectedValue;
-    setInputValue(newValue);
-    onValueChange?.(newValue);
+    setInputValue(selectedValue);
+    onValueChange?.(selectedValue);
     setOpen(false);
   };
 
   const handleInputChange = (newValue: string) => {
     setInputValue(newValue);
     onValueChange?.(newValue);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      setOpen(false);
+    } else if (event.key === "Tab") {
+      // Allow Tab to close the dropdown and move focus naturally
+      setOpen(false);
+    }
+  };
+
+  const handleTriggerKeyDown = (event: React.KeyboardEvent) => {
+    // If user starts typing while the trigger has focus, open the dropdown
+    if (!open && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      setOpen(true);
+    }
+  };
+
+  const handleTriggerPaste = () => {
+    // If user pastes while the trigger has focus, open the dropdown
+    if (!open) {
+      setOpen(true);
+    }
   };
 
   const filteredOptions = options.filter((option) =>
@@ -67,6 +90,8 @@ export function Combobox({
           aria-expanded={open}
           className={cn("w-full justify-between", className)}
           disabled={disabled}
+          onKeyDown={handleTriggerKeyDown}
+          onPaste={handleTriggerPaste}
         >
           <span className="truncate text-left">
             {inputValue || placeholder}
@@ -80,6 +105,7 @@ export function Combobox({
             placeholder={placeholder}
             value={inputValue}
             onValueChange={handleInputChange}
+            onKeyDown={handleKeyDown}
           />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
