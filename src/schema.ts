@@ -11,10 +11,12 @@ export const MealEntry = co.map({
   foodName: z.string().min(1, "Food name is required"),
   foodCategory: z.string().min(1, "Food category is required"),
   caloriesPerGram: z.number().positive("Calories per gram must be positive"),
-  weightInGrams: z.number().positive("Weight must be positive"),
+  weightInGrams: z.number(),
   notes: z.string().optional(),
-  totalCalories: z.number().nonnegative("Total calories cannot be negative"),
+  totalCalories: z.number(),
 });
+
+export type MealEntryType = z.infer<typeof MealEntry>;
 
 /** WeightEntry schema for tracking weight measurements */
 export const WeightEntry = co.map({
@@ -22,6 +24,8 @@ export const WeightEntry = co.map({
   weightValue: z.number().positive("Weight value must be positive"),
   notes: z.string().optional(),
 });
+
+export type WeightEntryType = z.infer<typeof WeightEntry>;
 
 /** Food metadata schema for storing food intelligence data */
 export const FoodMetadata = co.map({
@@ -31,12 +35,16 @@ export const FoodMetadata = co.map({
   lastUsed: z.date(),
 });
 
+export type FoodMetadataType = z.infer<typeof FoodMetadata>;
+
 /** FoodIntelligence schema for auto-completion and food suggestions */
 export const FoodIntelligence = co.map({
   recentFoods: co.list(z.string()),
   recentCategories: co.list(z.string()),
   foodData: co.record(z.string(), FoodMetadata),
 });
+
+export type FoodIntelligenceType = z.infer<typeof FoodIntelligence>;
 
 /** The account profile is an app-specific per-user public `CoMap`
  *  where you can store top-level objects for that user */

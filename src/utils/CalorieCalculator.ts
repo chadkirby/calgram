@@ -33,7 +33,7 @@ export class CalorieCalculator {
     }
 
     const targetDateStr = this.formatDateForComparison(date);
-    
+
     return meals
       .filter(meal => {
         const mealDateStr = this.formatDateForComparison(meal.timestamp);
@@ -58,7 +58,7 @@ export class CalorieCalculator {
 
     const targetDateStr = this.formatDateForComparison(date);
     const breakdown: Record<string, number> = {};
-    
+
     meals
       .filter(meal => {
         const mealDateStr = this.formatDateForComparison(meal.timestamp);
@@ -97,7 +97,7 @@ export class CalorieCalculator {
    * @param date2 - Second date
    * @returns True if dates are on the same day
    */
-  static isSameDay(date1: Date, date2: Date): boolean {
-    return this.formatDateForComparison(date1) === this.formatDateForComparison(date2);
+  static isSameDay(date1: Date | undefined | null, date2: Date | undefined | null): boolean {
+    return date1 !== undefined && date2 !== undefined && date1 !== null && date2 !== null && this.formatDateForComparison(date1) === this.formatDateForComparison(date2);
   }
 }
