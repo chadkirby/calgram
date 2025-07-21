@@ -29,7 +29,7 @@ export function DailyPage() {
 
   // Filter meal entries by selected date
   const filteredMealEntries = me?.root?.mealEntries?.filter((meal): meal is Loaded<typeof MealEntry> =>
-    meal != null && CalorieCalculator.isSameDay(meal.timestamp, selectedDate)
+    meal != null && CalorieCalculator.isSameDay(new Date(meal.timestamp), selectedDate)
   ) || [];
 
   // Calculate daily totals for the selected date
@@ -291,7 +291,7 @@ export function DailyPage() {
                       {filteredMealEntries.map((meal) => (
                         <TableRow key={meal.id}>
                           <TableCell className="font-medium">
-                            {formatTime(meal.timestamp)}
+                            {formatTime(new Date(meal.timestamp))}
                           </TableCell>
                           <TableCell>
                             <div>

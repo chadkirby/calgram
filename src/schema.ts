@@ -7,7 +7,7 @@ import { Group, co, z, type Loaded } from "jazz-tools";
 
 /** MealEntry schema for tracking individual meal entries */
 export const MealEntry = co.map({
-  timestamp: z.date(),
+  timestamp: z.iso.date(),
   foodName: z.string().min(1, "Food name is required"),
   foodCategory: z.string().min(1, "Food category is required"),
   caloriesPerGram: z.number().nonnegative("Calories per gram cannot be negative"),
@@ -20,7 +20,7 @@ export type MealEntryType = z.infer<typeof MealEntry>;
 
 /** WeightEntry schema for tracking weight measurements */
 export const WeightEntry = co.map({
-  timestamp: z.date(),
+  timestamp: z.iso.date(),
   weightValue: z.number().positive("Weight value must be positive"),
   notes: z.string().optional(),
 });
@@ -32,7 +32,7 @@ export const FoodMetadata = co.map({
   lastUsedCPG: z.number().nonnegative("Calories per gram cannot be negative"),
   lastUsedCategory: z.string().min(1, "Category is required"),
   usageCount: z.number().nonnegative("Usage count cannot be negative"),
-  lastUsed: z.date(),
+  lastUsed: z.iso.date(),
 });
 
 export type FoodMetadataType = z.infer<typeof FoodMetadata>;
@@ -62,7 +62,7 @@ export const CalorieTrackerProfile = co.profile({
 /** The account root is an app-specific per-user private `CoMap`
  *  where you can store top-level objects for that user */
 export const CalorieTrackerRoot = co.map({
-  dateOfBirth: z.date(),
+  dateOfBirth: z.iso.date(),
   mealEntries: co.list(MealEntry),
   weightEntries: co.list(WeightEntry),
   foodIntelligence: FoodIntelligence,
@@ -70,7 +70,7 @@ export const CalorieTrackerRoot = co.map({
 
 export function getUserAge(root: Loaded<typeof CalorieTrackerRoot> | undefined) {
   if (!root) return null;
-  return new Date().getFullYear() - root.dateOfBirth.getFullYear();
+  return new Date().getFullYear() - new Date(root.dateOfBirth).getFullYear();
 }
 
 export const JazzAccount = co
@@ -82,7 +82,7 @@ export const JazzAccount = co
     /** The account migration is run on account creation and on every log-in.
      *  You can use it to set up the account root and any other initial CoValues you need.
      */
-    if (account.root === undefined) {
+    if (!account.root) {
       const group = Group.create();
 
       // Initialize empty CoLists and CoMaps for calorie tracking
@@ -99,23 +99,48 @@ export const JazzAccount = co
 
       account.root = CalorieTrackerRoot.create(
         {
-          dateOfBirth: new Date("1/1/1990"),
+          dateOfBirth: new Date("1/1/1990").toISOString(),
           mealEntries,
           weightEntries,
           foodIntelligence,
         },
         group,
       );
+    } else {
+      // Handle existing accounts that might be missing new collections
+      const group = account.root._owner;
+
+      // Add missing mealEntries if not present
+      if (!account.root.mealEntries) {
+        account.root.mealEntries = co.list(MealEntry).create([], group);
+      }
+
+      // Add missing weightEntries if not present
+      if (!account.root.weightEntries) {
+        account.root.weightEntries = co.list(WeightEntry).create([], group);
+      }
+
+      // Add missing foodIntelligence if not present
+      if (!account.root.foodIntelligence) {
+        account.root.foodIntelligence = FoodIntelligence.create(
+          {
+            recentFoods: co.list(z.string()).create([], group),
+            recentCategories: co.list(z.string()).create([], group),
+            foodData: co.record(z.string(), FoodMetadata).create({}, group),
+          },
+          group,
+        );
+      }
     }
 
-    if (account.profile === undefined) {
+    if (!account.profile) {
       const group = Group.create();
       group.addMember("everyone", "reader"); // The profile info is visible to everyone
 
       account.profile = CalorieTrackerProfile.create(
         {
           name: "Anonymous user",
-          firstName: "",
+          firstName: "Nobody",
         },
         group,
       );

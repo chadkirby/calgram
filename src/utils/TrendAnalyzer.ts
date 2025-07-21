@@ -127,7 +127,7 @@ export class TrendAnalyzer {
         const weightDate = new Date(weight.timestamp);
         return weightDate >= startDate && weightDate <= endDate;
       })
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     // Convert to chart data points
     return filteredWeights.map(weight => ({

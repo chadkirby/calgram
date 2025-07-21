@@ -12,7 +12,7 @@ const createMockMealEntry = (
   weightInGrams: number,
   totalCalories: number
 ) => ({
-  timestamp,
+  timestamp: timestamp.toISOString(),
   foodName,
   foodCategory,
   caloriesPerGram,

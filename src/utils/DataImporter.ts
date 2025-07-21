@@ -69,7 +69,7 @@ export class DataImporter {
       for (const exportedMeal of jsonData.meal_entries) {
         try {
           const mealEntry = MealEntry.create({
-            timestamp: new Date(exportedMeal.date),
+            timestamp: new Date(exportedMeal.date).toISOString(),
             foodName: exportedMeal.food,
             foodCategory: exportedMeal.category,
             caloriesPerGram: exportedMeal.calories_per_gram,
@@ -96,7 +96,7 @@ export class DataImporter {
       for (const exportedWeight of jsonData.weight_entries) {
         try {
           const weightEntry = WeightEntry.create({
-            timestamp: new Date(exportedWeight.date),
+            timestamp: new Date(exportedWeight.date).toISOString(),
             weightValue: exportedWeight.weight,
             notes: exportedWeight.notes || undefined,
           }, group);
@@ -138,7 +138,7 @@ export class DataImporter {
           existingMetadata.lastUsedCPG = meal.calories_per_gram;
           existingMetadata.lastUsedCategory = meal.category;
           existingMetadata.usageCount = existingMetadata.usageCount + 1;
-          existingMetadata.lastUsed = new Date(meal.date);
+          existingMetadata.lastUsed = new Date(meal.date).toISOString();
         } else {
           // Create new metadata
           const group = Group.create();
@@ -146,7 +146,7 @@ export class DataImporter {
             lastUsedCPG: meal.calories_per_gram,
             lastUsedCategory: meal.category,
             usageCount: 1,
-            lastUsed: new Date(meal.date),
+            lastUsed: new Date(meal.date).toISOString(),
           }, group);
 
           foodIntelligence.foodData[meal.food] = metadata;

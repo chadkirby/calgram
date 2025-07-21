@@ -10,7 +10,7 @@ const createMockMealEntry = (
   totalCalories: number
 ) => {
   return {
-    timestamp,
+    timestamp: timestamp.toISOString(),
     foodName,
     foodCategory: 'Test',
     caloriesPerGram: 1.0,
@@ -26,7 +26,7 @@ const createMockWeightEntry = (
   weightValue: number
 ) => {
   return {
-    timestamp,
+    timestamp: timestamp.toISOString(),
     weightValue,
     notes: '',
   } as Loaded<typeof WeightEntry>;

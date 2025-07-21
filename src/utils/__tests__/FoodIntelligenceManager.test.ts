@@ -41,7 +41,7 @@ const createMockMealEntry = (
   weightInGrams: number = 100
 ) => {
   return {
-    timestamp: new Date(),
+    timestamp: new Date().toISOString(),
     foodName,
     foodCategory,
     caloriesPerGram,

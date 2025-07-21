@@ -40,10 +40,51 @@ type MealFormValues = z.infer<typeof mealFormSchema>;
 
 export function MealPage() {
   const { me } = useAccount(JazzAccount, {
-    resolve: { profile: true, root: true },
+    resolve: {
+      profile: true,
+      root: {
+        mealEntries: { $each: true },  // Load each meal entry for today's total calculation
+        foodIntelligence: {  // Load foodIntelligence for auto-completion
+          recentFoods: { $each: true },
+          recentCategories: { $each: true },
+          foodData: { $each: true }
+        }
+      }
+    },
   });
 
   const userName = me?.profile?.firstName || me?.profile?.name || "User";
+
+  // Add loading state
+  if (!me?.root) {
+    return (
+      <div className="space-y-6">
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="p-6">
+            <div className="text-center">Loading your calorie tracker...</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check if required collections are missing
+  if (!me.root.mealEntries || !me.root.foodIntelligence) {
+    return (
+      <div className="space-y-6">
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <p>Setting up your calorie tracker...</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Please refresh the page if this takes more than a few seconds.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const [formData, setFormData] = React.useState<MealFormValues>({
     foodName: "",
@@ -195,6 +236,12 @@ export function MealPage() {
     e.preventDefault();
     if (!me?.root) return;
 
+    // Ensure required collections exist
+    if (!me.root.mealEntries) {
+      console.error("mealEntries collection is missing");
+      return;
+    }
+
     // Validate form with Zod
     const validationResult = mealFormSchema.safeParse(formData);
     if (!validationResult.success) {
@@ -225,7 +272,7 @@ export function MealPage() {
 
       // Create meal entry using Jazz schema
       const mealEntry = MealEntry.create({
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         foodName: validatedData.foodName,
         foodCategory: validatedData.foodCategory,
         caloriesPerGram: validatedData.caloriesPerGram,

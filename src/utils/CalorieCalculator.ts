@@ -36,7 +36,7 @@ export class CalorieCalculator {
 
     return meals
       .filter(meal => {
-        const mealDateStr = this.formatDateForComparison(meal.timestamp);
+        const mealDateStr = this.formatDateForComparison(new Date(meal.timestamp));
         return mealDateStr === targetDateStr;
       })
       .reduce((total, meal) => total + meal.totalCalories, 0);
@@ -61,7 +61,7 @@ export class CalorieCalculator {
 
     meals
       .filter(meal => {
-        const mealDateStr = this.formatDateForComparison(meal.timestamp);
+        const mealDateStr = this.formatDateForComparison(new Date(meal.timestamp));
         return mealDateStr === targetDateStr;
       })
       .forEach(meal => {
