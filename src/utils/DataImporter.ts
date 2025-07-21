@@ -1,4 +1,4 @@
-import { Group, co } from "jazz-tools";
+import { Group, type Loaded } from "jazz-tools";
 import { MealEntry, WeightEntry, FoodIntelligence, FoodMetadata } from "../schema";
 import type { JazzAccount } from "../schema";
 
@@ -29,7 +29,7 @@ export class DataImporter {
   /**
    * Import data from exported JSON file
    */
-  static async importData(jsonData: ExportedData, account: co.loaded<typeof JazzAccount>): Promise<{
+  static async importData(jsonData: ExportedData, account: Loaded<typeof JazzAccount>): Promise<{
     mealCount: number;
     weightCount: number;
   }> {
@@ -116,7 +116,7 @@ export class DataImporter {
    * Update food intelligence with imported meal data
    */
   private static updateFoodIntelligence(
-    foodIntelligence: co.loaded<typeof FoodIntelligence>,
+    foodIntelligence: Loaded<typeof FoodIntelligence>,
     meal: ExportedMealEntry
   ) {
     try {

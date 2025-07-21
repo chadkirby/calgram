@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { FoodIntelligenceManager } from '../FoodIntelligenceManager';
-import { co, type CoList } from 'jazz-tools';
+import { type CoList, type Loaded } from 'jazz-tools';
 import { FoodIntelligence, FoodMetadata, MealEntry } from '../../schema';
 
 // Mock implementations for testing without full Jazz context
@@ -19,7 +19,7 @@ const createMockList = (items: string[] = []): CoList<string> => {
   return list as CoList<string>;
 };
 
-const createMockRecord = (data: Record<string, co.loaded<typeof FoodMetadata>> = {}) => {
+const createMockRecord = (data: Record<string, Loaded<typeof FoodMetadata>> = {}) => {
   return { ...data } as any;
 };
 
@@ -30,7 +30,7 @@ const createMockFoodIntelligence = () => {
     recentCategories: createMockList(),
     foodData: createMockRecord(),
     _owner: {} as any, // Mock owner for creating new metadata
-  } as unknown as co.loaded<typeof FoodIntelligence>;
+  } as unknown as Loaded<typeof FoodIntelligence>;
 };
 
 // Helper function to create mock meal entry
@@ -48,11 +48,11 @@ const createMockMealEntry = (
     weightInGrams,
     notes: '',
     totalCalories: weightInGrams * caloriesPerGram,
-  } as co.loaded<typeof MealEntry>;
+  } as Loaded<typeof MealEntry>;
 };
 
 describe('FoodIntelligenceManager', () => {
-  let intelligence: co.loaded<typeof FoodIntelligence>;
+  let intelligence: Loaded<typeof FoodIntelligence>;
 
   beforeEach(() => {
     intelligence = createMockFoodIntelligence();

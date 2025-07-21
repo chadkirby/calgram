@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CalorieCalculator } from '../CalorieCalculator';
-import { co } from 'jazz-tools';
+import { type Loaded } from 'jazz-tools';
 import { MealEntry } from '../../schema';
 
 // Mock meal entry data for testing
@@ -19,7 +19,7 @@ const createMockMealEntry = (
   weightInGrams,
   notes: '',
   totalCalories,
-} as co.loaded<typeof MealEntry>);
+} as Loaded<typeof MealEntry>);
 
 describe('CalorieCalculator', () => {
   describe('calculateMealCalories', () => {
@@ -90,7 +90,7 @@ describe('CalorieCalculator', () => {
         createMockMealEntry(new Date('2024-01-15T12:00:00Z'), 'Lunch', 'Meal', 1.0, 200, 200),
         createMockMealEntry(new Date('2024-01-15T18:00:00Z'), 'Dinner', 'Meal', 1.0, 300, 300),
       ];
-      
+
       const total = CalorieCalculator.calculateDailyTotal(sameDay, new Date('2024-01-15'));
       expect(total).toBe(600);
     });
@@ -111,7 +111,7 @@ describe('CalorieCalculator', () => {
 
     it('should calculate category breakdown for a specific date', () => {
       const breakdown = CalorieCalculator.calculateCategoryBreakdown(mockMeals, targetDate);
-      
+
       expect(breakdown).toEqual({
         'Fruit': 185,    // 78 + 107
         'Protein': 728,  // 478 + 250
@@ -140,7 +140,7 @@ describe('CalorieCalculator', () => {
         createMockMealEntry(targetDate, 'Apple', 'Fruit', 0.52, 150, 78),
         createMockMealEntry(targetDate, 'Banana', 'Fruit', 0.89, 120, 107),
       ];
-      
+
       const breakdown = CalorieCalculator.calculateCategoryBreakdown(singleCategoryMeals, targetDate);
       expect(breakdown).toEqual({
         'Fruit': 185,
@@ -155,7 +155,7 @@ describe('CalorieCalculator', () => {
       expect(today.getMinutes()).toBe(0);
       expect(today.getSeconds()).toBe(0);
       expect(today.getMilliseconds()).toBe(0);
-      
+
       // Should be today's date
       const now = new Date();
       expect(today.getDate()).toBe(now.getDate());

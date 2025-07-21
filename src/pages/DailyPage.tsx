@@ -20,7 +20,7 @@ import { ChevronLeft, ChevronRight, Calendar, Trash2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import type { JazzAccount, MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
-import { co } from "jazz-tools";
+import { type Loaded } from "jazz-tools";
 
 export function DailyPage() {
   const { me } = useAccount<typeof JazzAccount>();
@@ -28,14 +28,14 @@ export function DailyPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Filter meal entries by selected date
-  const filteredMealEntries = me?.root?.mealEntries?.filter((meal): meal is co.loaded<typeof MealEntry> =>
+  const filteredMealEntries = me?.root?.mealEntries?.filter((meal): meal is Loaded<typeof MealEntry> =>
     meal != null && CalorieCalculator.isSameDay(meal.timestamp, selectedDate)
   ) || [];
 
   // Calculate daily totals for the selected date
   const dailyCalories = me?.root?.mealEntries
     ? CalorieCalculator.calculateDailyTotal(
-      me.root.mealEntries.filter((meal): meal is co.loaded<typeof MealEntry> => meal != null),
+      me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
       selectedDate
     )
     : 0;
@@ -88,7 +88,7 @@ export function DailyPage() {
   // Calculate category breakdown for pie chart
   const categoryBreakdown = me?.root?.mealEntries
     ? CalorieCalculator.calculateCategoryBreakdown(
-      me.root.mealEntries.filter((meal): meal is co.loaded<typeof MealEntry> => meal != null),
+      me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
       selectedDate
     )
     : {};

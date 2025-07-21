@@ -16,7 +16,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { co } from "jazz-tools";
+import type { Loaded } from "jazz-tools";
 
 export function TrendPage() {
   const { me } = useAccount<typeof JazzAccount>();
@@ -39,8 +39,8 @@ export function TrendPage() {
 
     const days = parseInt(timeRange);
     const combinedData = TrendAnalyzer.prepareCombinedData(
-      me.root.mealEntries.filter((meal): meal is co.loaded<typeof MealEntry> => meal != null),
-      me.root.weightEntries.filter((weight): weight is co.loaded<typeof WeightEntry> => weight != null),
+      me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
+      me.root.weightEntries.filter((weight): weight is Loaded<typeof WeightEntry> => weight != null),
       days
     );
 

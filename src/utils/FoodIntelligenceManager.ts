@@ -1,4 +1,4 @@
-import { co, type CoList } from "jazz-tools";
+import { type CoList, type Loaded } from "jazz-tools";
 import { FoodIntelligence, FoodMetadata, MealEntry } from "../schema";
 
 /**
@@ -11,8 +11,8 @@ export class FoodIntelligenceManager {
    * @param meal - The meal entry that was just logged
    */
   static updateFoodData(
-    intelligence: co.loaded<typeof FoodIntelligence>,
-    meal: co.loaded<typeof MealEntry>
+    intelligence: Loaded<typeof FoodIntelligence>,
+    meal: Loaded<typeof MealEntry>
   ): void {
     const { foodName, foodCategory, caloriesPerGram } = meal;
 
@@ -64,7 +64,7 @@ export class FoodIntelligenceManager {
    * @param intelligence - The food intelligence CoMap
    * @returns Array of recent food names (up to 12)
    */
-  static getRecentFoods(intelligence: co.loaded<typeof FoodIntelligence> | undefined): string[] {
+  static getRecentFoods(intelligence: Loaded<typeof FoodIntelligence> | undefined): string[] {
     if (!intelligence?.recentFoods) {
       return [];
     }
@@ -78,7 +78,7 @@ export class FoodIntelligenceManager {
    * @param intelligence - The food intelligence CoMap
    * @returns Array of recent category names (up to 12)
    */
-  static getRecentCategories(intelligence: co.loaded<typeof FoodIntelligence> | undefined): string[] {
+  static getRecentCategories(intelligence: Loaded<typeof FoodIntelligence> | undefined): string[] {
     if (!intelligence?.recentCategories) {
       return [];
     }
@@ -94,7 +94,7 @@ export class FoodIntelligenceManager {
    * @returns Object with suggested CPG and category, or null if no data exists
    */
   static getFoodSuggestions(
-    intelligence: co.loaded<typeof FoodIntelligence> | undefined,
+    intelligence: Loaded<typeof FoodIntelligence> | undefined,
     foodName: string
   ): { caloriesPerGram: number; category: string } | null {
     if (!intelligence?.foodData || !foodName.trim()) {
@@ -118,7 +118,7 @@ export class FoodIntelligenceManager {
    * @returns Array of food names sorted by relevance
    */
   static getAllFoodsSortedByRelevance(
-    intelligence: co.loaded<typeof FoodIntelligence> | undefined
+    intelligence: Loaded<typeof FoodIntelligence> | undefined
   ): string[] {
     if (!intelligence?.foodData) {
       return [];
@@ -148,7 +148,7 @@ export class FoodIntelligenceManager {
    * @returns Array of matching food names
    */
   static searchFoods(
-    intelligence: co.loaded<typeof FoodIntelligence> | undefined,
+    intelligence: Loaded<typeof FoodIntelligence> | undefined,
     query: string
   ): string[] {
     if (!intelligence?.foodData || !query.trim()) {

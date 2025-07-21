@@ -3,7 +3,7 @@
  * https://jazz.tools/docs/react/schemas/covalues
  */
 
-import { Group, co, z } from "jazz-tools";
+import { Group, co, z, type Loaded } from "jazz-tools";
 
 /** MealEntry schema for tracking individual meal entries */
 export const MealEntry = co.map({
@@ -68,7 +68,7 @@ export const CalorieTrackerRoot = co.map({
   foodIntelligence: FoodIntelligence,
 });
 
-export function getUserAge(root: co.loaded<typeof CalorieTrackerRoot> | undefined) {
+export function getUserAge(root: Loaded<typeof CalorieTrackerRoot> | undefined) {
   if (!root) return null;
   return new Date().getFullYear() - root.dateOfBirth.getFullYear();
 }

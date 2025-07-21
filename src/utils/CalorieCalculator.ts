@@ -1,4 +1,4 @@
-import { co } from "jazz-tools";
+import { type Loaded } from "jazz-tools";
 import { MealEntry } from "../schema";
 
 /**
@@ -25,7 +25,7 @@ export class CalorieCalculator {
    * @returns Total calories for the specified date
    */
   static calculateDailyTotal(
-    meals: co.loaded<typeof MealEntry>[] | undefined,
+    meals: Loaded<typeof MealEntry>[] | undefined,
     date: Date
   ): number {
     if (!meals || meals.length === 0) {
@@ -49,7 +49,7 @@ export class CalorieCalculator {
    * @returns Object mapping category names to total calories
    */
   static calculateCategoryBreakdown(
-    meals: co.loaded<typeof MealEntry>[] | undefined,
+    meals: Loaded<typeof MealEntry>[] | undefined,
     date: Date
   ): Record<string, number> {
     if (!meals || meals.length === 0) {

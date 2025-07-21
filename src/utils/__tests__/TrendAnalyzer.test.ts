@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TrendAnalyzer, type ChartDataPoint } from '../TrendAnalyzer';
-import { co } from 'jazz-tools';
+import { type Loaded } from 'jazz-tools';
 import { MealEntry, WeightEntry } from '../../schema';
 
 // Helper function to create mock meal entry
@@ -17,7 +17,7 @@ const createMockMealEntry = (
     weightInGrams: totalCalories,
     notes: '',
     totalCalories,
-  } as co.loaded<typeof MealEntry>;
+  } as Loaded<typeof MealEntry>;
 };
 
 // Helper function to create mock weight entry
@@ -29,7 +29,7 @@ const createMockWeightEntry = (
     timestamp,
     weightValue,
     notes: '',
-  } as co.loaded<typeof WeightEntry>;
+  } as Loaded<typeof WeightEntry>;
 };
 
 describe('TrendAnalyzer', () => {
@@ -43,10 +43,10 @@ describe('TrendAnalyzer', () => {
     it('should smooth data for arrays with 3 or more points', () => {
       const data = [1, 5, 2, 8, 3, 7, 4];
       const smoothed = TrendAnalyzer.calculateLOWESSTrend(data);
-      
+
       expect(smoothed).toHaveLength(data.length);
       expect(smoothed).not.toEqual(data); // Should be different from original
-      
+
       // Smoothed values should be less extreme
       expect(Math.max(...smoothed)).toBeLessThanOrEqual(Math.max(...data));
       expect(Math.min(...smoothed)).toBeGreaterThanOrEqual(Math.min(...data));
@@ -54,10 +54,10 @@ describe('TrendAnalyzer', () => {
 
     it('should handle different bandwidth values', () => {
       const data = [1, 10, 2, 9, 3, 8, 4];
-      
+
       const smoothed1 = TrendAnalyzer.calculateLOWESSTrend(data, 0.1);
       const smoothed2 = TrendAnalyzer.calculateLOWESSTrend(data, 0.5);
-      
+
       expect(smoothed1).toHaveLength(data.length);
       expect(smoothed2).toHaveLength(data.length);
       expect(smoothed1).not.toEqual(smoothed2);
@@ -66,7 +66,7 @@ describe('TrendAnalyzer', () => {
     it('should handle constant data', () => {
       const data = [5, 5, 5, 5, 5];
       const smoothed = TrendAnalyzer.calculateLOWESSTrend(data);
-      
+
       expect(smoothed).toEqual([5, 5, 5, 5, 5]);
     });
   });
@@ -81,7 +81,7 @@ describe('TrendAnalyzer', () => {
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
-      
+
       const meals = [
         createMockMealEntry(today, 'Breakfast', 300),
         createMockMealEntry(today, 'Lunch', 500),
@@ -89,19 +89,19 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.prepareDailyCalorieData(meals, 7);
-      
+
       expect(result).toHaveLength(7);
       expect(result.every(point => point.date instanceof Date)).toBe(true);
       expect(result.every(point => typeof point.calories === 'number')).toBe(true);
-      
+
       // Today should have 800 calories (300 + 500)
-      const todayData = result.find(point => 
+      const todayData = result.find(point =>
         point.date.toDateString() === today.toDateString()
       );
       expect(todayData?.calories).toBe(800);
-      
+
       // Yesterday should have 600 calories
-      const yesterdayData = result.find(point => 
+      const yesterdayData = result.find(point =>
         point.date.toDateString() === yesterday.toDateString()
       );
       expect(yesterdayData?.calories).toBe(600);
@@ -114,13 +114,13 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.prepareDailyCalorieData(meals, 3);
-      
+
       expect(result).toHaveLength(3);
-      
+
       // Should have one day with 300 calories and two days with 0 calories
       const totalCalories = result.reduce((sum, point) => sum + point.calories!, 0);
       expect(totalCalories).toBe(300);
-      
+
       const zeroDays = result.filter(point => point.calories === 0);
       expect(zeroDays).toHaveLength(2);
     });
@@ -129,14 +129,14 @@ describe('TrendAnalyzer', () => {
       const today = new Date();
       const oldDate = new Date(today);
       oldDate.setDate(today.getDate() - 10);
-      
+
       const meals = [
         createMockMealEntry(today, 'Today', 300),
         createMockMealEntry(oldDate, 'Old', 500),
       ];
 
       const result = TrendAnalyzer.prepareDailyCalorieData(meals, 3);
-      
+
       // Should only include today's meal
       const totalCalories = result.reduce((sum, point) => sum + point.calories!, 0);
       expect(totalCalories).toBe(300);
@@ -155,7 +155,7 @@ describe('TrendAnalyzer', () => {
       yesterday.setDate(today.getDate() - 1);
       const oldDate = new Date(today);
       oldDate.setDate(today.getDate() - 10);
-      
+
       const weights = [
         createMockWeightEntry(today, 70.5),
         createMockWeightEntry(yesterday, 70.2),
@@ -163,11 +163,11 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.prepareWeightData(weights, 7);
-      
+
       expect(result).toHaveLength(2); // Only today and yesterday
       expect(result.every(point => point.date instanceof Date)).toBe(true);
       expect(result.every(point => typeof point.weight === 'number')).toBe(true);
-      
+
       // Should be sorted by date
       expect(result[0].date.getTime()).toBeLessThanOrEqual(result[1].date.getTime());
     });
@@ -176,7 +176,7 @@ describe('TrendAnalyzer', () => {
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
-      
+
       // Add in reverse chronological order
       const weights = [
         createMockWeightEntry(today, 70.5),
@@ -184,7 +184,7 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.prepareWeightData(weights, 7);
-      
+
       expect(result[0].date.getTime()).toBeLessThan(result[1].date.getTime());
       expect(result[0].weight).toBe(70.2);
       expect(result[1].weight).toBe(70.5);
@@ -196,29 +196,29 @@ describe('TrendAnalyzer', () => {
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
-      
+
       const meals = [
         createMockMealEntry(today, 'Breakfast', 300),
         createMockMealEntry(yesterday, 'Dinner', 600),
       ];
-      
+
       const weights = [
         createMockWeightEntry(today, 70.5),
       ];
 
       const result = TrendAnalyzer.prepareCombinedData(meals, weights, 3);
-      
+
       expect(result).toHaveLength(3);
-      
+
       // Today should have both calories and weight
-      const todayData = result.find(point => 
+      const todayData = result.find(point =>
         point.date.toDateString() === today.toDateString()
       );
       expect(todayData?.calories).toBe(300);
       expect(todayData?.weight).toBe(70.5);
-      
+
       // Yesterday should have calories but no weight
-      const yesterdayData = result.find(point => 
+      const yesterdayData = result.find(point =>
         point.date.toDateString() === yesterday.toDateString()
       );
       expect(yesterdayData?.calories).toBe(600);
@@ -242,7 +242,7 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.calculateTrendLines(data);
-      
+
       expect(result.caloriesTrend).toHaveLength(5);
       expect(result.weightTrend).toHaveLength(5);
       expect(result.caloriesTrend.every(val => typeof val === 'number')).toBe(true);
@@ -259,10 +259,10 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.calculateTrendLines(data);
-      
+
       expect(result.caloriesTrend).toHaveLength(5);
       expect(result.weightTrend).toHaveLength(5);
-      
+
       // Weight trend should have undefined values where no weight data exists
       expect(result.weightTrend[1]).toBeUndefined();
       expect(result.weightTrend[3]).toBeUndefined();
@@ -270,7 +270,7 @@ describe('TrendAnalyzer', () => {
 
     it('should handle empty data', () => {
       const result = TrendAnalyzer.calculateTrendLines([]);
-      
+
       expect(result.caloriesTrend).toEqual([]);
       expect(result.weightTrend).toEqual([]);
     });
@@ -287,7 +287,7 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.getSummaryStats(data);
-      
+
       expect(result.totalDays).toBe(5);
       expect(result.avgCalories).toBe(2000); // (2000+2200+1800+2100+1900)/5
       expect(result.maxCalories).toBe(2200);
@@ -304,7 +304,7 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.getSummaryStats(data);
-      
+
       expect(result.totalDays).toBe(3);
       expect(result.avgCalories).toBe(2000);
       expect(result.maxCalories).toBe(2200);
@@ -315,7 +315,7 @@ describe('TrendAnalyzer', () => {
 
     it('should handle empty data', () => {
       const result = TrendAnalyzer.getSummaryStats([]);
-      
+
       expect(result.totalDays).toBe(0);
       expect(result.avgCalories).toBe(0);
       expect(result.maxCalories).toBe(0);
@@ -330,7 +330,7 @@ describe('TrendAnalyzer', () => {
       ];
 
       const result = TrendAnalyzer.getSummaryStats(data);
-      
+
       expect(result.avgWeight).toBe(70.0);
       expect(result.weightChange).toBeUndefined(); // Need at least 2 points for change
     });
@@ -339,11 +339,11 @@ describe('TrendAnalyzer', () => {
   describe('getDateRange', () => {
     it('should return correct date range', () => {
       const { startDate, endDate } = TrendAnalyzer.getDateRange(7);
-      
+
       expect(startDate instanceof Date).toBe(true);
       expect(endDate instanceof Date).toBe(true);
       expect(startDate.getTime()).toBeLessThan(endDate.getTime());
-      
+
       // Should be approximately 6 days difference (7 days inclusive)
       const daysDiff = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       expect(daysDiff).toBe(6);
@@ -351,7 +351,7 @@ describe('TrendAnalyzer', () => {
 
     it('should handle single day range', () => {
       const { startDate, endDate } = TrendAnalyzer.getDateRange(1);
-      
+
       // Start and end should be the same day
       expect(startDate.toDateString()).toBe(endDate.toDateString());
     });

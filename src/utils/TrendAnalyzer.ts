@@ -1,4 +1,4 @@
-import { co } from "jazz-tools";
+import { type Loaded } from "jazz-tools";
 import { MealEntry, WeightEntry } from "../schema";
 
 /**
@@ -33,7 +33,7 @@ export class TrendAnalyzer {
       // Determine the range of points to consider
       const start = Math.max(0, i - h);
       const end = Math.min(n - 1, i + h);
-      
+
       let weightedSum = 0;
       let totalWeight = 0;
 
@@ -41,7 +41,7 @@ export class TrendAnalyzer {
       for (let j = start; j <= end; j++) {
         const distance = Math.abs(i - j) / h;
         const weight = distance <= 1 ? Math.pow(1 - Math.pow(distance, 3), 3) : 0;
-        
+
         weightedSum += data[j] * weight;
         totalWeight += weight;
       }
@@ -59,7 +59,7 @@ export class TrendAnalyzer {
    * @returns Array of chart data points with date and calories
    */
   static prepareDailyCalorieData(
-    meals: co.loaded<typeof MealEntry>[] | undefined,
+    meals: Loaded<typeof MealEntry>[] | undefined,
     days: number = 30
   ): ChartDataPoint[] {
     if (!meals || meals.length === 0) {
@@ -73,7 +73,7 @@ export class TrendAnalyzer {
 
     // Group meals by date and calculate daily totals
     const dailyTotals = new Map<string, number>();
-    
+
     meals.forEach(meal => {
       const mealDate = new Date(meal.timestamp);
       if (mealDate >= startDate && mealDate <= endDate) {
@@ -90,7 +90,7 @@ export class TrendAnalyzer {
     while (currentDate <= endDate) {
       const dateKey = this.formatDateKey(currentDate);
       const calories = dailyTotals.get(dateKey) || 0;
-      
+
       dataPoints.push({
         date: new Date(currentDate),
         calories,
@@ -109,7 +109,7 @@ export class TrendAnalyzer {
    * @returns Array of chart data points with date and weight
    */
   static prepareWeightData(
-    weights: co.loaded<typeof WeightEntry>[] | undefined,
+    weights: Loaded<typeof WeightEntry>[] | undefined,
     days: number = 30
   ): ChartDataPoint[] {
     if (!weights || weights.length === 0) {
@@ -144,8 +144,8 @@ export class TrendAnalyzer {
    * @returns Array of chart data points with date, calories, and weight
    */
   static prepareCombinedData(
-    meals: co.loaded<typeof MealEntry>[] | undefined,
-    weights: co.loaded<typeof WeightEntry>[] | undefined,
+    meals: Loaded<typeof MealEntry>[] | undefined,
+    weights: Loaded<typeof WeightEntry>[] | undefined,
     days: number = 30
   ): ChartDataPoint[] {
     const calorieData = this.prepareDailyCalorieData(meals, days);
@@ -179,11 +179,11 @@ export class TrendAnalyzer {
   ): { caloriesTrend: number[]; weightTrend: number[] } {
     // Extract calorie values (replace undefined with 0)
     const calorieValues = data.map(point => point.calories || 0);
-    
+
     // Extract weight values, filtering out undefined values
     const weightValues: number[] = [];
     const weightIndices: number[] = [];
-    
+
     data.forEach((point, index) => {
       if (point.weight !== undefined) {
         weightValues.push(point.weight);
@@ -194,7 +194,7 @@ export class TrendAnalyzer {
     // Calculate trends
     const caloriesTrend = this.calculateLOWESSTrend(calorieValues, bandwidth);
     const rawWeightTrend = this.calculateLOWESSTrend(weightValues, bandwidth);
-    
+
     // Map weight trend back to full data array
     const weightTrend: number[] = new Array(data.length);
     rawWeightTrend.forEach((value, index) => {
@@ -246,7 +246,7 @@ export class TrendAnalyzer {
     if (weightValues.length > 0) {
       const totalWeight = weightValues.reduce((sum, weight) => sum + weight, 0);
       result.avgWeight = Math.round((totalWeight / weightValues.length) * 10) / 10;
-      
+
       if (weightValues.length > 1) {
         result.weightChange = Math.round((weightValues[weightValues.length - 1] - weightValues[0]) * 10) / 10;
       }
@@ -273,7 +273,7 @@ export class TrendAnalyzer {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days + 1);
-    
+
     return { startDate, endDate };
   }
 }
