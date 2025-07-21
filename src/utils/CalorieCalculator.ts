@@ -1,4 +1,5 @@
 import { type Loaded } from "jazz-tools";
+import { DateTime } from "luxon";
 import { MealEntry } from "../schema";
 
 /**
@@ -21,22 +22,22 @@ export class CalorieCalculator {
   /**
    * Calculate total calories consumed for a specific date
    * @param meals - Array of meal entries
-   * @param date - Target date for calculation
+   * @param dateIso - Target date as ISO string for calculation
    * @returns Total calories for the specified date
    */
   static calculateDailyTotal(
     meals: Loaded<typeof MealEntry>[] | undefined,
-    date: Date
+    dateIso: string
   ): number {
     if (!meals || meals.length === 0) {
       return 0;
     }
 
-    const targetDateStr = this.formatDateForComparison(date);
+    const targetDateStr = this.getDateOnlyFromIso(dateIso);
 
     return meals
       .filter(meal => {
-        const mealDateStr = this.formatDateForComparison(new Date(meal.timestamp));
+        const mealDateStr = this.getDateOnlyFromIso(meal.timestamp);
         return mealDateStr === targetDateStr;
       })
       .reduce((total, meal) => total + meal.totalCalories, 0);
@@ -45,23 +46,23 @@ export class CalorieCalculator {
   /**
    * Calculate calorie breakdown by food category for a specific date
    * @param meals - Array of meal entries
-   * @param date - Target date for calculation
+   * @param dateIso - Target date as ISO string for calculation
    * @returns Object mapping category names to total calories
    */
   static calculateCategoryBreakdown(
     meals: Loaded<typeof MealEntry>[] | undefined,
-    date: Date
+    dateIso: string
   ): Record<string, number> {
     if (!meals || meals.length === 0) {
       return {};
     }
 
-    const targetDateStr = this.formatDateForComparison(date);
+    const targetDateStr = this.getDateOnlyFromIso(dateIso);
     const breakdown: Record<string, number> = {};
 
     meals
       .filter(meal => {
-        const mealDateStr = this.formatDateForComparison(new Date(meal.timestamp));
+        const mealDateStr = this.getDateOnlyFromIso(meal.timestamp);
         return mealDateStr === targetDateStr;
       })
       .forEach(meal => {
@@ -73,31 +74,81 @@ export class CalorieCalculator {
   }
 
   /**
-   * Helper function to format date for consistent comparison
-   * @param date - Date to format
+   * Helper function to extract date-only string from ISO timestamp for comparison
+   * @param isoString - ISO date string
    * @returns Date string in YYYY-MM-DD format
    */
-  private static formatDateForComparison(date: Date): string {
-    return date.toISOString().split('T')[0];
+  private static getDateOnlyFromIso(isoString: string): string {
+    return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
   }
 
   /**
-   * Get today's date at midnight for consistent date comparisons
-   * @returns Date object set to today at 00:00:00
+   * Get today's date at midnight as ISO string for consistent date comparisons
+   * @returns ISO string set to today at 00:00:00
    */
-  static getTodayAtMidnight(): Date {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
+  static getTodayAtMidnight(): string {
+    return DateTime.now().startOf('day').toISO() || '';
   }
 
   /**
-   * Check if two dates are on the same day
-   * @param date1 - First date
-   * @param date2 - Second date
+   * Check if two ISO date strings are on the same day
+   * @param date1 - First ISO date string
+   * @param date2 - Second ISO date string
    * @returns True if dates are on the same day
    */
-  static isSameDay(date1: Date | undefined | null, date2: Date | undefined | null): boolean {
-    return date1 !== undefined && date2 !== undefined && date1 !== null && date2 !== null && this.formatDateForComparison(date1) === this.formatDateForComparison(date2);
+  static isSameDay(date1: string | undefined | null, date2: string | undefined | null): boolean {
+    if (!date1 || !date2) return false;
+    return this.getDateOnlyFromIso(date1) === this.getDateOnlyFromIso(date2);
+  }
+
+  /**
+   * Add days to an ISO date string
+   * @param isoString - ISO date string
+   * @param days - Number of days to add (can be negative)
+   * @returns New ISO string with days added
+   */
+  static addDays(isoString: string, days: number): string {
+    return DateTime.fromISO(isoString).plus({ days }).toISO() || '';
+  }
+
+  /**
+   * Format ISO date string for display
+   * @param isoString - ISO date string
+   * @returns Formatted date string
+   */
+  static formatDateForDisplay(isoString: string): string {
+    return DateTime.fromISO(isoString).toLocaleString({
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+
+  /**
+   * Format ISO date string for HTML date input (YYYY-MM-DD)
+   * @param isoString - ISO date string
+   * @returns Date string in YYYY-MM-DD format
+   */
+  static formatDateForInput(isoString: string): string {
+    return DateTime.fromISO(isoString).toISODate() || '';
+  }
+
+  /**
+   * Format ISO date string for time display
+   * @param isoString - ISO date string
+   * @returns Formatted time string
+   */
+  static formatTimeForDisplay(isoString: string): string {
+    return DateTime.fromISO(isoString).toLocaleString(DateTime.TIME_SIMPLE);
+  }
+
+  /**
+   * Create ISO string from HTML date input value
+   * @param dateInputValue - Date string from HTML input (YYYY-MM-DD)
+   * @returns ISO string at start of day
+   */
+  static createIsoFromDateInput(dateInputValue: string): string {
+    return DateTime.fromISO(dateInputValue).startOf('day').toISO() || '';
   }
 }

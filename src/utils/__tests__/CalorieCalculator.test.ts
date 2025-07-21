@@ -2,17 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { CalorieCalculator } from '../CalorieCalculator';
 import { type Loaded } from 'jazz-tools';
 import { MealEntry } from '../../schema';
+import { DateTime } from 'luxon';
 
 // Mock meal entry data for testing
 const createMockMealEntry = (
-  timestamp: Date,
+  timestamp: string,
   foodName: string,
   foodCategory: string,
   caloriesPerGram: number,
   weightInGrams: number,
   totalCalories: number
 ) => ({
-  timestamp: timestamp.toISOString(),
+  timestamp,
   foodName,
   foodCategory,
   caloriesPerGram,
@@ -46,9 +47,9 @@ describe('CalorieCalculator', () => {
   });
 
   describe('calculateDailyTotal', () => {
-    const today = new Date('2024-01-15T10:00:00Z');
-    const yesterday = new Date('2024-01-14T15:00:00Z');
-    const tomorrow = new Date('2024-01-16T08:00:00Z');
+    const today = '2024-01-15T10:00:00.000Z';
+    const yesterday = '2024-01-14T15:00:00.000Z';
+    const tomorrow = '2024-01-16T08:00:00.000Z';
 
     const mockMeals = [
       createMockMealEntry(today, 'Apple', 'Fruit', 0.52, 150, 78),
@@ -69,7 +70,7 @@ describe('CalorieCalculator', () => {
     });
 
     it('should return 0 for dates with no meals', () => {
-      const emptyDate = new Date('2024-01-10T12:00:00Z');
+      const emptyDate = '2024-01-10T12:00:00.000Z';
       const total = CalorieCalculator.calculateDailyTotal(mockMeals, emptyDate);
       expect(total).toBe(0);
     });
@@ -86,19 +87,19 @@ describe('CalorieCalculator', () => {
 
     it('should handle meals at different times on the same date', () => {
       const sameDay = [
-        createMockMealEntry(new Date('2024-01-15T06:00:00Z'), 'Breakfast', 'Meal', 1.0, 100, 100),
-        createMockMealEntry(new Date('2024-01-15T12:00:00Z'), 'Lunch', 'Meal', 1.0, 200, 200),
-        createMockMealEntry(new Date('2024-01-15T18:00:00Z'), 'Dinner', 'Meal', 1.0, 300, 300),
+        createMockMealEntry('2024-01-15T06:00:00.000Z', 'Breakfast', 'Meal', 1.0, 100, 100),
+        createMockMealEntry('2024-01-15T12:00:00.000Z', 'Lunch', 'Meal', 1.0, 200, 200),
+        createMockMealEntry('2024-01-15T18:00:00.000Z', 'Dinner', 'Meal', 1.0, 300, 300),
       ];
 
-      const total = CalorieCalculator.calculateDailyTotal(sameDay, new Date('2024-01-15'));
+      const total = CalorieCalculator.calculateDailyTotal(sameDay, '2024-01-15T00:00:00.000Z');
       expect(total).toBe(600);
     });
   });
 
   describe('calculateCategoryBreakdown', () => {
-    const targetDate = new Date('2024-01-15T10:00:00Z');
-    const otherDate = new Date('2024-01-14T10:00:00Z');
+    const targetDate = '2024-01-15T10:00:00.000Z';
+    const otherDate = '2024-01-14T10:00:00.000Z';
 
     const mockMeals = [
       createMockMealEntry(targetDate, 'Apple', 'Fruit', 0.52, 150, 78),
@@ -120,7 +121,7 @@ describe('CalorieCalculator', () => {
     });
 
     it('should return empty object for dates with no meals', () => {
-      const emptyDate = new Date('2024-01-10T12:00:00Z');
+      const emptyDate = '2024-01-10T12:00:00.000Z';
       const breakdown = CalorieCalculator.calculateCategoryBreakdown(mockMeals, emptyDate);
       expect(breakdown).toEqual({});
     });
@@ -149,37 +150,47 @@ describe('CalorieCalculator', () => {
   });
 
   describe('getTodayAtMidnight', () => {
-    it('should return today\'s date at midnight', () => {
+    it('should return today\'s date at midnight as ISO string', () => {
       const today = CalorieCalculator.getTodayAtMidnight();
-      expect(today.getHours()).toBe(0);
-      expect(today.getMinutes()).toBe(0);
-      expect(today.getSeconds()).toBe(0);
-      expect(today.getMilliseconds()).toBe(0);
+      expect(typeof today).toBe('string');
+
+      // Parse the ISO string and check it's at midnight
+      const todayDateTime = DateTime.fromISO(today);
+      expect(todayDateTime.hour).toBe(0);
+      expect(todayDateTime.minute).toBe(0);
+      expect(todayDateTime.second).toBe(0);
+      expect(todayDateTime.millisecond).toBe(0);
 
       // Should be today's date
-      const now = new Date();
-      expect(today.getDate()).toBe(now.getDate());
-      expect(today.getMonth()).toBe(now.getMonth());
-      expect(today.getFullYear()).toBe(now.getFullYear());
+      const now = DateTime.now();
+      expect(todayDateTime.day).toBe(now.day);
+      expect(todayDateTime.month).toBe(now.month);
+      expect(todayDateTime.year).toBe(now.year);
     });
   });
 
   describe('isSameDay', () => {
-    it('should return true for dates on the same day', () => {
-      const date1 = new Date('2024-01-15T06:00:00Z');
-      const date2 = new Date('2024-01-15T18:00:00Z');
+    it('should return true for ISO strings on the same day', () => {
+      const date1 = '2024-01-15T06:00:00.000Z';
+      const date2 = '2024-01-15T18:00:00.000Z';
       expect(CalorieCalculator.isSameDay(date1, date2)).toBe(true);
     });
 
-    it('should return false for dates on different days', () => {
-      const date1 = new Date('2024-01-15T23:59:59Z');
-      const date2 = new Date('2024-01-16T00:00:01Z');
+    it('should return false for ISO strings on different days', () => {
+      const date1 = '2024-01-15T23:59:59.000Z';
+      const date2 = '2024-01-16T00:00:01.000Z';
       expect(CalorieCalculator.isSameDay(date1, date2)).toBe(false);
     });
 
-    it('should handle same date objects', () => {
-      const date = new Date('2024-01-15T12:00:00Z');
+    it('should handle same ISO strings', () => {
+      const date = '2024-01-15T12:00:00.000Z';
       expect(CalorieCalculator.isSameDay(date, date)).toBe(true);
+    });
+
+    it('should return false for null or undefined values', () => {
+      expect(CalorieCalculator.isSameDay(null, '2024-01-15T12:00:00.000Z')).toBe(false);
+      expect(CalorieCalculator.isSameDay('2024-01-15T12:00:00.000Z', undefined)).toBe(false);
+      expect(CalorieCalculator.isSameDay(null, undefined)).toBe(false);
     });
   });
 });

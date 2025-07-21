@@ -4,6 +4,7 @@
  */
 
 import { Group, co, z, type Loaded } from "jazz-tools";
+import { DateTime } from "luxon";
 
 /** MealEntry schema for tracking individual meal entries */
 export const MealEntry = co.map({
@@ -70,7 +71,9 @@ export const CalorieTrackerRoot = co.map({
 
 export function getUserAge(root: Loaded<typeof CalorieTrackerRoot> | undefined) {
   if (!root) return null;
-  return new Date().getFullYear() - new Date(root.dateOfBirth).getFullYear();
+  const now = DateTime.now();
+  const birthDate = DateTime.fromISO(root.dateOfBirth);
+  return now.year - birthDate.year;
 }
 
 export const JazzAccount = co
@@ -99,7 +102,7 @@ export const JazzAccount = co
 
       account.root = CalorieTrackerRoot.create(
         {
-          dateOfBirth: new Date("1/1/1990").toISOString(),
+          dateOfBirth: DateTime.fromJSDate(new Date("1/1/1990")).toISO() || '',
           mealEntries,
           weightEntries,
           foodIntelligence,

@@ -1,16 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { TrendAnalyzer, type ChartDataPoint } from '../TrendAnalyzer';
 import { type Loaded } from 'jazz-tools';
+import { DateTime } from 'luxon';
 import { MealEntry, WeightEntry } from '../../schema';
 
 // Helper function to create mock meal entry
 const createMockMealEntry = (
-  timestamp: Date,
+  timestamp: string,
   foodName: string,
   totalCalories: number
 ) => {
   return {
-    timestamp: timestamp.toISOString(),
+    timestamp,
     foodName,
     foodCategory: 'Test',
     caloriesPerGram: 1.0,
@@ -22,11 +23,11 @@ const createMockMealEntry = (
 
 // Helper function to create mock weight entry
 const createMockWeightEntry = (
-  timestamp: Date,
+  timestamp: string,
   weightValue: number
 ) => {
   return {
-    timestamp: timestamp.toISOString(),
+    timestamp,
     weightValue,
     notes: '',
   } as Loaded<typeof WeightEntry>;
@@ -78,9 +79,8 @@ describe('TrendAnalyzer', () => {
     });
 
     it('should prepare daily calorie data for the specified number of days', () => {
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
+      const today = DateTime.now().startOf('day').toISO() || '';
+      const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
 
       const meals = [
         createMockMealEntry(today, 'Breakfast', 300),
@@ -96,19 +96,19 @@ describe('TrendAnalyzer', () => {
 
       // Today should have 800 calories (300 + 500)
       const todayData = result.find(point =>
-        point.date.toDateString() === today.toDateString()
+        DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(today).toISODate()
       );
       expect(todayData?.calories).toBe(800);
 
       // Yesterday should have 600 calories
       const yesterdayData = result.find(point =>
-        point.date.toDateString() === yesterday.toDateString()
+        DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(yesterday).toISODate()
       );
       expect(yesterdayData?.calories).toBe(600);
     });
 
     it('should include days with zero calories', () => {
-      const today = new Date();
+      const today = DateTime.now().startOf('day').toISO() || '';
       const meals = [
         createMockMealEntry(today, 'Breakfast', 300),
       ];
@@ -126,9 +126,8 @@ describe('TrendAnalyzer', () => {
     });
 
     it('should filter out meals outside the date range', () => {
-      const today = new Date();
-      const oldDate = new Date(today);
-      oldDate.setDate(today.getDate() - 10);
+      const today = DateTime.now().startOf('day').toISO() || '';
+      const oldDate = DateTime.now().startOf('day').minus({ days: 10 }).toISO() || '';
 
       const meals = [
         createMockMealEntry(today, 'Today', 300),
@@ -150,11 +149,9 @@ describe('TrendAnalyzer', () => {
     });
 
     it('should prepare weight data within the specified date range', () => {
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const oldDate = new Date(today);
-      oldDate.setDate(today.getDate() - 10);
+      const today = DateTime.now().startOf('day').toISO() || '';
+      const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
+      const oldDate = DateTime.now().startOf('day').minus({ days: 10 }).toISO() || '';
 
       const weights = [
         createMockWeightEntry(today, 70.5),
@@ -173,9 +170,8 @@ describe('TrendAnalyzer', () => {
     });
 
     it('should sort weight entries by date', () => {
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
+      const today = DateTime.now().startOf('day').toISO() || '';
+      const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
 
       // Add in reverse chronological order
       const weights = [
@@ -193,9 +189,8 @@ describe('TrendAnalyzer', () => {
 
   describe('prepareCombinedData', () => {
     it('should combine calorie and weight data', () => {
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
+      const today = DateTime.now().startOf('day').toISO() || '';
+      const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
 
       const meals = [
         createMockMealEntry(today, 'Breakfast', 300),
@@ -212,14 +207,14 @@ describe('TrendAnalyzer', () => {
 
       // Today should have both calories and weight
       const todayData = result.find(point =>
-        point.date.toDateString() === today.toDateString()
+        DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(today).toISODate()
       );
       expect(todayData?.calories).toBe(300);
       expect(todayData?.weight).toBe(70.5);
 
       // Yesterday should have calories but no weight
       const yesterdayData = result.find(point =>
-        point.date.toDateString() === yesterday.toDateString()
+        DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(yesterday).toISODate()
       );
       expect(yesterdayData?.calories).toBe(600);
       expect(yesterdayData?.weight).toBeUndefined();
@@ -353,7 +348,7 @@ describe('TrendAnalyzer', () => {
       const { startDate, endDate } = TrendAnalyzer.getDateRange(1);
 
       // Start and end should be the same day
-      expect(startDate.toDateString()).toBe(endDate.toDateString());
+      expect(DateTime.fromJSDate(startDate).toISODate()).toBe(DateTime.fromJSDate(endDate).toISODate());
     });
   });
 });

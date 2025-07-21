@@ -29,7 +29,7 @@ export function DailyPage() {
 
   // Filter meal entries by selected date
   const filteredMealEntries = me?.root?.mealEntries?.filter((meal): meal is Loaded<typeof MealEntry> =>
-    meal != null && CalorieCalculator.isSameDay(new Date(meal.timestamp), selectedDate)
+    meal != null && CalorieCalculator.isSameDay(meal.timestamp, selectedDate)
   ) || [];
 
   // Calculate daily totals for the selected date
@@ -45,45 +45,24 @@ export function DailyPage() {
 
   // Date navigation handlers
   const goToPreviousDay = () => {
-    const previousDay = new Date(selectedDate);
-    previousDay.setDate(previousDay.getDate() - 1);
-    setSelectedDate(previousDay);
+    setSelectedDate(CalorieCalculator.addDays(selectedDate, -1));
   };
 
   const goToNextDay = () => {
-    const nextDay = new Date(selectedDate);
-    nextDay.setDate(nextDay.getDate() + 1);
-    setSelectedDate(nextDay);
+    setSelectedDate(CalorieCalculator.addDays(selectedDate, 1));
   };
 
   // Handle direct date selection
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newDate = new Date(event.target.value);
-    if (!isNaN(newDate.getTime())) {
-      // Set to midnight for consistent comparison
-      newDate.setHours(0, 0, 0, 0);
-      setSelectedDate(newDate);
+    const dateValue = event.target.value;
+    if (dateValue) {
+      setSelectedDate(CalorieCalculator.createIsoFromDateInput(dateValue));
       setShowDatePicker(false);
     }
   };
 
-  // Format date for display
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  // Format date for input value (YYYY-MM-DD)
-  const formatDateForInput = (date: Date) => {
-    return date.toISOString().split('T')[0];
-  };
-
   // Check if selected date is today
-  const isToday = CalorieCalculator.isSameDay(selectedDate, new Date());
+  const isToday = CalorieCalculator.isSameDay(selectedDate, CalorieCalculator.getTodayAtMidnight());
 
   // Calculate category breakdown for pie chart
   const categoryBreakdown = me?.root?.mealEntries
@@ -142,15 +121,6 @@ export function DailyPage() {
     }
   };
 
-  // Format time for display
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
   return (
     <div className="space-y-6">
       <Card>
@@ -172,7 +142,7 @@ export function DailyPage() {
 
             <div className="text-center">
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold">{formatDate(selectedDate)}</h3>
+                <h3 className="text-lg font-semibold">{CalorieCalculator.formatDateForDisplay(selectedDate)}</h3>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -189,7 +159,7 @@ export function DailyPage() {
                 <div className="mt-2">
                   <Input
                     type="date"
-                    value={formatDateForInput(selectedDate)}
+                    value={CalorieCalculator.formatDateForInput(selectedDate)}
                     onChange={handleDateChange}
                     className="w-auto mx-auto"
                   />
@@ -291,7 +261,7 @@ export function DailyPage() {
                       {filteredMealEntries.map((meal) => (
                         <TableRow key={meal.id}>
                           <TableCell className="font-medium">
-                            {formatTime(new Date(meal.timestamp))}
+                            {CalorieCalculator.formatTimeForDisplay(meal.timestamp)}
                           </TableCell>
                           <TableCell>
                             <div>
@@ -350,7 +320,7 @@ export function DailyPage() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <div>
-                      <p>No meals logged for {formatDate(selectedDate)}</p>
+                      <p>No meals logged for {CalorieCalculator.formatDateForDisplay(selectedDate)}</p>
                       <p className="text-sm mt-1">
                         {isToday ? "Start logging meals to see them here" : "No meals were logged on this date"}
                       </p>

@@ -1,11 +1,12 @@
 import { type Loaded } from "jazz-tools";
+import { DateTime } from "luxon";
 import { MealEntry, WeightEntry } from "../schema";
 
 /**
  * Data point interface for chart data
  */
 export interface ChartDataPoint {
-  date: Date;
+  date: Date; // Keep as Date for chart compatibility
   calories?: number;
   weight?: number;
 }
@@ -66,18 +67,17 @@ export class TrendAnalyzer {
       return [];
     }
 
-    // Calculate the date range
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days + 1);
+    // Calculate the date range using Luxon
+    const endDate = DateTime.now().startOf('day');
+    const startDate = endDate.minus({ days: days - 1 });
 
     // Group meals by date and calculate daily totals
     const dailyTotals = new Map<string, number>();
 
     meals.forEach(meal => {
-      const mealDate = new Date(meal.timestamp);
+      const mealDate = DateTime.fromISO(meal.timestamp);
       if (mealDate >= startDate && mealDate <= endDate) {
-        const dateKey = this.formatDateKey(mealDate);
+        const dateKey = mealDate.toISODate() || '';
         const currentTotal = dailyTotals.get(dateKey) || 0;
         dailyTotals.set(dateKey, currentTotal + meal.totalCalories);
       }
@@ -85,18 +85,18 @@ export class TrendAnalyzer {
 
     // Create data points for each day in the range
     const dataPoints: ChartDataPoint[] = [];
-    const currentDate = new Date(startDate);
+    let currentDate = startDate;
 
     while (currentDate <= endDate) {
-      const dateKey = this.formatDateKey(currentDate);
+      const dateKey = currentDate.toISODate() || '';
       const calories = dailyTotals.get(dateKey) || 0;
 
       dataPoints.push({
-        date: new Date(currentDate),
+        date: currentDate.toJSDate(), // Convert to JS Date for chart compatibility
         calories,
       });
 
-      currentDate.setDate(currentDate.getDate() + 1);
+      currentDate = currentDate.plus({ days: 1 });
     }
 
     return dataPoints;
@@ -116,22 +116,21 @@ export class TrendAnalyzer {
       return [];
     }
 
-    // Calculate the date range
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days + 1);
+    // Calculate the date range using Luxon
+    const endDate = DateTime.now().startOf('day');
+    const startDate = endDate.minus({ days: days - 1 });
 
     // Filter and sort weight entries within the date range
     const filteredWeights = weights
       .filter(weight => {
-        const weightDate = new Date(weight.timestamp);
+        const weightDate = DateTime.fromISO(weight.timestamp);
         return weightDate >= startDate && weightDate <= endDate;
       })
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort((a, b) => DateTime.fromISO(a.timestamp).toMillis() - DateTime.fromISO(b.timestamp).toMillis());
 
     // Convert to chart data points
     return filteredWeights.map(weight => ({
-      date: new Date(weight.timestamp),
+      date: DateTime.fromISO(weight.timestamp).toJSDate(), // Convert to JS Date for chart compatibility
       weight: weight.weightValue,
     }));
   }
@@ -261,19 +260,21 @@ export class TrendAnalyzer {
    * @returns Date string in YYYY-MM-DD format
    */
   private static formatDateKey(date: Date): string {
-    return date.toISOString().split('T')[0];
+    return DateTime.fromJSDate(date).toISODate() || '';
   }
 
   /**
    * Helper method to get date range for analysis
    * @param days - Number of days
-   * @returns Object with start and end dates
+   * @returns Object with start and end dates as JS Dates for compatibility
    */
   static getDateRange(days: number): { startDate: Date; endDate: Date } {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days + 1);
+    const endDate = DateTime.now().startOf('day');
+    const startDate = endDate.minus({ days: days - 1 });
 
-    return { startDate, endDate };
+    return {
+      startDate: startDate.toJSDate(),
+      endDate: endDate.toJSDate()
+    };
   }
 }

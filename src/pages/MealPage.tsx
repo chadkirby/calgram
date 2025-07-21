@@ -14,6 +14,7 @@ import { DataImporter } from "../utils/DataImporter";
 import { Info, Check, Upload } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
+import { DateTime } from "luxon";
 
 // Zod schema for form validation - focused on essential requirements only
 const mealFormSchema = z.object({
@@ -154,7 +155,7 @@ export function MealPage() {
   const todayTotal = me?.root?.mealEntries
     ? CalorieCalculator.calculateDailyTotal(
       [...me.root.mealEntries].filter((entry): entry is NonNullable<typeof entry> => entry !== null),
-      new Date()
+      CalorieCalculator.getTodayAtMidnight()
     )
     : 0;
 
@@ -272,7 +273,7 @@ export function MealPage() {
 
       // Create meal entry using Jazz schema
       const mealEntry = MealEntry.create({
-        timestamp: new Date().toISOString(),
+        timestamp: DateTime.now().toISO() || '',
         foodName: validatedData.foodName,
         foodCategory: validatedData.foodCategory,
         caloriesPerGram: validatedData.caloriesPerGram,

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { FoodIntelligenceManager } from '../FoodIntelligenceManager';
 import { type CoList, type Loaded } from 'jazz-tools';
+import { DateTime } from 'luxon';
 import { FoodIntelligence, FoodMetadata, MealEntry } from '../../schema';
 
 // Mock implementations for testing without full Jazz context
@@ -41,7 +42,7 @@ const createMockMealEntry = (
   weightInGrams: number = 100
 ) => {
   return {
-    timestamp: new Date().toISOString(),
+    timestamp: DateTime.now().toISO() || '',
     foodName,
     foodCategory,
     caloriesPerGram,

@@ -1,4 +1,5 @@
 import { type CoList, type Loaded } from "jazz-tools";
+import { DateTime } from "luxon";
 import { FoodIntelligence, FoodMetadata, MealEntry } from "../schema";
 
 /**
@@ -34,7 +35,7 @@ export class FoodIntelligenceManager {
         existingMetadata.lastUsedCPG = caloriesPerGram;
         existingMetadata.lastUsedCategory = foodCategory;
         existingMetadata.usageCount = existingMetadata.usageCount + 1;
-        existingMetadata.lastUsed = new Date().toISOString();
+        existingMetadata.lastUsed = DateTime.now().toISO() || '';
       } else {
         // Create new food metadata
         try {
@@ -42,7 +43,7 @@ export class FoodIntelligenceManager {
             lastUsedCPG: caloriesPerGram,
             lastUsedCategory: foodCategory,
             usageCount: 1,
-            lastUsed: new Date().toISOString(),
+            lastUsed: DateTime.now().toISO() || '',
           }, intelligence._owner);
 
           intelligence.foodData[foodName] = newMetadata;
@@ -52,7 +53,7 @@ export class FoodIntelligenceManager {
             lastUsedCPG: caloriesPerGram,
             lastUsedCategory: foodCategory,
             usageCount: 1,
-            lastUsed: new Date(),
+            lastUsed: DateTime.now().toISO() || '',
           } as any;
         }
       }
@@ -136,7 +137,7 @@ export class FoodIntelligenceManager {
           return b.usageCount - a.usageCount;
         }
         // Then by last used date
-        return new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime();
+        return DateTime.fromISO(b.lastUsed).toMillis() - DateTime.fromISO(a.lastUsed).toMillis();
       })
       .map(([foodName]) => foodName);
   }
