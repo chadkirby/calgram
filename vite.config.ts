@@ -11,6 +11,17 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress warnings about comments that Rollup can't interpret
+        if (warning.code === 'INVALID_ANNOTATION') {
+          return;
+        }
+        warn(warning);
+      },
+    },
+  },
   // @ts-ignore - vitest config
   test: {
     environment: 'jsdom',
