@@ -219,6 +219,8 @@ export function DailyPage() {
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
+                          animationBegin={0}
+                          animationDuration={300}
                         >
                           {pieChartData.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
