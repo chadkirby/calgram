@@ -18,6 +18,7 @@ import { DataImporter } from "../utils/DataImporter";
 import { Info, Check, Upload } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
+import { DateTime } from "luxon";
 
 // Enhanced Zod schema for comprehensive form validation
 const mealFormSchema = z.object({
@@ -95,10 +96,9 @@ function MealPageContent() {
     );
   }
 
-  // Get current date in YYYY-MM-DD format for default
+  // Get current date in YYYY-MM-DD format for default (timezone-aware)
   const getCurrentDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
+    return DateTime.now().toISODate();
   };
 
   const [formData, setFormData] = React.useState<MealFormValues>({
@@ -498,16 +498,16 @@ function MealPageContent() {
                 </div>
                 <div>
                   <div className={`text-sm sm:text-base font-semibold ${currentCaloriesPerGram > 0 && currentWeight !== 0
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                  }`}>
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                    }`}>
                     {totalCalories.toFixed(1)}
                   </div>
                   <div className="text-xs text-muted-foreground">This Meal</div>
                 </div>
                 <div>
                   <div className={`text-sm sm:text-base font-semibold ${totalCalories > 0 ? "text-primary" : "text-muted-foreground"
-                  }`}>
+                    }`}>
                     {(todayTotal + totalCalories).toFixed(1)}
                   </div>
                   <div className="text-xs text-muted-foreground">New Total</div>

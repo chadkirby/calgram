@@ -8,6 +8,7 @@ import { JazzAccount, WeightEntry } from "../schema";
 import { Check } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
+import { DateTime } from "luxon";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WeightPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
@@ -37,10 +38,9 @@ function WeightPageContent() {
 
   const userName = me?.profile?.firstName || me?.profile?.name || "User";
 
-  // Get current date in YYYY-MM-DD format for default
+  // Get current date in YYYY-MM-DD format for default (timezone-aware)
   const getCurrentDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
+    return DateTime.now().toISODate();
   };
 
   const [formData, setFormData] = React.useState<WeightFormValues>({
@@ -103,7 +103,7 @@ function WeightPageContent() {
         async () => {
           // Create weight entry using Jazz schema
           const weightEntry = WeightEntry.create({
-            timestamp: new Date(validatedData.date),
+            timestamp: validatedData.date,
             weightValue: validatedData.weightValue,
             notes: validatedData.notes || "",
           }, me.root._owner);

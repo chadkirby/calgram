@@ -1,5 +1,6 @@
 import { useAccount } from "jazz-tools/react";
 import { JazzAccount } from "./schema";
+import { DateTime } from "luxon";
 
 export function Form() {
   const { me } = useAccount(JazzAccount, {
@@ -32,8 +33,8 @@ export function Form() {
           type="date"
           id="dateOfBirth"
           className="border border-stone-300 rounded-sm shadow-xs py-1 px-2 flex-1"
-          value={me.root.dateOfBirth?.toISOString().split("T")[0] || ""}
-          onChange={(e) => (me.root.dateOfBirth = new Date(e.target.value))}
+          value={me.root.dateOfBirth ? DateTime.fromISO(me.root.dateOfBirth).toISODate() : ""}
+          onChange={(e) => (me.root.dateOfBirth = e.target.value)}
         />
       </div>
 
