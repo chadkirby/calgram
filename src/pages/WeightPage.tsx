@@ -143,14 +143,14 @@ function WeightPageContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
       <ConnectionStatus />
-      <Card className="max-w-2xl mx-auto">
+      <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl">Record Weight for {userName}</CardTitle>
+          <CardTitle className="text-lg sm:text-xl lg:text-2xl truncate">Record Weight for {userName}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <form onSubmit={onSubmit} className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4 lg:space-y-6 p-3 sm:p-4 lg:p-6">
+          <form onSubmit={onSubmit} className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Date</label>
               <Input
@@ -161,7 +161,7 @@ function WeightPageContent() {
                   setFormData(prev => ({ ...prev, date: value }));
                   validateField('date', value);
                 }}
-                className={errors.date ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
               />
               {errors.date && (
                 <p className="text-sm text-destructive">{errors.date}</p>
@@ -180,7 +180,8 @@ function WeightPageContent() {
                   setFormData(prev => ({ ...prev, weightValue: value }));
                   validateField('weightValue', value);
                 }}
-                className={errors.weightValue ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={`${errors.weightValue ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                inputMode="decimal"
               />
               {errors.weightValue && (
                 <p className="text-sm text-destructive">{errors.weightValue}</p>
@@ -197,7 +198,8 @@ function WeightPageContent() {
                   setFormData(prev => ({ ...prev, notes: value }));
                   validateField('notes', value);
                 }}
-                className={errors.notes ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={`${errors.notes ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[88px] sm:min-h-[80px]`}
+                rows={3}
               />
               {errors.notes && (
                 <p className="text-sm text-destructive">{errors.notes}</p>
@@ -206,7 +208,7 @@ function WeightPageContent() {
 
             {submitSuccess && (
               <Alert className="border-green-200 bg-green-50">
-                <Check className="h-4 w-4 text-green-600" />
+                <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                 <AlertTitle className="text-green-800">Success!</AlertTitle>
                 <AlertDescription className="text-green-700">
                   Weight recorded successfully.
@@ -214,7 +216,7 @@ function WeightPageContent() {
               </Alert>
             )}
 
-            <div className="flex justify-end space-x-2">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -228,12 +230,14 @@ function WeightPageContent() {
                   setSubmitSuccess(false);
                 }}
                 disabled={isSubmitting}
+                className="w-full sm:w-auto touch-manipulation"
               >
                 Clear
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
+                className="w-full sm:w-auto touch-manipulation"
               >
                 {isSubmitting ? "Recording..." : "Record Weight"}
               </Button>

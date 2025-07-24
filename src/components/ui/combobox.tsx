@@ -88,41 +88,47 @@ export function Combobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+          className={cn("w-full justify-between touch-manipulation min-h-[44px] sm:min-h-[40px]", className)}
           disabled={disabled}
           onKeyDown={handleTriggerKeyDown}
           onPaste={handleTriggerPaste}
         >
-          <span className="truncate text-left">
+          <span className="truncate text-left text-sm sm:text-base">
             {inputValue || placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent 
+        className="w-full p-0 max-w-[90vw] sm:max-w-none" 
+        align="start"
+        sideOffset={4}
+      >
         <Command>
           <CommandInput
             placeholder={placeholder}
             value={inputValue}
             onValueChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            className="text-sm sm:text-base"
           />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
+          <CommandList className="max-h-[40vh] sm:max-h-[300px]">
+            <CommandEmpty className="text-sm sm:text-base py-6">{emptyText}</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => (
                 <CommandItem
                   key={option}
                   value={option}
                   onSelect={() => handleSelect(option)}
+                  className="text-sm sm:text-base py-3 sm:py-2 touch-manipulation"
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-4 w-4 shrink-0",
                       value === option ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option}
+                  <span className="truncate">{option}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

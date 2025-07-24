@@ -118,3 +118,61 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Touch-friendly interactions */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Line clamping for mobile */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  /* Improved scrolling on mobile */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Better focus states for mobile */
+  .focus-visible\:ring-2:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+  
+  /* Responsive text sizing */
+  .text-responsive {
+    font-size: clamp(0.875rem, 2.5vw, 1rem);
+  }
+  
+  /* Mobile-optimized spacing */
+  .space-y-mobile > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem;
+  }
+  
+  @media (min-width: 640px) {
+    .space-y-mobile > :not([hidden]) ~ :not([hidden]) {
+      margin-top: 1rem;
+    }
+  }
+  
+  /* Improved button sizing for touch */
+  .btn-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  @media (min-width: 640px) {
+    .btn-touch {
+      min-height: 40px;
+      min-width: auto;
+    }
+  }
+}

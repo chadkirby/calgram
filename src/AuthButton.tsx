@@ -18,27 +18,31 @@ export function AuthButton() {
   if (auth.state === "signedIn") {
     return (
       <button
-        className="bg-stone-100 py-1.5 px-3 text-sm rounded-md"
+        className="bg-stone-100 py-1 px-2 sm:py-1.5 sm:px-3 text-xs sm:text-sm rounded-md touch-manipulation"
         onClick={handleLogOut}
+        title="Log out"
       >
-        Log out
+        <span className="sm:hidden">Logout</span>
+        <span className="hidden sm:inline">Log out</span>
       </button>
     );
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1 sm:gap-2">
       <button
-        className="bg-stone-100 py-1.5 px-3 text-sm rounded-md"
+        className="bg-stone-100 py-1 px-2 sm:py-1.5 sm:px-3 text-xs sm:text-sm rounded-md touch-manipulation"
         onClick={() => auth.signUp("")}
       >
-        Sign up
+        <span className="sm:hidden">Sign up</span>
+        <span className="hidden sm:inline">Sign up</span>
       </button>
       <button
         onClick={() => auth.logIn()}
-        className="bg-stone-100 py-1.5 px-3 text-sm rounded-md"
+        className="bg-stone-100 py-1 px-2 sm:py-1.5 sm:px-3 text-xs sm:text-sm rounded-md touch-manipulation"
       >
-        Log in
+        <span className="sm:hidden">Log in</span>
+        <span className="hidden sm:inline">Log in</span>
       </button>
     </div>
   );

@@ -346,42 +346,40 @@ function MealPageContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2 sm:space-y-3">
       <ConnectionStatus />
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl">Log Meal for {userName}</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleImportClick}
-                disabled={importStatus.isImporting}
-                className="flex items-center gap-2"
-              >
-                <Upload className="h-4 w-4" />
-                {importStatus.isImporting ? "Importing..." : "Import Data"}
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleFileImport}
-                className="hidden"
-              />
-            </div>
+      <Card className="max-w-5xl mx-auto gap-0 py-0">
+        <CardHeader className="pb-2 sm:pb-4 pt-4 sm:pt-6">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base sm:text-lg lg:text-xl truncate">Log Meal for {userName}</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleImportClick}
+              disabled={importStatus.isImporting}
+              className="flex items-center gap-1 text-xs touch-manipulation flex-shrink-0"
+            >
+              <Upload className="h-3 w-3 flex-shrink-0" />
+              <span>Import</span>
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleFileImport}
+              className="hidden"
+            />
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4 lg:p-6 pb-4 sm:pb-6">
           {/* Import Status Alert */}
           {importStatus.message && (
             <Alert className={importStatus.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
               {importStatus.success ? (
-                <Check className="h-4 w-4 text-green-600" />
+                <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
               ) : (
-                <Info className="h-4 w-4 text-red-600" />
+                <Info className="h-4 w-4 text-red-600 flex-shrink-0" />
               )}
               <AlertTitle className={importStatus.success ? "text-green-800" : "text-red-800"}>
                 {importStatus.success ? "Import Successful!" : "Import Failed"}
@@ -392,9 +390,10 @@ function MealPageContent() {
             </Alert>
           )}
 
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
+          <form onSubmit={onSubmit} className="space-y-2.5">
+            {/* Row 1: Date (standalone) */}
+            <div className="space-y-1">
+              <label className="text-xs sm:text-sm font-medium">Date</label>
               <Input
                 type="date"
                 value={formData.date}
@@ -403,50 +402,54 @@ function MealPageContent() {
                   setFormData(prev => ({ ...prev, date: value }));
                   validateField('date', value);
                 }}
-                className={errors.date ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
               />
               {errors.date && (
-                <p className="text-sm text-destructive">{errors.date}</p>
+                <p className="text-xs text-destructive">{errors.date}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Food Name</label>
-              <Combobox
-                value={formData.foodName}
-                onValueChange={(value) => {
-                  handleFoodSelection(value);
-                  validateField('foodName', value);
-                }}
-                options={recentFoods}
-                placeholder="Enter or select food name..."
-                emptyText="No recent foods found."
-              />
-              {errors.foodName && (
-                <p className="text-sm text-destructive">{errors.foodName}</p>
-              )}
+            {/* Row 2: Food Name and Food Category */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs sm:text-sm font-medium">Food Name</label>
+                <Combobox
+                  value={formData.foodName}
+                  onValueChange={(value) => {
+                    handleFoodSelection(value);
+                    validateField('foodName', value);
+                  }}
+                  options={recentFoods}
+                  placeholder="Enter or select food name..."
+                  emptyText="No recent foods found."
+                />
+                {errors.foodName && (
+                  <p className="text-xs text-destructive">{errors.foodName}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs sm:text-sm font-medium">Food Category</label>
+                <Combobox
+                  value={formData.foodCategory}
+                  onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, foodCategory: value }));
+                    validateField('foodCategory', value);
+                  }}
+                  options={recentCategories}
+                  placeholder="Enter or select category..."
+                  emptyText="No recent categories found."
+                />
+                {errors.foodCategory && (
+                  <p className="text-xs text-destructive">{errors.foodCategory}</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Food Category</label>
-              <Combobox
-                value={formData.foodCategory}
-                onValueChange={(value) => {
-                  setFormData(prev => ({ ...prev, foodCategory: value }));
-                  validateField('foodCategory', value);
-                }}
-                options={recentCategories}
-                placeholder="Enter or select category..."
-                emptyText="No recent categories found."
-              />
-              {errors.foodCategory && (
-                <p className="text-sm text-destructive">{errors.foodCategory}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Weight (grams)</label>
+            {/* Row 3: Weight and Calories per Gram */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs sm:text-sm font-medium">Weight (grams)</label>
                 <Input
                   type="number"
                   step="0.1"
@@ -457,15 +460,16 @@ function MealPageContent() {
                     setFormData(prev => ({ ...prev, weightInGrams: value }));
                     validateField('weightInGrams', value);
                   }}
-                  className={errors.weightInGrams ? "border-destructive focus-visible:ring-destructive" : ""}
+                  className={`${errors.weightInGrams ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                  inputMode="decimal"
                 />
                 {errors.weightInGrams && (
-                  <p className="text-sm text-destructive">{errors.weightInGrams}</p>
+                  <p className="text-xs text-destructive">{errors.weightInGrams}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Calories per Gram</label>
+              <div className="space-y-1">
+                <label className="text-xs sm:text-sm font-medium">Calories per Gram</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -476,98 +480,100 @@ function MealPageContent() {
                     setFormData(prev => ({ ...prev, caloriesPerGram: value }));
                     validateField('caloriesPerGram', value);
                   }}
-                  className={errors.caloriesPerGram ? "border-destructive focus-visible:ring-destructive" : ""}
+                  className={`${errors.caloriesPerGram ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                  inputMode="decimal"
                 />
                 {errors.caloriesPerGram && (
-                  <p className="text-sm text-destructive">{errors.caloriesPerGram}</p>
+                  <p className="text-xs text-destructive">{errors.caloriesPerGram}</p>
                 )}
               </div>
             </div>
 
-            {/* Calorie Summary */}
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>Calorie Summary</AlertTitle>
-              <AlertDescription>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-lg font-semibold">{todayTotal.toFixed(1)}</div>
-                    <div className="text-sm text-muted-foreground">Today's Total</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`text-lg font-semibold ${
-                      currentCaloriesPerGram > 0 && currentWeight !== 0
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    }`}>
-                      {totalCalories.toFixed(1)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">This Meal</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`text-lg font-semibold ${
-                      totalCalories > 0 ? "text-primary" : "text-muted-foreground"
-                    }`}>
-                      {(todayTotal + totalCalories).toFixed(1)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">New Total</div>
-                  </div>
+            {/* Compact Calorie Summary */}
+            <div className="bg-muted/30 rounded-lg p-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-sm sm:text-base font-semibold">{todayTotal.toFixed(1)}</div>
+                  <div className="text-xs text-muted-foreground">Today</div>
                 </div>
-              </AlertDescription>
-            </Alert>
+                <div>
+                  <div className={`text-sm sm:text-base font-semibold ${currentCaloriesPerGram > 0 && currentWeight !== 0
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  }`}>
+                    {totalCalories.toFixed(1)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">This Meal</div>
+                </div>
+                <div>
+                  <div className={`text-sm sm:text-base font-semibold ${totalCalories > 0 ? "text-primary" : "text-muted-foreground"
+                  }`}>
+                    {(todayTotal + totalCalories).toFixed(1)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">New Total</div>
+                </div>
+              </div>
+            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes (Optional)</label>
+            {/* Notes Field */}
+            <div className="space-y-1">
+              <label className="text-xs sm:text-sm font-medium">Notes (Optional)</label>
               <Textarea
-                placeholder="Add any additional notes about this meal..."
+                placeholder="Add notes..."
                 value={formData.notes}
                 onChange={(e) => {
                   const value = e.target.value;
                   setFormData(prev => ({ ...prev, notes: value }));
                   validateField('notes', value);
                 }}
-                className={errors.notes ? "border-destructive focus-visible:ring-destructive" : ""}
+                className={`${errors.notes ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] resize-none`}
+                rows={2}
               />
               {errors.notes && (
-                <p className="text-sm text-destructive">{errors.notes}</p>
+                <p className="text-xs text-destructive">{errors.notes}</p>
               )}
             </div>
 
-            <div className="flex justify-between items-center">
-              {submitSuccess && (
-                <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
-                  <Check className="h-4 w-4" />
-                  <span className="text-sm font-medium">Meal logged successfully!</span>
-                </div>
-              )}
-              <div className="flex gap-2 ml-auto">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setFormData({
-                      date: getCurrentDate(),
-                      foodName: "",
-                      foodCategory: "",
-                      caloriesPerGram: 0,
-                      weightInGrams: 0,
-                      notes: "",
-                    });
-                    setErrors({});
-                    setSubmitSuccess(false);
-                  }}
-                  disabled={isSubmitting}
-                >
-                  Clear
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Logging..." : "Log Meal"}
-                </Button>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setFormData({
+                    date: getCurrentDate(),
+                    foodName: "",
+                    foodCategory: "",
+                    caloriesPerGram: 0,
+                    weightInGrams: 0,
+                    notes: "",
+                  });
+                  setErrors({});
+                  setSubmitSuccess(false);
+                }}
+                disabled={isSubmitting}
+                className="flex-1 touch-manipulation"
+                size="sm"
+              >
+                Clear
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 touch-manipulation"
+                size="sm"
+              >
+                {isSubmitting ? "Logging..." : "Log Meal"}
+              </Button>
             </div>
+
+            {/* Success Message */}
+            {submitSuccess && (
+              <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                <Check className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm font-medium">Meal logged successfully!</span>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
