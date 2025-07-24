@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -19,7 +18,6 @@ import { DataImporter } from "../utils/DataImporter";
 import { Info, Check, Upload } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
-import { DateTime } from "luxon";
 
 // Enhanced Zod schema for comprehensive form validation
 const mealFormSchema = z.object({
@@ -337,10 +335,10 @@ function MealPageContent() {
     } catch (error) {
       console.error("Error logging meal:", error);
       SyncErrorHandler.handleSyncError(error, updateSyncStatus);
-      
+
       // Set a user-friendly error message
-      setErrors({ 
-        foodName: "Failed to save meal. Please check your connection and try again." 
+      setErrors({
+        foodName: "Failed to save meal. Please check your connection and try again."
       });
     } finally {
       setIsSubmitting(false);
@@ -486,26 +484,35 @@ function MealPageContent() {
               </div>
             </div>
 
-            {/* Reactive calorie calculations */}
-            {(currentCaloriesPerGram > 0 && currentWeight > 0) && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Total calories for this meal:</span>
-                <Badge variant="secondary" className="text-base font-semibold">
-                  {totalCalories.toFixed(1)} cal
-                </Badge>
-              </div>
-            )}
-
+            {/* Calorie Summary */}
             <Alert>
               <Info className="h-4 w-4" />
-              <AlertTitle>Today's Total</AlertTitle>
+              <AlertTitle>Calorie Summary</AlertTitle>
               <AlertDescription>
-                You have consumed {todayTotal.toFixed(1)} calories today.
-                {totalCalories > 0 && (
-                  <span className="block mt-1">
-                    Adding this meal will bring your total to {(todayTotal + totalCalories).toFixed(1)} calories.
-                  </span>
-                )}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-lg font-semibold">{todayTotal.toFixed(1)}</div>
+                    <div className="text-sm text-muted-foreground">Today's Total</div>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-lg font-semibold ${
+                      currentCaloriesPerGram > 0 && currentWeight !== 0
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                    }`}>
+                      {totalCalories.toFixed(1)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">This Meal</div>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-lg font-semibold ${
+                      totalCalories > 0 ? "text-primary" : "text-muted-foreground"
+                    }`}>
+                      {(todayTotal + totalCalories).toFixed(1)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">New Total</div>
+                  </div>
+                </div>
               </AlertDescription>
             </Alert>
 
@@ -526,42 +533,40 @@ function MealPageContent() {
               )}
             </div>
 
-            {submitSuccess && (
-              <Alert className="border-green-200 bg-green-50">
-                <Check className="h-4 w-4 text-green-600" />
-                <AlertTitle className="text-green-800">Success!</AlertTitle>
-                <AlertDescription className="text-green-700">
-                  Meal logged successfully. Your food intelligence has been updated.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setFormData({
-                    date: getCurrentDate(),
-                    foodName: "",
-                    foodCategory: "",
-                    caloriesPerGram: 0,
-                    weightInGrams: 0,
-                    notes: "",
-                  });
-                  setErrors({});
-                  setSubmitSuccess(false);
-                }}
-                disabled={isSubmitting}
-              >
-                Clear
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Logging..." : "Log Meal"}
-              </Button>
+            <div className="flex justify-between items-center">
+              {submitSuccess && (
+                <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                  <Check className="h-4 w-4" />
+                  <span className="text-sm font-medium">Meal logged successfully!</span>
+                </div>
+              )}
+              <div className="flex gap-2 ml-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setFormData({
+                      date: getCurrentDate(),
+                      foodName: "",
+                      foodCategory: "",
+                      caloriesPerGram: 0,
+                      weightInGrams: 0,
+                      notes: "",
+                    });
+                    setErrors({});
+                    setSubmitSuccess(false);
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Clear
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Logging..." : "Log Meal"}
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>
