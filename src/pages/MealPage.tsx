@@ -5,6 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { MealPageErrorFallback } from "@/components/PageErrorFallback";
+import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 
 import { useAccount } from "jazz-tools/react";
 import { JazzAccount, MealEntry } from "../schema";
@@ -16,8 +21,11 @@ import * as React from "react";
 import { z } from "zod";
 import { DateTime } from "luxon";
 
-// Zod schema for form validation - focused on essential requirements only
+// Enhanced Zod schema for comprehensive form validation
 const mealFormSchema = z.object({
+  date: z
+    .string()
+    .min(1, "Date is required"),
   foodName: z
     .string()
     .min(1, "Food name is required")
@@ -28,9 +36,9 @@ const mealFormSchema = z.object({
     .trim(),
   caloriesPerGram: z
     .number()
-    .nonnegative("Calories per gram cannot be negative"), // Allow 0 for water, etc.
+    .nonnegative("Calories per gram cannot be negative"),
   weightInGrams: z
-    .number(), // Allow negative for "didn't eat all of it" use case
+    .number(), // Allow negative for discarded food
   notes: z
     .string()
     .optional()
@@ -39,7 +47,7 @@ const mealFormSchema = z.object({
 
 type MealFormValues = z.infer<typeof mealFormSchema>;
 
-export function MealPage() {
+function MealPageContent() {
   const { me } = useAccount(JazzAccount, {
     resolve: {
       profile: true,
@@ -53,6 +61,8 @@ export function MealPage() {
       }
     },
   });
+
+  const { updateSyncStatus } = useNetworkStatus();
 
   const userName = me?.profile?.firstName || me?.profile?.name || "User";
 
@@ -87,7 +97,14 @@ export function MealPage() {
     );
   }
 
+  // Get current date in YYYY-MM-DD format for default
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   const [formData, setFormData] = React.useState<MealFormValues>({
+    date: getCurrentDate(),
     foodName: "",
     foodCategory: "",
     caloriesPerGram: 0,
@@ -271,30 +288,40 @@ export function MealPage() {
         validatedData.caloriesPerGram
       );
 
-      // Create meal entry using Jazz schema
-      const mealEntry = MealEntry.create({
-        timestamp: DateTime.now().toISO() || '',
-        foodName: validatedData.foodName,
-        foodCategory: validatedData.foodCategory,
-        caloriesPerGram: validatedData.caloriesPerGram,
-        weightInGrams: validatedData.weightInGrams,
-        notes: validatedData.notes || "",
-        totalCalories,
-      }, me.root._owner);
+      // Wrap meal creation and sync with error handling
+      await withSyncErrorHandling(
+        async () => {
+          // Create meal entry using Jazz schema
+          const mealEntry = MealEntry.create({
+            timestamp: validatedData.date,
+            foodName: validatedData.foodName,
+            foodCategory: validatedData.foodCategory,
+            caloriesPerGram: validatedData.caloriesPerGram,
+            weightInGrams: validatedData.weightInGrams,
+            notes: validatedData.notes || "",
+            totalCalories,
+          }, me.root._owner);
 
-      // Add to meal entries
-      me.root.mealEntries?.push(mealEntry);
+          // Add to meal entries
+          me.root.mealEntries?.push(mealEntry);
 
-      // Update food intelligence
-      if (foodIntelligence) {
-        FoodIntelligenceManager.updateFoodData(
-          foodIntelligence,
-          mealEntry
-        );
-      }
+          // Update food intelligence
+          if (foodIntelligence) {
+            FoodIntelligenceManager.updateFoodData(
+              foodIntelligence,
+              mealEntry
+            );
+          }
+
+          return mealEntry;
+        },
+        'meal-creation',
+        updateSyncStatus
+      )();
 
       // Reset form
       setFormData({
+        date: getCurrentDate(),
         foodName: "",
         foodCategory: "",
         caloriesPerGram: 0,
@@ -309,7 +336,12 @@ export function MealPage() {
 
     } catch (error) {
       console.error("Error logging meal:", error);
-      // You could add error handling/toast here
+      SyncErrorHandler.handleSyncError(error, updateSyncStatus);
+      
+      // Set a user-friendly error message
+      setErrors({ 
+        foodName: "Failed to save meal. Please check your connection and try again." 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -317,6 +349,7 @@ export function MealPage() {
 
   return (
     <div className="space-y-6">
+      <ConnectionStatus />
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -362,6 +395,23 @@ export function MealPage() {
           )}
 
           <form onSubmit={onSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date</label>
+              <Input
+                type="date"
+                value={formData.date}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData(prev => ({ ...prev, date: value }));
+                  validateField('date', value);
+                }}
+                className={errors.date ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
+              {errors.date && (
+                <p className="text-sm text-destructive">{errors.date}</p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Food Name</label>
               <Combobox
@@ -409,6 +459,7 @@ export function MealPage() {
                     setFormData(prev => ({ ...prev, weightInGrams: value }));
                     validateField('weightInGrams', value);
                   }}
+                  className={errors.weightInGrams ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
                 {errors.weightInGrams && (
                   <p className="text-sm text-destructive">{errors.weightInGrams}</p>
@@ -427,6 +478,7 @@ export function MealPage() {
                     setFormData(prev => ({ ...prev, caloriesPerGram: value }));
                     validateField('caloriesPerGram', value);
                   }}
+                  className={errors.caloriesPerGram ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
                 {errors.caloriesPerGram && (
                   <p className="text-sm text-destructive">{errors.caloriesPerGram}</p>
@@ -467,7 +519,11 @@ export function MealPage() {
                   setFormData(prev => ({ ...prev, notes: value }));
                   validateField('notes', value);
                 }}
+                className={errors.notes ? "border-destructive focus-visible:ring-destructive" : ""}
               />
+              {errors.notes && (
+                <p className="text-sm text-destructive">{errors.notes}</p>
+              )}
             </div>
 
             {submitSuccess && (
@@ -486,6 +542,7 @@ export function MealPage() {
                 variant="outline"
                 onClick={() => {
                   setFormData({
+                    date: getCurrentDate(),
                     foodName: "",
                     foodCategory: "",
                     caloriesPerGram: 0,
@@ -510,5 +567,15 @@ export function MealPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function MealPage() {
+  return (
+    <ErrorBoundary fallback={MealPageErrorFallback}>
+      <NetworkErrorHandler>
+        <MealPageContent />
+      </NetworkErrorHandler>
+    </ErrorBoundary>
   );
 }

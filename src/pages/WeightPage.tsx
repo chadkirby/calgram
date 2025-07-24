@@ -8,15 +8,18 @@ import { JazzAccount, WeightEntry } from "../schema";
 import { Check } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WeightPageErrorFallback } from "@/components/PageErrorFallback";
+import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 
 // Zod schema for weight form validation
 const weightFormSchema = z.object({
   date: z.string().min(1, "Date is required"),
   weightValue: z
     .number()
-    .positive("Weight must be a positive number")
-    .min(0.1, "Weight must be at least 0.1")
-    .max(1000, "Weight must be less than 1000"),
+    .positive("Weight must be a positive number"),
   notes: z
     .string()
     .optional()
@@ -25,10 +28,12 @@ const weightFormSchema = z.object({
 
 type WeightFormValues = z.infer<typeof weightFormSchema>;
 
-export function WeightPage() {
+function WeightPageContent() {
   const { me } = useAccount(JazzAccount, {
     resolve: { profile: true, root: true },
   });
+
+  const { updateSyncStatus } = useNetworkStatus();
 
   const userName = me?.profile?.firstName || me?.profile?.name || "User";
 
@@ -93,15 +98,24 @@ export function WeightPage() {
     try {
       const validatedData = validationResult.data;
 
-      // Create weight entry using Jazz schema
-      const weightEntry = WeightEntry.create({
-        timestamp: new Date(validatedData.date),
-        weightValue: validatedData.weightValue,
-        notes: validatedData.notes || "",
-      }, me.root._owner);
+      // Wrap weight creation and sync with error handling
+      await withSyncErrorHandling(
+        async () => {
+          // Create weight entry using Jazz schema
+          const weightEntry = WeightEntry.create({
+            timestamp: new Date(validatedData.date),
+            weightValue: validatedData.weightValue,
+            notes: validatedData.notes || "",
+          }, me.root._owner);
 
-      // Add to weight entries
-      me.root.weightEntries?.push(weightEntry);
+          // Add to weight entries
+          me.root.weightEntries?.push(weightEntry);
+
+          return weightEntry;
+        },
+        'weight-creation',
+        updateSyncStatus
+      )();
 
       // Reset form
       setFormData({
@@ -117,8 +131,12 @@ export function WeightPage() {
 
     } catch (error) {
       console.error("Error recording weight:", error);
-      // Set a general error message
-      setErrors({ weightValue: "Failed to record weight. Please try again." });
+      SyncErrorHandler.handleSyncError(error, updateSyncStatus);
+      
+      // Set a user-friendly error message
+      setErrors({ 
+        weightValue: "Failed to record weight. Please check your connection and try again." 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -126,6 +144,7 @@ export function WeightPage() {
 
   return (
     <div className="space-y-6">
+      <ConnectionStatus />
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="text-2xl">Record Weight for {userName}</CardTitle>
@@ -142,6 +161,7 @@ export function WeightPage() {
                   setFormData(prev => ({ ...prev, date: value }));
                   validateField('date', value);
                 }}
+                className={errors.date ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               {errors.date && (
                 <p className="text-sm text-destructive">{errors.date}</p>
@@ -160,6 +180,7 @@ export function WeightPage() {
                   setFormData(prev => ({ ...prev, weightValue: value }));
                   validateField('weightValue', value);
                 }}
+                className={errors.weightValue ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               {errors.weightValue && (
                 <p className="text-sm text-destructive">{errors.weightValue}</p>
@@ -176,6 +197,7 @@ export function WeightPage() {
                   setFormData(prev => ({ ...prev, notes: value }));
                   validateField('notes', value);
                 }}
+                className={errors.notes ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               {errors.notes && (
                 <p className="text-sm text-destructive">{errors.notes}</p>
@@ -220,5 +242,15 @@ export function WeightPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function WeightPage() {
+  return (
+    <ErrorBoundary fallback={WeightPageErrorFallback}>
+      <NetworkErrorHandler>
+        <WeightPageContent />
+      </NetworkErrorHandler>
+    </ErrorBoundary>
   );
 }

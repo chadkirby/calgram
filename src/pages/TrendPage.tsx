@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { useAccount } from "jazz-tools/react";
 import type { MealEntry, JazzAccount, WeightEntry } from "../schema";
 import { TrendAnalyzer } from "../utils/TrendAnalyzer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { TrendPageErrorFallback } from "@/components/PageErrorFallback";
+import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
 import {
   ComposedChart,
   Bar,
@@ -18,7 +21,7 @@ import {
 } from "recharts";
 import type { Loaded } from "jazz-tools";
 
-export function TrendPage() {
+function TrendPageContent() {
   const { me } = useAccount<typeof JazzAccount>();
   const [timeRange, setTimeRange] = useState("30");
   const [isLoading, setIsLoading] = useState(false);
@@ -134,6 +137,7 @@ export function TrendPage() {
 
   return (
     <div className="space-y-6">
+      <ConnectionStatus />
       <Card>
         <CardHeader>
           <CardTitle>Calorie Trend</CardTitle>
@@ -281,5 +285,15 @@ export function TrendPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function TrendPage() {
+  return (
+    <ErrorBoundary fallback={TrendPageErrorFallback}>
+      <NetworkErrorHandler>
+        <TrendPageContent />
+      </NetworkErrorHandler>
+    </ErrorBoundary>
   );
 }

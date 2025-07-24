@@ -18,11 +18,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChevronLeft, ChevronRight, Calendar, Trash2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { DailyPageErrorFallback } from "@/components/PageErrorFallback";
+import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
 import type { JazzAccount, MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { type Loaded } from "jazz-tools";
 
-export function DailyPage() {
+function DailyPageContent() {
   const { me } = useAccount<typeof JazzAccount>();
   const [selectedDate, setSelectedDate] = useState(CalorieCalculator.getTodayAtMidnight());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -123,6 +126,7 @@ export function DailyPage() {
 
   return (
     <div className="space-y-6">
+      <ConnectionStatus />
       <Card>
         <CardHeader>
           <CardTitle>Daily Calorie Summary</CardTitle>
@@ -335,5 +339,15 @@ export function DailyPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function DailyPage() {
+  return (
+    <ErrorBoundary fallback={DailyPageErrorFallback}>
+      <NetworkErrorHandler>
+        <DailyPageContent />
+      </NetworkErrorHandler>
+    </ErrorBoundary>
   );
 }
