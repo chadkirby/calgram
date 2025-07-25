@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +21,25 @@ import {
 } from "recharts";
 import type { Loaded } from "jazz-tools";
 
+// Animation constants
+const CHART_ANIMATION_DURATION = 200;
+const TOOLTIP_ANIMATION_DURATION = 150;
+
 function TrendPageContent() {
   const { me } = useAccount<typeof JazzAccount>();
   const [timeRange, setTimeRange] = useState("30");
   const [isLoading, setIsLoading] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 640);
+
+  // Update window width on resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const timeRangeOptions = [
     { value: "7", label: "Last 7 days" },
@@ -35,9 +50,9 @@ function TrendPageContent() {
   ];
 
   // Prepare chart data using TrendAnalyzer
-  const { chartData, summaryStats, calorieAxisConfig, hasData } = useMemo(() => {
+  const { chartData, summaryStats, calorieAxisConfig, weightAxisConfig, hasData } = useMemo(() => {
     if (!me?.root?.mealEntries || !me?.root?.weightEntries) {
-      return { chartData: [], summaryStats: null, calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 }, hasData: false };
+      return { chartData: [], summaryStats: null, calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 }, weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, hasData: false };
     }
 
     const days = parseInt(timeRange);
@@ -48,13 +63,14 @@ function TrendPageContent() {
     );
 
     if (combinedData.length === 0) {
-      return { chartData: [], summaryStats: null, calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 }, hasData: false };
+      return { chartData: [], summaryStats: null, calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 }, weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, hasData: false };
     }
 
     // Calculate trend lines using LOWESS
     const trendLines = TrendAnalyzer.calculateTrendLines(combinedData);
     const stats = TrendAnalyzer.getSummaryStats(combinedData);
     const calorieAxisConfig = TrendAnalyzer.calculateCalorieAxisConfig(combinedData);
+    const weightAxisConfig = TrendAnalyzer.calculateWeightAxisConfig(combinedData);
 
     // Format data for Recharts
     const formattedData = combinedData.map((point, index) => ({
@@ -73,6 +89,7 @@ function TrendPageContent() {
       chartData: formattedData,
       summaryStats: stats,
       calorieAxisConfig,
+      weightAxisConfig,
       hasData: true
     };
   }, [me?.root?.mealEntries, me?.root?.weightEntries, timeRange]);
@@ -82,7 +99,7 @@ function TrendPageContent() {
     setIsLoading(true);
     setTimeRange(value);
     // Simulate brief loading for better UX
-    setTimeout(() => setIsLoading(false), 200);
+    setTimeout(() => setIsLoading(false), CHART_ANIMATION_DURATION);
   };
 
   // Custom tooltip component with enhanced information
@@ -90,7 +107,7 @@ function TrendPageContent() {
     if (active && payload && payload.length) {
       const dataPoint = payload[0]?.payload;
       const fullDate = dataPoint?.fullDate;
-      const isMobile = window.innerWidth < 640;
+      const isMobile = windowWidth < 640;
 
       return (
         <div className={`bg-white p-2 sm:p-4 border border-gray-300 rounded-lg shadow-lg ${
@@ -198,98 +215,104 @@ function TrendPageContent() {
                   data={chartData}
                   margin={{
                     top: 20,
-                    right: window.innerWidth >= 1024 ? 40 : window.innerWidth >= 640 ? 30 : 15,
-                    bottom: window.innerWidth >= 640 ? 20 : 50,
-                    left: window.innerWidth >= 1024 ? 40 : window.innerWidth >= 640 ? 20 : 15,
+                    right: windowWidth >= 1024 ? 40 : windowWidth >= 640 ? 30 : 5,
+                    bottom: windowWidth >= 640 ? 20 : 35,
+                    left: windowWidth >= 1024 ? 40 : windowWidth >= 640 ? 20 : 5,
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: window.innerWidth >= 1024 ? 12 : window.innerWidth >= 640 ? 11 : 9 }}
-                    interval={window.innerWidth >= 1024 ? "preserveStartEnd" : window.innerWidth >= 640 ? "preserveStartEnd" : Math.ceil(chartData.length / 4)}
-                    angle={window.innerWidth >= 640 ? -45 : -90}
+                    tick={{ fontSize: windowWidth >= 1024 ? 12 : windowWidth >= 640 ? 11 : 8 }}
+                    interval={windowWidth >= 1024 ? "preserveStartEnd" : windowWidth >= 640 ? "preserveStartEnd" : windowWidth >= 300 ? Math.ceil(chartData.length / 12) : Math.ceil(chartData.length / 4)}
+                    angle={windowWidth >= 640 ? -45 : -45}
                     textAnchor="end"
-                    height={window.innerWidth >= 640 ? 60 : 90}
+                    height={windowWidth >= 640 ? 60 : 50}
                     axisLine={{ stroke: '#e5e7eb' }}
                     tickLine={{ stroke: '#e5e7eb' }}
                   />
                   <YAxis
                     yAxisId="calories"
                     orientation="left"
-                    tick={{ fontSize: window.innerWidth >= 1024 ? 12 : window.innerWidth >= 640 ? 11 : 9 }}
-                    label={window.innerWidth >= 640 ? { value: 'Calories', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } } : undefined}
+                    tick={{ fontSize: windowWidth >= 1024 ? 12 : windowWidth >= 640 ? 11 : 8 }}
+                    label={windowWidth >= 640 ? { value: 'Calories', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } } : undefined}
                     domain={[calorieAxisConfig?.min || 0, calorieAxisConfig?.max || 500]}
                     ticks={calorieAxisConfig ? Array.from({ length: Math.floor((calorieAxisConfig.max - calorieAxisConfig.min) / calorieAxisConfig.tickInterval) + 1 }, (_, i) => calorieAxisConfig.min + i * calorieAxisConfig.tickInterval) : undefined}
                     axisLine={{ stroke: '#e5e7eb' }}
                     tickLine={{ stroke: '#e5e7eb' }}
-                    width={window.innerWidth >= 640 ? 60 : 45}
+                    width={windowWidth >= 640 ? 60 : 35}
                   />
                   <YAxis
                     yAxisId="weight"
                     orientation="right"
-                    tick={{ fontSize: window.innerWidth >= 1024 ? 12 : window.innerWidth >= 640 ? 11 : 9 }}
-                    label={window.innerWidth >= 640 ? { value: 'Weight (lbs)', angle: 90, position: 'insideRight', style: { textAnchor: 'middle' } } : undefined}
-                    domain={['dataMin - 5', 'dataMax + 5']}
+                    tick={{ fontSize: windowWidth >= 1024 ? 12 : windowWidth >= 640 ? 11 : 8 }}
+                    label={windowWidth >= 640 ? { value: 'Weight (lbs)', angle: 90, position: 'insideRight', style: { textAnchor: 'middle' } } : undefined}
+                    domain={weightAxisConfig ? [weightAxisConfig.min, weightAxisConfig.max] : ['dataMin - 5', 'dataMax + 5']}
+                    ticks={weightAxisConfig ? Array.from({ length: Math.floor((weightAxisConfig.max - weightAxisConfig.min) / weightAxisConfig.tickInterval) + 1 }, (_, i) => weightAxisConfig.min + i * weightAxisConfig.tickInterval) : undefined}
                     axisLine={{ stroke: '#e5e7eb' }}
                     tickLine={{ stroke: '#e5e7eb' }}
-                    width={window.innerWidth >= 640 ? 60 : 45}
+                    width={windowWidth >= 640 ? 60 : 35}
                   />
                   <Tooltip
                     content={<CustomTooltip />}
                     cursor={{ strokeDasharray: '3 3' }}
-                    animationDuration={150}
+                    animationDuration={TOOLTIP_ANIMATION_DURATION}
                   />
                   <Legend
                     wrapperStyle={{
-                      paddingTop: '20px',
-                      fontSize: window.innerWidth >= 1024 ? '14px' : window.innerWidth >= 640 ? '13px' : '11px'
+                      paddingTop: '10px',
+                      fontSize: windowWidth >= 1024 ? '14px' : windowWidth >= 640 ? '13px' : '10px'
                     }}
                     iconType="line"
-                    layout={window.innerWidth >= 640 ? 'horizontal' : 'vertical'}
-                    align={window.innerWidth >= 640 ? 'center' : 'left'}
-                    verticalAlign={window.innerWidth >= 640 ? 'bottom' : 'middle'}
+                    layout={windowWidth >= 640 ? 'horizontal' : 'horizontal'}
+                    align="center"
+                    verticalAlign="bottom"
+                    height={windowWidth >= 640 ? 40 : 30}
                   />
                   <Bar
                     yAxisId="calories"
                     dataKey="calories"
                     fill="#22c55e"
-                    name={window.innerWidth >= 640 ? "Daily Calories" : "Calories"}
+                    name={windowWidth >= 640 ? "Daily Calories" : "Calories"}
                     opacity={0.7}
                     radius={[2, 2, 0, 0]}
-                    maxBarSize={window.innerWidth >= 640 ? 40 : 20}
+                    maxBarSize={windowWidth >= 640 ? 40 : 20}
+                    animationDuration={CHART_ANIMATION_DURATION}
                   />
                   <Line
                     yAxisId="weight"
                     type="monotone"
                     dataKey="weight"
                     stroke="#3b82f6"
-                    strokeWidth={window.innerWidth >= 1024 ? 2.5 : window.innerWidth >= 640 ? 2 : 1.5}
-                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: window.innerWidth >= 1024 ? 5 : window.innerWidth >= 640 ? 4 : 3 }}
-                    activeDot={{ r: window.innerWidth >= 1024 ? 7 : window.innerWidth >= 640 ? 6 : 5, stroke: '#3b82f6', strokeWidth: 2 }}
+                    strokeWidth={windowWidth >= 1024 ? 2.5 : windowWidth >= 640 ? 2 : 1.5}
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: windowWidth >= 1024 ? 5 : windowWidth >= 640 ? 4 : 3 }}
+                    activeDot={{ r: windowWidth >= 1024 ? 7 : windowWidth >= 640 ? 6 : 5, stroke: '#3b82f6', strokeWidth: 2 }}
                     name="Weight"
                     connectNulls={false}
+                    animationDuration={CHART_ANIMATION_DURATION}
                   />
                   <Line
                     yAxisId="calories"
                     type="monotone"
                     dataKey="caloriesTrend"
                     stroke="#16a34a"
-                    strokeWidth={window.innerWidth >= 1024 ? 3.5 : window.innerWidth >= 640 ? 3 : 2}
+                    strokeWidth={windowWidth >= 1024 ? 3.5 : windowWidth >= 640 ? 3 : 2}
                     dot={false}
-                    name={window.innerWidth >= 640 ? "Calorie Trend" : "Cal Trend"}
+                    name={windowWidth >= 640 ? "Calorie Trend" : "Cal Trend"}
                     strokeDasharray="5 5"
+                    animationDuration={CHART_ANIMATION_DURATION}
                   />
                   <Line
                     yAxisId="weight"
                     type="monotone"
                     dataKey="weightTrend"
                     stroke="#1d4ed8"
-                    strokeWidth={window.innerWidth >= 1024 ? 3.5 : window.innerWidth >= 640 ? 3 : 2}
+                    strokeWidth={windowWidth >= 1024 ? 3.5 : windowWidth >= 640 ? 3 : 2}
                     dot={false}
-                    name={window.innerWidth >= 640 ? "Weight Trend" : "W Trend"}
+                    name={windowWidth >= 640 ? "Weight Trend" : "W Trend"}
                     strokeDasharray="5 5"
                     connectNulls={true}
+                    animationDuration={CHART_ANIMATION_DURATION}
                   />
                 </ComposedChart>
               </ResponsiveContainer>

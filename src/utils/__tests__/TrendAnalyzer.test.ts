@@ -440,4 +440,118 @@ describe('TrendAnalyzer', () => {
       expect(result.tickInterval).toBe(50);
     });
   });
+
+  describe('calculateWeightAxisConfig', () => {
+    it('should return default config for empty weight data', () => {
+      const data: ChartDataPoint[] = [
+        { date: new Date(), calories: 200 }, // No weight
+        { date: new Date(), calories: 300 }, // No weight
+      ];
+
+      const result = TrendAnalyzer.calculateWeightAxisConfig(data);
+
+      expect(result.min).toBe(0);
+      expect(result.max).toBe(20);
+      expect(result.tickInterval).toBe(2);
+    });
+
+    it('should handle small dog weights (< 25lbs) with 0.5 rounding', () => {
+      const data: ChartDataPoint[] = [
+        { date: new Date(), calories: 200, weight: 14.2 },
+        { date: new Date(), calories: 250, weight: 14.5 },
+        { date: new Date(), calories: 180, weight: 14.8 },
+      ];
+
+      const result = TrendAnalyzer.calculateWeightAxisConfig(data);
+
+      expect(result.min).toBeGreaterThanOrEqual(0);
+      expect(result.max).toBeGreaterThan(result.min);
+      expect(result.tickInterval).toBe(0.5);
+
+      // Check that data is roughly centered
+      const dataMin = 14.2;
+      const dataMax = 14.8;
+      const axisCenter = (result.min + result.max) / 2;
+      const dataCenter = (dataMin + dataMax) / 2;
+      expect(Math.abs(axisCenter - dataCenter)).toBeLessThan(2);
+    });
+
+    it('should handle medium weights (25-100lbs) with 1.0 rounding', () => {
+      const data: ChartDataPoint[] = [
+        { date: new Date(), calories: 200, weight: 68 },
+        { date: new Date(), calories: 250, weight: 70 },
+        { date: new Date(), calories: 180, weight: 72 },
+      ];
+
+      const result = TrendAnalyzer.calculateWeightAxisConfig(data);
+
+      expect(result.min).toBeGreaterThanOrEqual(0);
+      expect(result.max).toBeGreaterThan(result.min);
+      expect(result.tickInterval).toBe(1);
+
+      // Values should be whole numbers
+      expect(result.min % 1).toBe(0);
+      expect(result.max % 1).toBe(0);
+    });
+
+    it('should handle large weights (100-250lbs) with 5.0 rounding', () => {
+      const data: ChartDataPoint[] = [
+        { date: new Date(), calories: 200, weight: 180 },
+        { date: new Date(), calories: 250, weight: 185 },
+        { date: new Date(), calories: 180, weight: 190 },
+      ];
+
+      const result = TrendAnalyzer.calculateWeightAxisConfig(data);
+
+      expect(result.min).toBeGreaterThanOrEqual(0);
+      expect(result.max).toBeGreaterThan(result.min);
+      expect(result.tickInterval).toBe(5);
+
+      // Values should be multiples of 5
+      expect(result.min % 5).toBe(0);
+      expect(result.max % 5).toBe(0);
+    });
+
+    it('should handle very large weights (>250lbs) with 10.0 rounding', () => {
+      const data: ChartDataPoint[] = [
+        { date: new Date(), calories: 200, weight: 280 },
+        { date: new Date(), calories: 250, weight: 290 },
+        { date: new Date(), calories: 180, weight: 300 },
+      ];
+
+      const result = TrendAnalyzer.calculateWeightAxisConfig(data);
+
+      expect(result.min).toBeGreaterThanOrEqual(0);
+      expect(result.max).toBeGreaterThan(result.min);
+      expect(result.tickInterval).toBe(10);
+
+      // Values should be multiples of 10
+      expect(result.min % 10).toBe(0);
+      expect(result.max % 10).toBe(0);
+    });
+
+    it('should ensure all data points are within the axis range', () => {
+      const data: ChartDataPoint[] = [
+        { date: new Date(), calories: 200, weight: 14.1 },
+        { date: new Date(), calories: 250, weight: 14.9 },
+      ];
+
+      const result = TrendAnalyzer.calculateWeightAxisConfig(data);
+
+      expect(result.min).toBeLessThanOrEqual(14.1);
+      expect(result.max).toBeGreaterThanOrEqual(14.9);
+    });
+
+    it('should handle single weight value', () => {
+      const data: ChartDataPoint[] = [
+        { date: new Date(), calories: 200, weight: 15.0 },
+      ];
+
+      const result = TrendAnalyzer.calculateWeightAxisConfig(data);
+
+      expect(result.min).toBeLessThan(15.0);
+      expect(result.max).toBeGreaterThan(15.0);
+      expect(result.tickInterval).toBe(0.5); // Under 25lbs
+    });
+  });
 });

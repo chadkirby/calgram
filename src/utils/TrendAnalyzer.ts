@@ -339,6 +339,97 @@ export class TrendAnalyzer {
   }
 
   /**
+   * Calculate sensible axis configuration for weight data
+   * @param data - Array of chart data points
+   * @returns Object with min, max, and tick interval for weight axis
+   */
+  static calculateWeightAxisConfig(data: ChartDataPoint[]): {
+    min: number;
+    max: number;
+    tickInterval: number;
+  } {
+    // Filter out undefined weight values
+    const weightValues = data.filter(point => point.weight !== undefined).map(point => point.weight!);
+
+    if (weightValues.length === 0) {
+      // Default configuration for no weight data
+      return {
+        min: 0,
+        max: 20,
+        tickInterval: 2
+      };
+    }
+
+    const minWeight = Math.min(...weightValues);
+    const maxWeight = Math.max(...weightValues);
+    const weightRange = maxWeight - minWeight;
+
+    // Determine rounding value based on weight magnitude
+    let roundingValue: number;
+    if (maxWeight < 25) {
+      roundingValue = 0.5;
+    } else if (maxWeight < 100) {
+      roundingValue = 1;
+    } else if (maxWeight < 250) {
+      roundingValue = 5;
+    } else {
+      roundingValue = 10;
+    }
+
+    // Calculate axis range - use the larger of:
+    // 1. 10% of the highest weight value
+    // 2. 120% of the delta between min/max values
+    const rangeOption1 = Math.ceil((maxWeight * 0.1) / roundingValue) * roundingValue;
+    const rangeOption2 = Math.ceil((weightRange * 1.2) / roundingValue) * roundingValue;
+    const axisRange = Math.max(rangeOption1, rangeOption2, roundingValue * 2); // Ensure minimum range
+
+    // Calculate center point of data
+    const dataCenter = (minWeight + maxWeight) / 2;
+
+    // Calculate axis min/max to center the data
+    let axisMin = dataCenter - (axisRange / 2);
+    let axisMax = dataCenter + (axisRange / 2);
+
+    // Round to nice values
+    axisMin = Math.floor(axisMin / roundingValue) * roundingValue;
+    axisMax = Math.ceil(axisMax / roundingValue) * roundingValue;
+
+    // Ensure the axis includes all data points with some padding
+    while (axisMin > minWeight - roundingValue * 0.1) {
+      axisMin -= roundingValue;
+    }
+    while (axisMax < maxWeight + roundingValue * 0.1) {
+      axisMax += roundingValue;
+    }
+
+    // Determine tick interval based on axis range
+    const totalRange = axisMax - axisMin;
+    let tickInterval: number;
+
+    if (totalRange <= roundingValue * 10) {
+      tickInterval = roundingValue;
+    } else if (totalRange <= roundingValue * 20) {
+      tickInterval = roundingValue * 2;
+    } else {
+      tickInterval = roundingValue * 5;
+    }
+
+    // Ensure we don't have too many or too few ticks (aim for 4-10 ticks)
+    const numTicks = totalRange / tickInterval;
+    if (numTicks > 10) {
+      tickInterval = roundingValue * Math.ceil(totalRange / (10 * roundingValue));
+    } else if (numTicks < 4) {
+      tickInterval = roundingValue * Math.max(1, Math.floor(totalRange / (4 * roundingValue)));
+    }
+
+    return {
+      min: Math.max(0, axisMin), // Don't go below 0 for weights
+      max: axisMax,
+      tickInterval
+    };
+  }
+
+  /**
    * Helper method to format date as a consistent key
    * @param date - Date to format
    * @returns Date string in YYYY-MM-DD format
