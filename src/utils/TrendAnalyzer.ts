@@ -167,40 +167,94 @@ export class TrendAnalyzer {
   }
 
   /**
+   * Calculate temporal smoothing for weight data using exponential kernel
+   * @param weightDataPoints - Array of weight data points with timestamps
+   * @param allTimePoints - Array of all timestamps to smooth over
+   * @param kernelWidth - Kernel width parameter (default 4)
+   * @returns Array of smoothed weight values
+   */
+  static calculateTemporalWeightSmooth(
+    weightDataPoints: { timestamp: number; value: number }[],
+    allTimePoints: number[],
+    kernelWidth: number = 4
+  ): (number | undefined)[] {
+    if (weightDataPoints.length === 0) {
+      return new Array(allTimePoints.length).fill(undefined);
+    }
+
+    const smoothedValues: (number | undefined)[] = [];
+    const sortedWeightData = [...weightDataPoints].sort((a, b) => a.timestamp - b.timestamp);
+
+    for (const timePoint of allTimePoints) {
+      let weightSum = 0;
+      let valueSum = 0;
+
+      sortedWeightData.forEach(point => {
+        // Calculate temporal distance in days
+        const distanceMs = Math.abs(timePoint - point.timestamp);
+        const distanceDays = distanceMs / (24 * 60 * 60 * 1000);
+
+        // Exponential kernel - gives more weight to closer points
+        const weight = Math.exp(-0.5 * Math.pow(distanceDays / kernelWidth, 2));
+
+        valueSum += weight * point.value;
+        weightSum += weight;
+      });
+
+      // Only add a smoothed value if we have sufficient weight contribution
+      if (weightSum > 0.01) {
+        smoothedValues.push(valueSum / weightSum);
+      } else {
+        // Find nearest weight point as fallback
+        const nearestPoint = sortedWeightData.reduce((nearest, current) => {
+          const currentDistance = Math.abs(current.timestamp - timePoint);
+          const nearestDistance = Math.abs(nearest.timestamp - timePoint);
+          return currentDistance < nearestDistance ? current : nearest;
+        });
+
+        // Only use nearest point if it's within reasonable distance (e.g., 30 days)
+        const nearestDistanceDays = Math.abs(nearestPoint.timestamp - timePoint) / (24 * 60 * 60 * 1000);
+        if (nearestDistanceDays <= 30) {
+          smoothedValues.push(nearestPoint.value);
+        } else {
+          smoothedValues.push(undefined);
+        }
+      }
+    }
+
+    return smoothedValues;
+  }
+
+  /**
    * Calculate trend lines for chart data
    * @param data - Array of chart data points
-   * @param bandwidth - LOWESS bandwidth (default 0.3)
+   * @param bandwidth - LOWESS bandwidth for calorie trend (default 0.3)
    * @returns Object with calorie and weight trend arrays
    */
   static calculateTrendLines(
     data: ChartDataPoint[],
     bandwidth: number = 0.3
-  ): { caloriesTrend: number[]; weightTrend: number[] } {
-    // Extract calorie values (replace undefined with 0)
+  ): { caloriesTrend: number[]; weightTrend: (number | undefined)[] } {
+    // Extract calorie values (replace undefined with 0) and calculate LOWESS trend
     const calorieValues = data.map(point => point.calories || 0);
-
-    // Extract weight values, filtering out undefined values
-    const weightValues: number[] = [];
-    const weightIndices: number[] = [];
-
-    data.forEach((point, index) => {
-      if (point.weight !== undefined) {
-        weightValues.push(point.weight);
-        weightIndices.push(index);
-      }
-    });
-
-    // Calculate trends
     const caloriesTrend = this.calculateLOWESSTrend(calorieValues, bandwidth);
-    const rawWeightTrend = this.calculateLOWESSTrend(weightValues, bandwidth);
 
-    // Map weight trend back to full data array
-    const weightTrend: number[] = new Array(data.length);
-    rawWeightTrend.forEach((value, index) => {
-      if (index < weightIndices.length) {
-        weightTrend[weightIndices[index]] = value;
+    // Extract weight data points with timestamps
+    const weightDataPoints: { timestamp: number; value: number }[] = [];
+    data.forEach(point => {
+      if (point.weight !== undefined) {
+        weightDataPoints.push({
+          timestamp: point.date.getTime(),
+          value: point.weight
+        });
       }
     });
+
+    // Get all timestamps for temporal smoothing
+    const allTimePoints = data.map(point => point.date.getTime());
+
+    // Calculate temporal weight trend using exponential kernel smoothing
+    const weightTrend = this.calculateTemporalWeightSmooth(weightDataPoints, allTimePoints);
 
     return { caloriesTrend, weightTrend };
   }
@@ -252,6 +306,36 @@ export class TrendAnalyzer {
     }
 
     return result;
+  }
+
+  /**
+   * Calculate sensible axis configuration for calorie data
+   * @param data - Array of chart data points
+   * @returns Object with min, max, and tick interval for calorie axis
+   */
+  static calculateCalorieAxisConfig(data: ChartDataPoint[]): {
+    min: number;
+    max: number;
+    tickInterval: number;
+  } {
+    if (data.length === 0) {
+      return { min: 0, max: 500, tickInterval: 50 };
+    }
+
+    // Find the maximum calorie value
+    const maxCalories = Math.max(...data.map(point => point.calories || 0));
+
+    // Calculate appropriate maximum (rounded up to next multiple of 100)
+    const max = Math.ceil(maxCalories / 100) * 100;
+
+    // Determine tick interval based on max value
+    const tickInterval = max < 500 ? 50 : 100;
+
+    return {
+      min: 0,
+      max: Math.max(max, tickInterval), // Ensure max is at least one tick interval
+      tickInterval
+    };
   }
 
   /**

@@ -35,9 +35,9 @@ function TrendPageContent() {
   ];
 
   // Prepare chart data using TrendAnalyzer
-  const { chartData, summaryStats, hasData } = useMemo(() => {
+  const { chartData, summaryStats, calorieAxisConfig, hasData } = useMemo(() => {
     if (!me?.root?.mealEntries || !me?.root?.weightEntries) {
-      return { chartData: [], summaryStats: null, hasData: false };
+      return { chartData: [], summaryStats: null, calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 }, hasData: false };
     }
 
     const days = parseInt(timeRange);
@@ -48,12 +48,13 @@ function TrendPageContent() {
     );
 
     if (combinedData.length === 0) {
-      return { chartData: [], summaryStats: null, hasData: false };
+      return { chartData: [], summaryStats: null, calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 }, hasData: false };
     }
 
     // Calculate trend lines using LOWESS
     const trendLines = TrendAnalyzer.calculateTrendLines(combinedData);
     const stats = TrendAnalyzer.getSummaryStats(combinedData);
+    const calorieAxisConfig = TrendAnalyzer.calculateCalorieAxisConfig(combinedData);
 
     // Format data for Recharts
     const formattedData = combinedData.map((point, index) => ({
@@ -71,6 +72,7 @@ function TrendPageContent() {
     return {
       chartData: formattedData,
       summaryStats: stats,
+      calorieAxisConfig,
       hasData: true
     };
   }, [me?.root?.mealEntries, me?.root?.weightEntries, timeRange]);
@@ -217,7 +219,8 @@ function TrendPageContent() {
                     orientation="left"
                     tick={{ fontSize: window.innerWidth >= 1024 ? 12 : window.innerWidth >= 640 ? 11 : 9 }}
                     label={window.innerWidth >= 640 ? { value: 'Calories', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } } : undefined}
-                    domain={['dataMin - 100', 'dataMax + 100']}
+                    domain={[calorieAxisConfig?.min || 0, calorieAxisConfig?.max || 500]}
+                    ticks={calorieAxisConfig ? Array.from({ length: Math.floor((calorieAxisConfig.max - calorieAxisConfig.min) / calorieAxisConfig.tickInterval) + 1 }, (_, i) => calorieAxisConfig.min + i * calorieAxisConfig.tickInterval) : undefined}
                     axisLine={{ stroke: '#e5e7eb' }}
                     tickLine={{ stroke: '#e5e7eb' }}
                     width={window.innerWidth >= 640 ? 60 : 45}
@@ -238,7 +241,7 @@ function TrendPageContent() {
                     animationDuration={150}
                   />
                   <Legend
-                    wrapperStyle={{ 
+                    wrapperStyle={{
                       paddingTop: '20px',
                       fontSize: window.innerWidth >= 1024 ? '14px' : window.innerWidth >= 640 ? '13px' : '11px'
                     }}
@@ -286,7 +289,7 @@ function TrendPageContent() {
                     dot={false}
                     name={window.innerWidth >= 640 ? "Weight Trend" : "W Trend"}
                     strokeDasharray="5 5"
-                    connectNulls={false}
+                    connectNulls={true}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
