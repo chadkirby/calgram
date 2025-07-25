@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MealPageErrorFallback } from "@/components/PageErrorFallback";
@@ -15,7 +15,7 @@ import { JazzAccount, MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { FoodIntelligenceManager } from "../utils/FoodIntelligenceManager";
 import { DataImporter } from "../utils/DataImporter";
-import { Info, Check, Upload } from "lucide-react";
+import { Info, Check, Upload, Loader2 } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
 import { DateTime } from "luxon";
@@ -188,6 +188,16 @@ function MealPageContent() {
 
   // File input ref for import functionality
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const importTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (importTimeoutRef.current) {
+        clearTimeout(importTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle data import
   const handleImportClick = () => {
@@ -200,6 +210,13 @@ function MealPageContent() {
       return;
     }
 
+    // Clear any existing timeout
+    if (importTimeoutRef.current) {
+      clearTimeout(importTimeoutRef.current);
+      importTimeoutRef.current = null;
+    }
+
+    // Clear any previous status messages and set importing state
     setImportStatus({
       isImporting: true,
       success: false,
@@ -219,12 +236,13 @@ function MealPageContent() {
       setImportStatus({
         isImporting: false,
         success: true,
-        message: `Successfully imported ${result.mealCount} meals and ${result.weightCount} weight entries!`,
+        message: `Imported ${result.mealCount} meals, ${result.weightCount} weights`,
       });
 
       // Clear success message after 5 seconds
-      setTimeout(() => {
+      importTimeoutRef.current = setTimeout(() => {
         setImportStatus(prev => ({ ...prev, success: false, message: "" }));
+        importTimeoutRef.current = null;
       }, 5000);
 
     } catch (error) {
@@ -235,10 +253,11 @@ function MealPageContent() {
         message: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
 
-      // Clear error message after 5 seconds
-      setTimeout(() => {
+      // Clear error message after 8 seconds (longer timeout for actual errors)
+      importTimeoutRef.current = setTimeout(() => {
         setImportStatus(prev => ({ ...prev, message: "" }));
-      }, 5000);
+        importTimeoutRef.current = null;
+      }, 8000);
     }
 
     // Clear file input
@@ -375,18 +394,31 @@ function MealPageContent() {
         <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4 lg:p-6 pb-4 sm:pb-6">
           {/* Import Status Alert */}
           {importStatus.message && (
-            <Alert className={importStatus.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+            <Alert className={`py-1.5 ${
+              importStatus.success
+                ? "border-green-200 bg-green-50"
+                : importStatus.isImporting
+                  ? "border-blue-200 bg-blue-50"
+                  : "border-red-200 bg-red-50"
+            }`}>
               {importStatus.success ? (
                 <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+              ) : importStatus.isImporting ? (
+                <Loader2 className="h-4 w-4 text-blue-600 flex-shrink-0 animate-spin" />
               ) : (
                 <Info className="h-4 w-4 text-red-600 flex-shrink-0" />
               )}
-              <AlertTitle className={importStatus.success ? "text-green-800" : "text-red-800"}>
-                {importStatus.success ? "Import Successful!" : "Import Failed"}
-              </AlertTitle>
-              <AlertDescription className={importStatus.success ? "text-green-700" : "text-red-700"}>
-                {importStatus.message}
-              </AlertDescription>
+              <span className={`text-sm truncate ${
+                importStatus.success
+                  ? "text-green-800"
+                  : importStatus.isImporting
+                    ? "text-blue-800"
+                    : "text-red-800"
+              }`}>
+                {importStatus.isImporting
+                  ? "Importing data..."
+                  : importStatus.message}
+              </span>
             </Alert>
           )}
 
