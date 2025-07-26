@@ -1,4 +1,3 @@
-import React from 'react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,14 +27,14 @@ export function PageErrorFallback({ error, retry, pageName = "page" }: PageError
               {error?.message || `There was a problem loading the ${pageName}. This might be a temporary issue.`}
             </AlertDescription>
           </Alert>
-          
+
           <div className="flex gap-2">
             <Button onClick={retry} className="flex items-center gap-2">
               <RefreshCw className="h-4 w-4" />
               Try Again
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => window.location.href = '/'}
               className="flex items-center gap-2"
             >

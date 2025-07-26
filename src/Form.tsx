@@ -33,7 +33,7 @@ export function Form() {
           type="date"
           id="dateOfBirth"
           className="border border-stone-300 rounded-sm shadow-xs py-1 px-2 flex-1"
-          value={me.root.dateOfBirth ? DateTime.fromISO(me.root.dateOfBirth).toISODate() : ""}
+          value={me.root.dateOfBirth ? (DateTime.fromISO(me.root.dateOfBirth).toISODate() || "") : ""}
           onChange={(e) => (me.root.dateOfBirth = e.target.value)}
         />
       </div>

@@ -1,8 +1,7 @@
 import React from 'react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Wifi, WifiOff, RefreshCw, AlertTriangle } from "lucide-react";
+import { WifiOff, RefreshCw, AlertTriangle } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 interface NetworkErrorHandlerProps {
