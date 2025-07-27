@@ -134,11 +134,11 @@ function DailyPageContent() {
   return (
     <div className="space-y-2 sm:space-y-3">
       <ConnectionStatus />
-      <Card className="gap-0 py-0">
-        <CardHeader className="pb-2 sm:pb-4 pt-3 sm:pt-4">
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base sm:text-lg lg:text-xl">Daily Calorie Summary</CardTitle>
         </CardHeader>
-        <CardContent className="p-3 sm:p-4 lg:p-6 pb-3 sm:pb-4">
+        <CardContent>
           {/* Compact Date Navigation */}
           <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
             <Button
@@ -191,8 +191,8 @@ function DailyPageContent() {
 
           {/* Category Breakdown Pie Chart with Summary */}
           <div className="space-y-4 sm:space-y-6">
-            <Card className="!gap-0">
-              <CardHeader className="pb-1 sm:pb-2 text-center">
+            <Card>
+              <CardHeader className="text-center">
                 <CardTitle className="text-base sm:text-lg mb-3">Calories by Category</CardTitle>
                 <div className="flex justify-center gap-6 sm:gap-8">
                   <div>
@@ -205,7 +205,7 @@ function DailyPageContent() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="flex justify-center pt-1 sm:pt-2">
+              <CardContent className="flex justify-center">
                 {pieChartData.length > 0 ? (
                   <div className="h-64 sm:h-80 lg:h-96 w-full max-w-md sm:max-w-lg lg:max-w-xl">
                     <ResponsiveContainer width="100%" height="100%">
