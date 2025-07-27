@@ -52,6 +52,7 @@ function MealPageContent() {
       profile: true,
       root: {
         mealEntries: { $each: true },  // Load each meal entry for today's total calculation
+        weightEntries: { $each: true },
         foodIntelligence: {  // Load foodIntelligence for auto-completion
           recentFoods: { $each: true },
           recentCategories: { $each: true },
@@ -63,6 +64,48 @@ function MealPageContent() {
 
   const { updateSyncStatus } = useNetworkStatus();
 
+  // Get current date in YYYY-MM-DD format for default (timezone-aware)
+  const getCurrentDate = () => {
+    return DateTime.now().toISODate();
+  };
+
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  const [formData, setFormData] = React.useState<MealFormValues>({
+    date: getCurrentDate(),
+    foodName: "",
+    foodCategory: "",
+    caloriesPerGram: 0,
+    weightInGrams: 0,
+    notes: "",
+  });
+
+  const [errors, setErrors] = React.useState<Partial<Record<keyof MealFormValues, string>>>({});
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitSuccess, setSubmitSuccess] = React.useState(false);
+  const [importStatus, setImportStatus] = React.useState<{
+    isImporting: boolean;
+    success: boolean;
+    message: string;
+  }>({
+    isImporting: false,
+    success: false,
+    message: "",
+  });
+
+  // File input ref for import functionality
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const importTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (importTimeoutRef.current) {
+        clearTimeout(importTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // NOW WE CAN DO CONDITIONAL LOGIC AFTER ALL HOOKS ARE CALLED
   const userName = me?.profile?.firstName || me?.profile?.name || "User";
 
   // Add loading state
@@ -95,22 +138,6 @@ function MealPageContent() {
       </div>
     );
   }
-
-  // Get current date in YYYY-MM-DD format for default (timezone-aware)
-  const getCurrentDate = () => {
-    return DateTime.now().toISODate();
-  };
-
-  const [formData, setFormData] = React.useState<MealFormValues>({
-    date: getCurrentDate(),
-    foodName: "",
-    foodCategory: "",
-    caloriesPerGram: 0,
-    weightInGrams: 0,
-    notes: "",
-  });
-
-  const [errors, setErrors] = React.useState<Partial<Record<keyof MealFormValues, string>>>({});
 
   // Real-time validation helper
   const validateField = (field: keyof MealFormValues, value: any) => {
@@ -173,31 +200,6 @@ function MealPageContent() {
       CalorieCalculator.getTodayAtMidnight()
     )
     : 0;
-
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [submitSuccess, setSubmitSuccess] = React.useState(false);
-  const [importStatus, setImportStatus] = React.useState<{
-    isImporting: boolean;
-    success: boolean;
-    message: string;
-  }>({
-    isImporting: false,
-    success: false,
-    message: "",
-  });
-
-  // File input ref for import functionality
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const importTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-
-  // Cleanup timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (importTimeoutRef.current) {
-        clearTimeout(importTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Handle data import
   const handleImportClick = () => {

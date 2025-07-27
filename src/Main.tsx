@@ -17,6 +17,7 @@ createRoot(document.getElementById("root")!).render(
       sync={{
         peer: `wss://cloud.jazz.tools/?key=${apiKey}`,
       }}
+      storage="indexedDB"
       AccountSchema={JazzAccount}
     >
       <RouterProvider router={router} />

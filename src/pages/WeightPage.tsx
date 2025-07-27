@@ -31,7 +31,13 @@ type WeightFormValues = z.infer<typeof weightFormSchema>;
 
 function WeightPageContent() {
   const { me } = useAccount(JazzAccount, {
-    resolve: { profile: true, root: true },
+    resolve: {
+      profile: true,
+      root: {
+        mealEntries: { $each: true },  // Load each meal entry for today's total calculation
+        weightEntries: { $each: true },
+      }
+    },
   });
 
   const { updateSyncStatus } = useNetworkStatus();
@@ -132,10 +138,10 @@ function WeightPageContent() {
     } catch (error) {
       console.error("Error recording weight:", error);
       SyncErrorHandler.handleSyncError(error, updateSyncStatus);
-      
+
       // Set a user-friendly error message
-      setErrors({ 
-        weightValue: "Failed to record weight. Please check your connection and try again." 
+      setErrors({
+        weightValue: "Failed to record weight. Please check your connection and try again."
       });
     } finally {
       setIsSubmitting(false);

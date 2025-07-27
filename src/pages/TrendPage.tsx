@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAccount } from "jazz-tools/react";
-import type { MealEntry, JazzAccount, WeightEntry } from "../schema";
+import { JazzAccount, type MealEntry, type WeightEntry } from "../schema";
 import { TrendAnalyzer } from "../utils/TrendAnalyzer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TrendPageErrorFallback } from "@/components/PageErrorFallback";
@@ -26,7 +26,15 @@ const CHART_ANIMATION_DURATION = 200;
 const TOOLTIP_ANIMATION_DURATION = 150;
 
 function TrendPageContent() {
-  const { me } = useAccount<typeof JazzAccount>();
+  const { me } = useAccount(JazzAccount, {
+    resolve: {
+      profile: true,
+      root: {
+        mealEntries: { $each: true },
+        weightEntries: { $each: true },
+      }
+    },
+  });
   const [timeRange, setTimeRange] = useState("30");
   const [isLoading, setIsLoading] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 640);

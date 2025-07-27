@@ -85,7 +85,7 @@ export const JazzAccount = co
     /** The account migration is run on account creation and on every log-in.
      *  You can use it to set up the account root and any other initial CoValues you need.
      */
-    if (!account.root) {
+    if (account.root === undefined) {
       const group = Group.create();
 
       // Initialize empty CoLists and CoMaps for calorie tracking
@@ -110,22 +110,27 @@ export const JazzAccount = co
         group,
       );
     } else {
-      // Handle existing accounts that might be missing new collections
-      const group = account.root._owner;
+      // Only add missing collections if they're actually undefined (not just not loaded)
+      // We need to ensure the root is loaded to check for missing fields
+      const { root } = await account.ensureLoaded({
+        resolve: { root: true }
+      });
+
+      const group = root._owner;
 
       // Add missing mealEntries if not present
-      if (!account.root.mealEntries) {
-        account.root.mealEntries = co.list(MealEntry).create([], group);
+      if (root.mealEntries === undefined) {
+        root.mealEntries = co.list(MealEntry).create([], group);
       }
 
       // Add missing weightEntries if not present
-      if (!account.root.weightEntries) {
-        account.root.weightEntries = co.list(WeightEntry).create([], group);
+      if (root.weightEntries === undefined) {
+        root.weightEntries = co.list(WeightEntry).create([], group);
       }
 
       // Add missing foodIntelligence if not present
-      if (!account.root.foodIntelligence) {
-        account.root.foodIntelligence = FoodIntelligence.create(
+      if (root.foodIntelligence === undefined) {
+        root.foodIntelligence = FoodIntelligence.create(
           {
             recentFoods: co.list(z.string()).create([], group),
             recentCategories: co.list(z.string()).create([], group),
@@ -136,7 +141,7 @@ export const JazzAccount = co
       }
     }
 
-    if (!account.profile) {
+    if (account.profile === undefined) {
       const group = Group.create();
       group.addMember("everyone", "reader"); // The profile info is visible to everyone
 

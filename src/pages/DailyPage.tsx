@@ -21,12 +21,20 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recha
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DailyPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
-import type { JazzAccount, MealEntry } from "../schema";
+import { JazzAccount, type MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { type Loaded } from "jazz-tools";
 
 function DailyPageContent() {
-  const { me } = useAccount<typeof JazzAccount>();
+  const { me } = useAccount(JazzAccount, {
+    resolve: {
+      profile: true,
+      root: {
+        mealEntries: { $each: true },
+        weightEntries: { $each: true },
+      }
+    },
+  });
   const [selectedDate, setSelectedDate] = useState(CalorieCalculator.getTodayAtMidnight());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -239,8 +247,8 @@ function DailyPageContent() {
                           ))}
                         </Pie>
                         <Tooltip content={<CustomTooltip />} />
-                        <Legend 
-                          wrapperStyle={{ 
+                        <Legend
+                          wrapperStyle={{
                             fontSize: window.innerWidth >= 1024 ? '14px' : window.innerWidth >= 640 ? '13px' : '11px',
                             paddingTop: '10px'
                           }}
