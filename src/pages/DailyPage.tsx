@@ -190,38 +190,27 @@ function DailyPageContent() {
             </Button>
           </div>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4 lg:mb-6">
-            <Card>
-              <CardContent className="pt-3 sm:pt-4 lg:pt-6">
-                <div className="text-center">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-primary">{dailyCalories.toFixed(1)}</div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Total Calories</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-3 sm:pt-4 lg:pt-6">
-                <div className="text-center">
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-primary">{mealCount}</div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Meals Logged</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Category Breakdown Pie Chart */}
+          {/* Category Breakdown Pie Chart with Summary */}
           <div className="space-y-4 sm:space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Calories by Category</CardTitle>
+            <Card className="!gap-0">
+              <CardHeader className="pb-1 sm:pb-2 text-center">
+                <CardTitle className="text-base sm:text-lg mb-3">Calories by Category</CardTitle>
+                <div className="flex justify-center gap-6 sm:gap-8">
+                  <div>
+                    <div className="text-lg sm:text-xl font-bold text-primary">{dailyCalories.toFixed(1)}</div>
+                    <p className="text-xs text-muted-foreground">Total Calories</p>
+                  </div>
+                  <div>
+                    <div className="text-lg sm:text-xl font-bold text-primary">{mealCount}</div>
+                    <p className="text-xs text-muted-foreground">Meals Logged</p>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex justify-center pt-1 sm:pt-2">
                 {pieChartData.length > 0 ? (
-                  <div className="h-64 sm:h-80 lg:h-96">
+                  <div className="h-64 sm:h-80 lg:h-96 w-full max-w-md sm:max-w-lg lg:max-w-xl">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
+                      <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                         <Pie
                           data={pieChartData}
                           cx="50%"
@@ -234,8 +223,8 @@ function DailyPageContent() {
                             if (isTablet) return `${name.length > 8 ? name.substring(0, 8) + '...' : name} (${percentage}%)`;
                             return `${name} (${percentage}%)`;
                           }}
-                          outerRadius={window.innerWidth >= 1024 ? 100 : window.innerWidth >= 640 ? 80 : 60}
-                          innerRadius={window.innerWidth >= 640 ? 20 : 15}
+                          outerRadius={window.innerWidth >= 1024 ? 120 : window.innerWidth >= 640 ? 100 : 80}
+                          innerRadius={window.innerWidth >= 640 ? 25 : 20}
                           fill="#8884d8"
                           dataKey="value"
                           animationBegin={0}
@@ -253,7 +242,7 @@ function DailyPageContent() {
                             paddingTop: '10px'
                           }}
                           layout={window.innerWidth >= 640 ? 'horizontal' : 'vertical'}
-                          align={window.innerWidth >= 640 ? 'center' : 'left'}
+                          align="center"
                           verticalAlign="bottom"
                           iconSize={window.innerWidth >= 640 ? 14 : 12}
                         />
@@ -261,7 +250,7 @@ function DailyPageContent() {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-64 sm:h-80 lg:h-96 flex items-center justify-center text-muted-foreground">
+                  <div className="h-64 sm:h-80 lg:h-96 flex items-center justify-center text-muted-foreground w-full">
                     <div className="text-center p-4">
                       <p className="text-sm sm:text-base">No meals logged for this date</p>
                       <p className="text-xs sm:text-sm mt-1">Add some meals to see the category breakdown</p>
