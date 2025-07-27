@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAccount, useIsAuthenticated } from "jazz-tools/react";
 import { AuthButton } from "../AuthButton";
+import { UserProfileDialog } from "./UserProfileDialog";
 import { JazzAccount } from "../schema";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -36,6 +37,7 @@ export function Layout() {
               {isAuthenticated && (
                 <div className="w-2 h-2 bg-green-500 rounded-full" title="Logged in" />
               )}
+              <UserProfileDialog isAuthenticated={isAuthenticated} />
               <AuthButton />
             </div>
           </div>
@@ -58,6 +60,7 @@ export function Layout() {
                   Authenticate to sync data
                 </span>
               )}
+              <UserProfileDialog isAuthenticated={isAuthenticated} />
               <AuthButton />
             </div>
           </div>
