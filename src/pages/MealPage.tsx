@@ -25,6 +25,9 @@ const mealFormSchema = z.object({
   date: z
     .string()
     .min(1, "Date is required"),
+  time: z
+    .string()
+    .min(1, "Time is required"),
   foodName: z
     .string()
     .min(1, "Food name is required")
@@ -69,9 +72,15 @@ function MealPageContent() {
     return DateTime.now().toISODate();
   };
 
+  // Get current time in HH:MM format for default
+  const getCurrentTime = () => {
+    return DateTime.now().toFormat('HH:mm');
+  };
+
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [formData, setFormData] = React.useState<MealFormValues>({
     date: getCurrentDate(),
+    time: getCurrentTime(),
     foodName: "",
     foodCategory: "",
     caloriesPerGram: 0,
@@ -310,9 +319,17 @@ function MealPageContent() {
       // Wrap meal creation and sync with error handling
       await withSyncErrorHandling(
         async () => {
+          // Combine date and time to create ISO timestamp
+          const combinedDateTime = DateTime.fromISO(`${validatedData.date}T${validatedData.time}`);
+          const isoTimestamp = combinedDateTime.toISO();
+
+          if (!isoTimestamp) {
+            throw new Error("Invalid date/time combination");
+          }
+
           // Create meal entry using Jazz schema
           const mealEntry = MealEntry.create({
-            timestamp: validatedData.date,
+            timestamp: isoTimestamp,
             foodName: validatedData.foodName,
             foodCategory: validatedData.foodCategory,
             caloriesPerGram: validatedData.caloriesPerGram,
@@ -341,6 +358,7 @@ function MealPageContent() {
       // Reset form
       setFormData({
         date: getCurrentDate(),
+        time: getCurrentTime(),
         foodName: "",
         foodCategory: "",
         caloriesPerGram: 0,
@@ -425,22 +443,41 @@ function MealPageContent() {
           )}
 
           <form onSubmit={onSubmit} className="space-y-2.5">
-            {/* Row 1: Date (standalone) */}
-            <div className="space-y-1">
-              <label className="text-xs sm:text-sm font-medium">Date</label>
-              <Input
-                type="date"
-                value={formData.date}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData(prev => ({ ...prev, date: value }));
-                  validateField('date', value);
-                }}
-                className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
-              />
-              {errors.date && (
-                <p className="text-xs text-destructive">{errors.date}</p>
-              )}
+            {/* Row 1: Date and Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs sm:text-sm font-medium">Date</label>
+                <Input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, date: value }));
+                    validateField('date', value);
+                  }}
+                  className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                />
+                {errors.date && (
+                  <p className="text-xs text-destructive">{errors.date}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs sm:text-sm font-medium">Time</label>
+                <Input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData(prev => ({ ...prev, time: value }));
+                    validateField('time', value);
+                  }}
+                  className={`${errors.time ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                />
+                {errors.time && (
+                  <p className="text-xs text-destructive">{errors.time}</p>
+                )}
+              </div>
             </div>
 
             {/* Row 2: Food Name and Food Category */}
@@ -576,6 +613,7 @@ function MealPageContent() {
                 onClick={() => {
                   setFormData({
                     date: getCurrentDate(),
+                    time: getCurrentTime(),
                     foodName: "",
                     foodCategory: "",
                     caloriesPerGram: 0,
