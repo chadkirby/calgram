@@ -15,7 +15,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Calendar, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit } from "lucide-react";
+import { MealEntryForm } from "@/components/MealEntryForm";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DailyPageErrorFallback } from "@/components/PageErrorFallback";
@@ -31,11 +39,18 @@ function DailyPageContent() {
       root: {
         mealEntries: { $each: true },
         weightEntries: { $each: true },
+        foodIntelligence: {  // Load foodIntelligence for the edit form
+          recentFoods: { $each: true },
+          recentCategories: { $each: true },
+          foodData: { $each: true }
+        }
       }
     },
   });
   const [selectedDate, setSelectedDate] = useState(CalorieCalculator.getTodayAtMidnight());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<Loaded<typeof MealEntry> | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Filter meal entries by selected date
   const filteredMealEntries = me?.root?.mealEntries?.filter((meal): meal is Loaded<typeof MealEntry> =>
@@ -129,6 +144,24 @@ function DailyPageContent() {
       // Remove the meal from the list
       me.root.mealEntries.splice(mealIndex, 1);
     }
+  };
+
+  // Handle meal editing
+  const handleEditMeal = (meal: Loaded<typeof MealEntry>) => {
+    setEditingMeal(meal);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSuccess = (updatedMeal: Loaded<typeof MealEntry>) => {
+    // Meal was successfully updated
+    console.log("Meal updated successfully:", updatedMeal);
+    setIsEditDialogOpen(false);
+    setEditingMeal(null);
+  };
+
+  const handleEditCancel = () => {
+    setIsEditDialogOpen(false);
+    setEditingMeal(null);
   };
 
   return (
@@ -294,14 +327,22 @@ function DailyPageContent() {
                           )}
                         </div>
 
-                        {/* Right side - Delete button (fixed position) */}
-                        <div className="flex-shrink-0">
+                        {/* Right side - Edit and Delete buttons (fixed position) */}
+                        <div className="flex-shrink-0 flex gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditMeal(meal)}
+                            className="h-8 w-7 sm:h-9 sm:w-8 p-0 text-muted-foreground hover:text-foreground touch-manipulation"
+                          >
+                            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-destructive hover:text-destructive touch-manipulation"
+                                className="h-8 w-7 sm:h-9 sm:w-8 p-0 text-destructive hover:text-destructive touch-manipulation"
                               >
                                 <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                               </Button>
@@ -344,6 +385,25 @@ function DailyPageContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Meal Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Meal Entry</DialogTitle>
+          </DialogHeader>
+          {editingMeal && me && (
+            <MealEntryForm
+              mode="edit"
+              initialData={editingMeal}
+              onSuccess={handleEditSuccess}
+              onCancel={handleEditCancel}
+              me={me}
+              showImport={false}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
