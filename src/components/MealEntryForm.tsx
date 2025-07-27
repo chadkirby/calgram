@@ -121,6 +121,8 @@ export function MealEntryForm({
   // File input ref for import functionality
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const importTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
+  const timeInputRef = React.useRef<HTMLInputElement>(null);
 
   // Cleanup timeout on unmount
   React.useEffect(() => {
@@ -495,6 +497,7 @@ export function MealEntryForm({
             <div className="space-y-1">
               <label className="text-xs sm:text-sm font-medium">Date</label>
               <Input
+                ref={dateInputRef}
                 type="date"
                 value={formData.date}
                 onChange={(e) => {
@@ -503,6 +506,8 @@ export function MealEntryForm({
                   validateField('date', value);
                 }}
                 className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                // Prevent auto-focus in edit mode to avoid jarring mobile date picker popup
+                tabIndex={mode === 'edit' ? -1 : 0}
               />
               {errors.date && (
                 <p className="text-xs text-destructive">{errors.date}</p>
@@ -512,6 +517,7 @@ export function MealEntryForm({
             <div className="space-y-1">
               <label className="text-xs sm:text-sm font-medium">Time</label>
               <Input
+                ref={timeInputRef}
                 type="time"
                 value={formData.time}
                 onChange={(e) => {
@@ -520,6 +526,8 @@ export function MealEntryForm({
                   validateField('time', value);
                 }}
                 className={`${errors.time ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                // Prevent auto-focus in edit mode to avoid jarring mobile time picker popup
+                tabIndex={mode === 'edit' ? -1 : 0}
               />
               {errors.time && (
                 <p className="text-xs text-destructive">{errors.time}</p>
