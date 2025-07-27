@@ -20,7 +20,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit } from "lucide-react";
 import { MealEntryForm } from "@/components/MealEntryForm";

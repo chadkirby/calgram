@@ -7,7 +7,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 
-import { JazzAccount, MealEntry, type MealEntryType } from "../schema";
+import { JazzAccount, MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { FoodIntelligenceManager } from "../utils/FoodIntelligenceManager";
 import { DataImporter } from "../utils/DataImporter";
