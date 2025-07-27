@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -267,84 +266,68 @@ function DailyPageContent() {
               </CardHeader>
               <CardContent>
                 {filteredMealEntries.length > 0 ? (
-                  <div className="overflow-x-auto -mx-3 sm:mx-0">
-                    <div className="min-w-full inline-block align-middle">
-                      <Table className="min-w-[600px] sm:min-w-full">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm">Time</TableHead>
-                            <TableHead className="min-w-[180px] sm:min-w-[200px] text-xs sm:text-sm">Food Details</TableHead>
-                            <TableHead className="hidden sm:table-cell text-xs sm:text-sm">Category</TableHead>
-                            <TableHead className="text-right min-w-[70px] sm:min-w-[80px] text-xs sm:text-sm">Calories</TableHead>
-                            <TableHead className="w-[40px] sm:w-[50px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredMealEntries.map((meal) => (
-                            <TableRow key={meal.id} className="touch-manipulation">
-                              <TableCell className="font-medium text-xs sm:text-sm py-3 sm:py-4">
-                                {CalorieCalculator.formatTimeForDisplay(meal.timestamp)}
-                              </TableCell>
-                              <TableCell className="py-3 sm:py-4">
-                                <div>
-                                  <div className="font-medium text-xs sm:text-sm leading-tight">{meal.foodName}</div>
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    {meal.weightInGrams}g × {meal.caloriesPerGram} cal/g
-                                  </div>
-                                  <div className="sm:hidden mt-2">
-                                    <Badge variant="secondary" className="text-xs px-2 py-1">{meal.foodCategory}</Badge>
-                                  </div>
-                                  {meal.notes && (
-                                    <div className="text-xs text-muted-foreground italic mt-1 line-clamp-2">
-                                      {meal.notes}
-                                    </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="hidden sm:table-cell py-3 sm:py-4">
-                                <Badge variant="secondary" className="text-xs sm:text-sm">{meal.foodCategory}</Badge>
-                              </TableCell>
-                              <TableCell className="text-right font-medium text-xs sm:text-sm py-3 sm:py-4">
-                                <div className="whitespace-nowrap">
-                                  {meal.totalCalories.toFixed(1)} cal
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-3 sm:py-4">
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-destructive hover:text-destructive touch-manipulation"
-                                    >
-                                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent className="max-w-[90vw] sm:max-w-lg mx-4">
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle className="text-base sm:text-lg">Delete Meal Entry</AlertDialogTitle>
-                                      <AlertDialogDescription className="text-sm sm:text-base">
-                                        Are you sure you want to delete this meal entry for "{meal.foodName}"?
-                                        This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                                      <AlertDialogCancel className="w-full sm:w-auto touch-manipulation">Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteMeal(meal.id)}
-                                        className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90 touch-manipulation"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
+                  <div className="space-y-3">
+                    {filteredMealEntries.map((meal) => (
+                      <div
+                        key={meal.id}
+                        className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/30 transition-colors touch-manipulation"
+                      >
+                        {/* Left side - Time (fixed width) */}
+                        <div className="flex-shrink-0 text-xs sm:text-sm font-medium text-muted-foreground min-w-[60px]">
+                          {CalorieCalculator.formatTimeForDisplay(meal.timestamp)}
+                        </div>
+
+                        {/* Main content - flows like a paragraph */}
+                        <div className="flex-1 min-w-0 flex items-center flex-wrap gap-x-3 gap-y-1">
+                          <div className="text-xs sm:text-sm text-muted-foreground">{meal.foodCategory}</div>
+                          <div className="font-medium text-xs sm:text-sm">{meal.foodName}</div>
+                          <div className="text-xs sm:text-sm">
+                            {meal.weightInGrams}g
+                          </div>
+                          <div className="text-xs sm:text-sm font-medium">
+                            {meal.totalCalories.toFixed(1)} cal
+                          </div>
+                          {meal.notes && (
+                            <div className="text-xs text-muted-foreground italic basis-full line-clamp-2">
+                              {meal.notes}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Right side - Delete button (fixed position) */}
+                        <div className="flex-shrink-0">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-destructive hover:text-destructive touch-manipulation"
+                              >
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="max-w-[90vw] sm:max-w-lg mx-4">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-base sm:text-lg">Delete Meal Entry</AlertDialogTitle>
+                                <AlertDialogDescription className="text-sm sm:text-base">
+                                  Are you sure you want to delete this meal entry for "{meal.foodName}"?
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+                                <AlertDialogCancel className="w-full sm:w-auto touch-manipulation">Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteMeal(meal.id)}
+                                  className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90 touch-manipulation"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
