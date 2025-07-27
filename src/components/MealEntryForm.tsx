@@ -491,7 +491,7 @@ export function MealEntryForm({
 
         <form onSubmit={onSubmit} className="space-y-2.5">
           {/* Row 1: Date and Time */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs sm:text-sm font-medium">Date</label>
               <Input
@@ -528,7 +528,7 @@ export function MealEntryForm({
           </div>
 
           {/* Row 2: Food Name and Food Category */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs sm:text-sm font-medium">Food Name</label>
               <Combobox
@@ -565,7 +565,7 @@ export function MealEntryForm({
           </div>
 
           {/* Row 3: Weight and Calories per Gram */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs sm:text-sm font-medium">Weight (grams)</label>
               <Input
