@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 
@@ -121,8 +123,6 @@ export function MealEntryForm({
   // File input ref for import functionality
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const importTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const dateInputRef = React.useRef<HTMLInputElement>(null);
-  const timeInputRef = React.useRef<HTMLInputElement>(null);
 
   // Cleanup timeout on unmount
   React.useEffect(() => {
@@ -493,21 +493,16 @@ export function MealEntryForm({
 
         <form onSubmit={onSubmit} className="space-y-2.5">
           {/* Date and Time - Stacked on mobile, side-by-side on larger screens */}
-          <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs sm:text-sm font-medium">Date</label>
-              <Input
-                ref={dateInputRef}
-                type="date"
+              <DatePicker
                 value={formData.date}
-                onChange={(e) => {
-                  const value = e.target.value;
+                onChange={(value) => {
                   setFormData(prev => ({ ...prev, date: value }));
                   validateField('date', value);
                 }}
-                className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[40px] text-base sm:text-sm`}
-                // Prevent auto-focus in edit mode to avoid jarring mobile date picker popup
-                tabIndex={mode === 'edit' ? -1 : 0}
+                error={!!errors.date}
               />
               {errors.date && (
                 <p className="text-xs text-destructive">{errors.date}</p>
@@ -516,18 +511,14 @@ export function MealEntryForm({
 
             <div className="space-y-1">
               <label className="text-xs sm:text-sm font-medium">Time</label>
-              <Input
-                ref={timeInputRef}
-                type="time"
+              <TimePicker
                 value={formData.time}
-                onChange={(e) => {
-                  const value = e.target.value;
+                onChange={(value) => {
                   setFormData(prev => ({ ...prev, time: value }));
                   validateField('time', value);
                 }}
-                className={`${errors.time ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[40px] text-base sm:text-sm`}
-                // Prevent auto-focus in edit mode to avoid jarring mobile time picker popup
-                tabIndex={mode === 'edit' ? -1 : 0}
+                placeholder="Select time"
+                error={!!errors.time}
               />
               {errors.time && (
                 <p className="text-xs text-destructive">{errors.time}</p>
