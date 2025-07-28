@@ -431,7 +431,7 @@ export function MealEntryForm({
 
   return (
     <Card className="max-w-5xl mx-auto gap-0 py-0">
-      <CardHeader className="pb-2 sm:pb-4 pt-4 sm:pt-6">
+      <CardHeader className="pb-2 sm:pb-4 pt-2 sm:pt-6">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base sm:text-lg lg:text-xl truncate">
             {title || defaultTitle}
@@ -460,7 +460,7 @@ export function MealEntryForm({
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4 lg:p-6 pb-4 sm:pb-6">
+      <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4 lg:p-6 pt-2 pb-4 sm:pb-6">
         {/* Import Status Alert */}
         {importStatus.message && (
           <Alert className={`py-1.5 ${
@@ -492,8 +492,8 @@ export function MealEntryForm({
         )}
 
         <form onSubmit={onSubmit} className="space-y-2.5">
-          {/* Row 1: Date and Time */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Date and Time - Stacked on mobile, side-by-side on larger screens */}
+          <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs sm:text-sm font-medium">Date</label>
               <Input
@@ -505,7 +505,7 @@ export function MealEntryForm({
                   setFormData(prev => ({ ...prev, date: value }));
                   validateField('date', value);
                 }}
-                className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[40px] text-base sm:text-sm`}
                 // Prevent auto-focus in edit mode to avoid jarring mobile date picker popup
                 tabIndex={mode === 'edit' ? -1 : 0}
               />
@@ -525,7 +525,7 @@ export function MealEntryForm({
                   setFormData(prev => ({ ...prev, time: value }));
                   validateField('time', value);
                 }}
-                className={`${errors.time ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                className={`${errors.time ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[40px] text-base sm:text-sm`}
                 // Prevent auto-focus in edit mode to avoid jarring mobile time picker popup
                 tabIndex={mode === 'edit' ? -1 : 0}
               />
@@ -586,7 +586,7 @@ export function MealEntryForm({
                   setFormData(prev => ({ ...prev, weightInGrams: value }));
                   validateField('weightInGrams', value);
                 }}
-                className={`${errors.weightInGrams ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                className={`${errors.weightInGrams ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[40px]`}
                 inputMode="decimal"
               />
               {errors.weightInGrams && (
@@ -606,7 +606,7 @@ export function MealEntryForm({
                   setFormData(prev => ({ ...prev, caloriesPerGram: value }));
                   validateField('caloriesPerGram', value);
                 }}
-                className={`${errors.caloriesPerGram ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+                className={`${errors.caloriesPerGram ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[40px]`}
                 inputMode="decimal"
               />
               {errors.caloriesPerGram && (
@@ -615,8 +615,27 @@ export function MealEntryForm({
             </div>
           </div>
 
+          {/* Notes Field */}
+          <div>
+            <label className="text-xs sm:text-sm font-medium">Notes (Optional)</label>
+            <Textarea
+              placeholder="Add notes..."
+              value={formData.notes}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData(prev => ({ ...prev, notes: value }));
+                validateField('notes', value);
+              }}
+              className={`${errors.notes ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[40px] resize-none`}
+              rows={2}
+            />
+            {errors.notes && (
+              <p className="text-xs text-destructive">{errors.notes}</p>
+            )}
+          </div>
+
           {/* Compact Calorie Summary */}
-          <div className="bg-muted/30 rounded-lg p-3">
+          <div className="bg-muted/30 rounded-lg p-3 mb-1">
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <div className="text-sm sm:text-base font-semibold">{todayTotal.toFixed(1)}</div>
@@ -639,25 +658,6 @@ export function MealEntryForm({
                 <div className="text-xs text-muted-foreground">New Total</div>
               </div>
             </div>
-          </div>
-
-          {/* Notes Field */}
-          <div className="space-y-1">
-            <label className="text-xs sm:text-sm font-medium">Notes (Optional)</label>
-            <Textarea
-              placeholder="Add notes..."
-              value={formData.notes}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFormData(prev => ({ ...prev, notes: value }));
-                validateField('notes', value);
-              }}
-              className={`${errors.notes ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] resize-none`}
-              rows={2}
-            />
-            {errors.notes && (
-              <p className="text-xs text-destructive">{errors.notes}</p>
-            )}
           </div>
 
           {/* Action Buttons */}
