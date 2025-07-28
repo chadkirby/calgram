@@ -95,6 +95,18 @@ describe('CalorieCalculator', () => {
       const total = CalorieCalculator.calculateDailyTotal(sameDay, '2024-01-15T00:00:00.000Z');
       expect(total).toBe(600);
     });
+
+    it('should handle meals with timezone offsets correctly', () => {
+      const mealsWithTimezone = [
+        createMockMealEntry('2025-07-27T19:36:00.000-07:00', 'Dinner', 'Meal', 1.0, 100, 100),
+        createMockMealEntry('2025-07-27T08:30:00.000-07:00', 'Breakfast', 'Meal', 1.0, 200, 200),
+        createMockMealEntry('2025-07-28T01:00:00.000-07:00', 'Late Snack', 'Meal', 1.0, 50, 50), // Next day
+      ];
+
+      // Should only include meals from July 27th local time
+      const total = CalorieCalculator.calculateDailyTotal(mealsWithTimezone, '2025-07-27T00:00:00.000-07:00');
+      expect(total).toBe(300); // 100 + 200 (excluding the July 28th meal)
+    });
   });
 
   describe('calculateCategoryBreakdown', () => {
@@ -191,6 +203,22 @@ describe('CalorieCalculator', () => {
       expect(CalorieCalculator.isSameDay(null, '2024-01-15T12:00:00.000Z')).toBe(false);
       expect(CalorieCalculator.isSameDay('2024-01-15T12:00:00.000Z', undefined)).toBe(false);
       expect(CalorieCalculator.isSameDay(null, undefined)).toBe(false);
+    });
+
+    it('should handle timezone offsets correctly', () => {
+      // A meal entry with Pacific timezone should match a date picker selection for the same local date
+      const mealWithTimezone = '2025-07-27T19:36:00.000-07:00'; // July 27, 7:36 PM Pacific
+      const selectedDate = '2025-07-27T00:00:00.000-07:00'; // July 27 at midnight Pacific
+      
+      expect(CalorieCalculator.isSameDay(mealWithTimezone, selectedDate)).toBe(true);
+    });
+
+    it('should preserve local date across different timezones', () => {
+      // Same local date but different timezones should match
+      const pacificTime = '2025-07-27T19:36:00.000-07:00'; // July 27, 7:36 PM Pacific
+      const easternTime = '2025-07-27T10:36:00.000-04:00'; // July 27, 10:36 AM Eastern
+      
+      expect(CalorieCalculator.isSameDay(pacificTime, easternTime)).toBe(true);
     });
   });
 });

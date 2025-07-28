@@ -79,6 +79,17 @@ export class CalorieCalculator {
    * @returns Date string in YYYY-MM-DD format
    */
   private static getDateOnlyFromIso(isoString: string): string {
+    // If the string ends with 'Z', it's UTC, so parse as UTC to maintain backward compatibility
+    if (isoString.endsWith('Z')) {
+      return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
+    }
+    
+    // If it has timezone offset info (+ or - in the last 6 characters), parse with timezone
+    if (/[+-]\d{2}:\d{2}$/.test(isoString)) {
+      return DateTime.fromISO(isoString).toISODate() || '';
+    }
+    
+    // Fallback: assume UTC for backward compatibility
     return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
   }
 
