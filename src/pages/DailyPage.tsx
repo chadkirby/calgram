@@ -85,9 +85,9 @@ function DailyPageContent() {
     }
   };
 
-  // Handle closing date picker on blur or enter
+  // Handle closing date picker on blur, enter, or escape
   const handleDatePickerKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' || event.key === 'Escape') {
       setShowDatePicker(false);
     }
   };
