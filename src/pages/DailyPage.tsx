@@ -81,8 +81,18 @@ function DailyPageContent() {
     const dateValue = event.target.value;
     if (dateValue) {
       setSelectedDate(CalorieCalculator.createIsoFromDateInput(dateValue));
+    }
+  };
+
+  // Handle closing date picker on blur or enter
+  const handleDatePickerKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
       setShowDatePicker(false);
     }
+  };
+
+  const handleDatePickerBlur = () => {
+    setShowDatePicker(false);
   };
 
   // Check if selected date is today
@@ -205,7 +215,10 @@ function DailyPageContent() {
                     type="date"
                     value={CalorieCalculator.formatDateForInput(selectedDate)}
                     onChange={handleDateChange}
+                    onKeyDown={handleDatePickerKeyDown}
+                    onBlur={handleDatePickerBlur}
                     className="w-auto mx-auto touch-manipulation min-h-[44px] sm:min-h-[40px] max-w-[200px]"
+                    autoFocus
                   />
                 </div>
               )}
