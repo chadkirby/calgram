@@ -69,14 +69,14 @@ export function Layout() {
 
       <main className="max-w-7xl mx-auto p-1 sm:p-4 lg:p-6">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-auto mb-0 sm:mb-6">
+          <TabsList className="grid w-full grid-cols-3 h-auto mb-0 sm:mb-6">
             <TabsTrigger
-              value="meals"
+              value="daily"
               className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
             >
-              <span className="text-sm sm:hidden">🍽️</span>
-              <span className="hidden sm:inline">Meals</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Meals</span>
+              <span className="text-sm sm:hidden">📊</span>
+              <span className="hidden sm:inline">Today</span>
+              <span className="sm:hidden text-[10px] leading-tight ml-1">Today</span>
             </TabsTrigger>
             <TabsTrigger
               value="weight"
@@ -85,14 +85,6 @@ export function Layout() {
               <span className="text-sm sm:hidden">⚖️</span>
               <span className="hidden sm:inline">Weight</span>
               <span className="sm:hidden text-[10px] leading-tight ml-1">Weight</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="daily"
-              className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
-            >
-              <span className="text-sm sm:hidden">📊</span>
-              <span className="hidden sm:inline">Daily</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Daily</span>
             </TabsTrigger>
             <TabsTrigger
               value="trends"
