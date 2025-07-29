@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit, Plus } from "lucide-react";
 import { MealEntryForm } from "@/components/MealEntryForm";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -50,6 +50,7 @@ function DailyPageContent() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Loaded<typeof MealEntry> | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddMealDialogOpen, setIsAddMealDialogOpen] = useState(false);
 
   // Filter meal entries by selected date
   const filteredMealEntries = me?.root?.mealEntries?.filter((meal): meal is Loaded<typeof MealEntry> =>
@@ -173,6 +174,21 @@ function DailyPageContent() {
     setEditingMeal(null);
   };
 
+  // Handle adding new meal
+  const handleAddMeal = () => {
+    setIsAddMealDialogOpen(true);
+  };
+
+  const handleAddMealSuccess = (newMeal: Loaded<typeof MealEntry>) => {
+    // Meal was successfully created
+    console.log("Meal created successfully:", newMeal);
+    setIsAddMealDialogOpen(false);
+  };
+
+  const handleAddMealCancel = () => {
+    setIsAddMealDialogOpen(false);
+  };
+
   return (
     <div className="space-y-2 sm:space-y-3">
       <ConnectionStatus />
@@ -252,7 +268,7 @@ function DailyPageContent() {
               </CardHeader>
               <CardContent className="flex justify-center">
                 {pieChartData.length > 0 ? (
-                  <div className="h-64 sm:h-80 lg:h-96 w-full max-w-md sm:max-w-lg lg:max-w-xl">
+                  <div className="h-48 sm:h-64 lg:h-80 w-full max-w-md sm:max-w-lg lg:max-w-xl">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                         <Pie
@@ -307,7 +323,17 @@ function DailyPageContent() {
             {/* Meal Entry List */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Meal Entries</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base sm:text-lg">Meal Entries</CardTitle>
+                  <Button
+                    onClick={handleAddMeal}
+                    size="sm"
+                    className="touch-manipulation"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Meal
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {filteredMealEntries.length > 0 ? (
@@ -412,6 +438,25 @@ function DailyPageContent() {
               onCancel={handleEditCancel}
               me={me}
               showImport={false}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Meal Dialog */}
+      <Dialog open={isAddMealDialogOpen} onOpenChange={setIsAddMealDialogOpen}>
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Meal Entry</DialogTitle>
+          </DialogHeader>
+          {me && (
+            <MealEntryForm
+              mode="create"
+              onSuccess={handleAddMealSuccess}
+              onCancel={handleAddMealCancel}
+              me={me}
+              showImport={false}
+              defaultDate={CalorieCalculator.formatDateForInput(selectedDate)}
             />
           )}
         </DialogContent>

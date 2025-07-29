@@ -56,6 +56,7 @@ interface MealEntryFormProps {
   me: Loaded<typeof JazzAccount>;
   showImport?: boolean; // Only show import on create mode
   title?: string; // Custom title for the form
+  defaultDate?: string; // Default date for create mode (YYYY-MM-DD format)
 }
 
 export function MealEntryForm({
@@ -65,7 +66,8 @@ export function MealEntryForm({
   onCancel,
   me,
   showImport = false,
-  title
+  title,
+  defaultDate
 }: MealEntryFormProps) {
   const { updateSyncStatus } = useNetworkStatus();
 
@@ -95,7 +97,7 @@ export function MealEntryForm({
     }
 
     return {
-      date: getCurrentDate(),
+      date: defaultDate || getCurrentDate(),
       time: getCurrentTime(),
       foodName: "",
       foodCategory: "",
