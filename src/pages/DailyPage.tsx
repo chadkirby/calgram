@@ -82,6 +82,7 @@ function DailyPageContent() {
     const dateValue = event.target.value;
     if (dateValue) {
       setSelectedDate(CalorieCalculator.createIsoFromDateInput(dateValue));
+      setShowDatePicker(false);
     }
   };
 
@@ -194,7 +195,7 @@ function DailyPageContent() {
       <ConnectionStatus />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg lg:text-xl">Daily Calorie Summary</CardTitle>
+          <CardTitle className="text-base sm:text-lg lg:text-xl">Daily Calories</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Compact Date Navigation */}
@@ -209,33 +210,34 @@ function DailyPageContent() {
             </Button>
 
             <div className="text-center flex-1 min-w-0">
-              <div className="flex items-center justify-center gap-1">
-                <h3 className="text-sm sm:text-base font-semibold truncate">
-                  {CalorieCalculator.formatDateForDisplay(selectedDate)}
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowDatePicker(!showDatePicker)}
-                  className="p-1 touch-manipulation"
-                >
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                </Button>
-                {isToday && (
-                  <Badge variant="secondary" className="text-xs ml-1">Today</Badge>
-                )}
-              </div>
-              {showDatePicker && (
-                <div className="mt-2">
+              {showDatePicker ? (
+                <div className="flex items-center justify-center">
                   <Input
                     type="date"
                     value={CalorieCalculator.formatDateForInput(selectedDate)}
                     onChange={handleDateChange}
                     onKeyDown={handleDatePickerKeyDown}
                     onBlur={handleDatePickerBlur}
-                    className="w-auto mx-auto touch-manipulation min-h-[44px] sm:min-h-[40px] max-w-[200px]"
+                    className="w-auto mx-auto touch-manipulation text-sm sm:text-base font-semibold bg-transparent border border-border/30 shadow-none px-3 py-1 h-auto text-center focus:ring-0 focus:border-border/60 rounded-md"
                     autoFocus
                   />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-1">
+                  <h3 className={`text-sm sm:text-base font-semibold truncate ${isToday ? 'sm:border-none border border-primary/30 rounded px-2 py-0.5' : ''}`}>
+                    {CalorieCalculator.formatDateForDisplay(selectedDate)}
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowDatePicker(!showDatePicker)}
+                    className="p-1 touch-manipulation"
+                  >
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                  {isToday && (
+                    <Badge variant="secondary" className="text-xs ml-1 hidden sm:inline-flex">Today</Badge>
+                  )}
                 </div>
               )}
             </div>
@@ -254,7 +256,6 @@ function DailyPageContent() {
           <div className="space-y-4 sm:space-y-6">
             <Card>
               <CardHeader className="text-center">
-                <CardTitle className="text-base sm:text-lg mb-3">Calories by Category</CardTitle>
                 <div className="flex justify-center gap-6 sm:gap-8">
                   <div>
                     <div className="text-lg sm:text-xl font-bold text-primary">{dailyCalories.toFixed(1)}</div>

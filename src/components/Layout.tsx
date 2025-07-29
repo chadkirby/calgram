@@ -74,9 +74,9 @@ export function Layout() {
               value="daily"
               className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
             >
-              <span className="text-sm sm:hidden">📊</span>
-              <span className="hidden sm:inline">Today</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Today</span>
+              <span className="text-sm sm:hidden">🍽️</span>
+              <span className="hidden sm:inline">Daily</span>
+              <span className="sm:hidden text-[10px] leading-tight ml-1">Daily</span>
             </TabsTrigger>
             <TabsTrigger
               value="weight"
