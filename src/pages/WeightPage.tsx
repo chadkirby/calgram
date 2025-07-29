@@ -1,117 +1,86 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAccount } from "jazz-tools/react";
 import { JazzAccount, WeightEntry } from "../schema";
-import { Check } from "lucide-react";
-import * as React from "react";
-import { z } from "zod";
-import { DateTime } from "luxon";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WeightPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
+import { WeightChart } from "@/components/WeightChart";
+import { WeightEntryList } from "@/components/WeightEntryList";
+import { WeightEntryDialog } from "@/components/WeightEntryDialog";
+import { Plus } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
-
-// Zod schema for weight form validation
-const weightFormSchema = z.object({
-  date: z.string().min(1, "Date is required"),
-  weightValue: z
-    .number()
-    .positive("Weight must be a positive number"),
-  notes: z
-    .string()
-    .optional()
-    .default(""),
-});
-
-type WeightFormValues = z.infer<typeof weightFormSchema>;
+import type { Loaded } from "jazz-tools";
 
 function WeightPageContent() {
   const { me } = useAccount(JazzAccount, {
     resolve: {
       profile: true,
       root: {
-        mealEntries: { $each: true },  // Load each meal entry for today's total calculation
         weightEntries: { $each: true },
       }
     },
   });
 
   const { updateSyncStatus } = useNetworkStatus();
-
-  const userName = me?.profile?.firstName || me?.profile?.name || "User";
-
-  // Get current date in YYYY-MM-DD format for default (timezone-aware)
-  const getCurrentDate = () => {
-    return DateTime.now().toISODate();
-  };
-
-  const [formData, setFormData] = React.useState<WeightFormValues>({
-    date: getCurrentDate(),
-    weightValue: 0,
-    notes: "",
+  const [timeRange, setTimeRange] = useState("30");
+  const [isLoading, setIsLoading] = useState(false);
+  const [dialogState, setDialogState] = useState<{
+    isOpen: boolean;
+    mode: "add" | "edit";
+    entry?: Loaded<typeof WeightEntry>;
+  }>({
+    isOpen: false,
+    mode: "add",
   });
 
-  const [errors, setErrors] = React.useState<Partial<Record<keyof WeightFormValues, string>>>({});
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [submitSuccess, setSubmitSuccess] = React.useState(false);
-
-  // Real-time validation helper
-  const validateField = (field: keyof WeightFormValues, value: any) => {
-    try {
-      const fieldSchema = weightFormSchema.shape[field];
-      fieldSchema.parse(value);
-      // Clear error if validation passes
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const errorMessage = error.issues[0]?.message || "Invalid value";
-        setErrors(prev => ({ ...prev, [field]: errorMessage }));
-      }
-    }
+  // Handle time range change with loading state
+  const handleTimeRangeChange = (value: string) => {
+    setIsLoading(true);
+    setTimeRange(value);
+    // Simulate brief loading for better UX
+    setTimeout(() => setIsLoading(false), 200);
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddWeight = () => {
+    setDialogState({
+      isOpen: true,
+      mode: "add",
+    });
+  };
+
+  const handleEditWeight = (entry: Loaded<typeof WeightEntry>) => {
+    setDialogState({
+      isOpen: true,
+      mode: "edit",
+      entry,
+    });
+  };
+
+  const handleCloseDialog = () => {
+    setDialogState({
+      isOpen: false,
+      mode: "add",
+    });
+  };
+
+  const handleSaveWeight = async (data: {
+    date: string;
+    weightValue: number;
+    notes?: string;
+  }) => {
     if (!me?.root) return;
 
-    // Validate form with Zod
-    const validationResult = weightFormSchema.safeParse(formData);
-    if (!validationResult.success) {
-      const newErrors: Partial<Record<keyof WeightFormValues, string>> = {};
-      validationResult.error.issues.forEach((issue) => {
-        if (issue.path.length > 0) {
-          const field = issue.path[0] as keyof WeightFormValues;
-          newErrors[field] = issue.message;
-        }
-      });
-      setErrors(newErrors);
-      return;
-    }
-
-    // Clear any previous errors
-    setErrors({});
-    setIsSubmitting(true);
-    setSubmitSuccess(false);
-
     try {
-      const validatedData = validationResult.data;
-
-      // Wrap weight creation and sync with error handling
       await withSyncErrorHandling(
         async () => {
           // Create weight entry using Jazz schema
           const weightEntry = WeightEntry.create({
-            timestamp: validatedData.date,
-            weightValue: validatedData.weightValue,
-            notes: validatedData.notes || "",
+            timestamp: data.date,
+            weightValue: data.weightValue,
+            notes: data.notes || "",
           }, me.root._owner);
 
           // Add to weight entries
@@ -122,135 +91,60 @@ function WeightPageContent() {
         'weight-creation',
         updateSyncStatus
       )();
-
-      // Reset form
-      setFormData({
-        date: getCurrentDate(),
-        weightValue: 0,
-        notes: "",
-      });
-      setErrors({});
-
-      // Show success feedback
-      setSubmitSuccess(true);
-      setTimeout(() => setSubmitSuccess(false), 3000);
-
     } catch (error) {
       console.error("Error recording weight:", error);
       SyncErrorHandler.handleSyncError(error, updateSyncStatus);
-
-      // Set a user-friendly error message
-      setErrors({
-        weightValue: "Failed to record weight. Please check your connection and try again."
-      });
-    } finally {
-      setIsSubmitting(false);
+      throw error;
     }
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+    <div className="space-y-2 sm:space-y-3">
       <ConnectionStatus />
-      <Card className="max-w-4xl mx-auto">
+
+      <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl lg:text-2xl truncate">Record Weight for {userName}</CardTitle>
+          <div className="flex flex-row justify-between items-center gap-2">
+            <CardTitle className="text-lg sm:text-xl lg:text-2xl">
+              Weight Tracking
+            </CardTitle>
+            <Button
+              onClick={handleAddWeight}
+              size="sm"
+              className="shrink-0"
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Add Weight
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3 sm:space-y-4 lg:space-y-6 p-3 sm:p-4 lg:p-6">
-          <form onSubmit={onSubmit} className="space-y-3 sm:space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
-              <Input
-                type="date"
-                value={formData.date}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData(prev => ({ ...prev, date: value }));
-                  validateField('date', value);
-                }}
-                className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
-              />
-              {errors.date && (
-                <p className="text-sm text-destructive">{errors.date}</p>
-              )}
-            </div>
+        <CardContent>
+          {/* Chart Section */}
+          <div className="space-y-4 sm:space-y-6">
+            <WeightChart
+              timeRange={timeRange}
+              onTimeRangeChange={handleTimeRangeChange}
+              isLoading={isLoading}
+            />
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Weight (lbs)</label>
-              <Input
-                type="number"
-                step="0.1"
-                placeholder="Enter your weight"
-                value={formData.weightValue || ""}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, weightValue: value }));
-                  validateField('weightValue', value);
-                }}
-                className={`${errors.weightValue ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
-                inputMode="decimal"
-              />
-              {errors.weightValue && (
-                <p className="text-sm text-destructive">{errors.weightValue}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes (Optional)</label>
-              <Textarea
-                placeholder="Add any notes about this weight measurement..."
-                value={formData.notes}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData(prev => ({ ...prev, notes: value }));
-                  validateField('notes', value);
-                }}
-                className={`${errors.notes ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[88px] sm:min-h-[80px]`}
-                rows={3}
-              />
-              {errors.notes && (
-                <p className="text-sm text-destructive">{errors.notes}</p>
-              )}
-            </div>
-
-            {submitSuccess && (
-              <Alert className="border-green-200 bg-green-50">
-                <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
-                <AlertTitle className="text-green-800">Success!</AlertTitle>
-                <AlertDescription className="text-green-700">
-                  Weight recorded successfully.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setFormData({
-                    date: getCurrentDate(),
-                    weightValue: 0,
-                    notes: "",
-                  });
-                  setErrors({});
-                  setSubmitSuccess(false);
-                }}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto touch-manipulation"
-              >
-                Clear
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full sm:w-auto touch-manipulation"
-              >
-                {isSubmitting ? "Recording..." : "Record Weight"}
-              </Button>
-            </div>
-          </form>
+            {/* Entries List */}
+            <WeightEntryList onEdit={handleEditWeight} />
+          </div>
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <WeightEntryDialog
+        isOpen={dialogState.isOpen}
+        onClose={handleCloseDialog}
+        onSuccess={() => {
+          // Refresh data after save
+          handleCloseDialog();
+        }}
+        onSave={dialogState.mode === "add" ? handleSaveWeight : undefined}
+        entry={dialogState.entry}
+        mode={dialogState.mode}
+      />
     </div>
   );
 }
