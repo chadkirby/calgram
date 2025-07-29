@@ -268,7 +268,7 @@ function DailyPageContent() {
               </CardHeader>
               <CardContent className="flex justify-center">
                 {pieChartData.length > 0 ? (
-                  <div className="h-48 sm:h-64 lg:h-80 w-full max-w-md sm:max-w-lg lg:max-w-xl">
+                  <div className="h-64 sm:h-80 lg:h-96 w-full max-w-md sm:max-w-lg lg:max-w-xl">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                         <Pie
@@ -310,7 +310,7 @@ function DailyPageContent() {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-64 sm:h-80 lg:h-96 flex items-center justify-center text-muted-foreground w-full">
+                  <div className="h-36 sm:h-48 lg:h-64 flex items-center justify-center text-muted-foreground w-full">
                     <div className="text-center p-4">
                       <p className="text-sm sm:text-base">No meals logged for this date</p>
                       <p className="text-xs sm:text-sm mt-1">Add some meals to see the category breakdown</p>
