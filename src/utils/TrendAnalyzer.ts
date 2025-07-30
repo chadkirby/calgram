@@ -67,16 +67,17 @@ export class TrendAnalyzer {
       return [];
     }
 
-    // Calculate the date range using Luxon
-    const endDate = DateTime.now().startOf('day');
-    const startDate = endDate.minus({ days: days - 1 });
+    // Use getDateRange for consistency
+    const { startDate, endDate } = this.getDateRange(days);
+    const startDateLuxon = DateTime.fromJSDate(startDate);
+    const endDateLuxon = DateTime.fromJSDate(endDate);
 
     // Group meals by date and calculate daily totals
     const dailyTotals = new Map<string, number>();
 
     meals.forEach(meal => {
       const mealDate = DateTime.fromISO(meal.timestamp);
-      if (mealDate >= startDate && mealDate <= endDate) {
+      if (mealDate >= startDateLuxon && mealDate <= endDateLuxon) {
         const dateKey = mealDate.toISODate() || '';
         const currentTotal = dailyTotals.get(dateKey) || 0;
         dailyTotals.set(dateKey, currentTotal + meal.totalCalories);
@@ -84,20 +85,10 @@ export class TrendAnalyzer {
     });
 
     // Create data points for each day in the range
-    const dataPoints: ChartDataPoint[] = [];
-    let currentDate = startDate;
-
-    while (currentDate <= endDate) {
-      const dateKey = currentDate.toISODate() || '';
-      const calories = dailyTotals.get(dateKey) || 0;
-
-      dataPoints.push({
-        date: currentDate.toJSDate(), // Convert to JS Date for chart compatibility
-        calories,
-      });
-
-      currentDate = currentDate.plus({ days: 1 });
-    }
+    const dataPoints: ChartDataPoint[] = [...dailyTotals.entries()].map(([dateKey, calories]) => ({
+      date: DateTime.fromISO(dateKey).toJSDate(), // Convert to JS Date
+      calories,
+    }));
 
     return dataPoints;
   }
@@ -444,7 +435,8 @@ export class TrendAnalyzer {
    * @returns Object with start and end dates as JS Dates for compatibility
    */
   static getDateRange(days: number): { startDate: Date; endDate: Date } {
-    const endDate = DateTime.now().startOf('day');
+    // Use endOf('day') to include all entries for today
+    const endDate = DateTime.now().endOf('day');
     const startDate = endDate.minus({ days: days - 1 });
 
     return {
