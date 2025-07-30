@@ -171,11 +171,8 @@ function TrendPageContent() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">Calorie Trend</CardTitle>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 pt-2 sm:pt-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <label htmlFor="time-range" className="text-sm font-medium">
-                Time Range:
-              </label>
               <Select value={timeRange} onValueChange={handleTimeRangeChange}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Select time range" />

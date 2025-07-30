@@ -108,14 +108,7 @@ function WeightPageContent() {
             <CardTitle className="text-lg sm:text-xl lg:text-2xl">
               Weight Tracking
             </CardTitle>
-            <Button
-              onClick={handleAddWeight}
-              size="sm"
-              className="shrink-0"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Add Weight
-            </Button>
+            {/* Removed Add Weight button from here */}
           </div>
         </CardHeader>
         <CardContent>
@@ -128,7 +121,19 @@ function WeightPageContent() {
             />
 
             {/* Entries List */}
-            <WeightEntryList onEdit={handleEditWeight} />
+            <WeightEntryList
+              onEdit={handleEditWeight}
+              addButton={
+                <Button
+                  onClick={handleAddWeight}
+                  size="sm"
+                  className="shrink-0"
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add Weight
+                </Button>
+              }
+            />
           </div>
         </CardContent>
       </Card>

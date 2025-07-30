@@ -6,16 +6,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAccount } from "jazz-tools/react";
 import { JazzAccount, type WeightEntry } from "../schema";
 import { DateTime } from "luxon";
-import { Edit, Trash2, Calendar, Weight } from "lucide-react";
+import { Edit, Trash2, Weight, ChevronDown } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 import type { Loaded } from "jazz-tools";
 
 interface WeightEntryListProps {
   onEdit: (entry: Loaded<typeof WeightEntry>) => void;
+  addButton?: React.ReactNode;
 }
 
-export function WeightEntryList({ onEdit }: WeightEntryListProps) {
+export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
   const { me } = useAccount(JazzAccount, {
     resolve: {
       profile: true,
@@ -28,6 +29,8 @@ export function WeightEntryList({ onEdit }: WeightEntryListProps) {
   const { updateSyncStatus } = useNetworkStatus();
   const [deleteEntry, setDeleteEntry] = useState<Loaded<typeof WeightEntry> | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [displayCount, setDisplayCount] = useState(10);
+  const ENTRIES_PER_LOAD = 10;
 
   // Sort weight entries by date (newest first)
   const sortedEntries = useMemo(() => {
@@ -37,6 +40,14 @@ export function WeightEntryList({ onEdit }: WeightEntryListProps) {
       .filter((entry): entry is Loaded<typeof WeightEntry> => entry != null)
       .sort((a, b) => DateTime.fromISO(b.timestamp).toMillis() - DateTime.fromISO(a.timestamp).toMillis());
   }, [me?.root?.weightEntries]);
+
+  // Get entries to display based on current display count
+  const displayedEntries = useMemo(() => {
+    return sortedEntries.slice(0, displayCount);
+  }, [sortedEntries, displayCount]);
+
+  const hasMoreEntries = displayCount < sortedEntries.length;
+  const remainingEntries = sortedEntries.length - displayCount;
 
   const handleDelete = async () => {
     if (!deleteEntry || !me?.root?.weightEntries) return;
@@ -80,6 +91,12 @@ export function WeightEntryList({ onEdit }: WeightEntryListProps) {
   if (sortedEntries.length === 0) {
     return (
       <Card>
+        <CardHeader>
+          <div className="flex flex-row justify-between items-center gap-2">
+            <CardTitle className="text-lg sm:text-xl">Weight Entries</CardTitle>
+            {addButton}
+          </div>
+        </CardHeader>
         <CardContent className="pt-6">
           <div className="text-center py-8">
             <Weight className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -95,62 +112,74 @@ export function WeightEntryList({ onEdit }: WeightEntryListProps) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Weight Entries</CardTitle>
+          <div className="flex flex-row justify-between items-center gap-2">
+            <CardTitle className="text-lg sm:text-xl">Weight Entries</CardTitle>
+            {addButton}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {sortedEntries.map((entry) => (
+            {displayedEntries.map((entry) => (
               <div
                 key={entry.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0">
+                <div className="flex items-center space-x-4 w-full">
+                  {/* Vertically centered icon */}
+                  <div className="flex-shrink-0 flex items-center h-full">
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                       <Weight className="h-5 w-5 text-blue-600" />
                     </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <p className="text-lg font-semibold text-gray-900">
-                        {entry.weightValue} lbs
-                      </p>
-                      <Badge variant="outline" className="text-xs">
-                        {formatRelativeDate(entry.timestamp)}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDate(entry.timestamp)}</span>
-                    </div>
+                  {/* Stack fields vertically */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <p className="text-lg font-semibold text-gray-900">
+                      {entry.weightValue} lbs
+                    </p>
+                    <Badge variant="outline" className="text-xs w-fit mt-1 mb-1">
+                      {formatRelativeDate(entry.timestamp)}
+                    </Badge>
                     {entry.notes && (
                       <p className="text-sm text-gray-600 mt-2">{entry.notes}</p>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center space-x-2 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEdit(entry)}
-                    className="h-8 w-8 p-0"
-                    title="Edit entry"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeleteEntry(entry)}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                    title="Delete entry"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEdit(entry)}
+                      className="h-8 w-8 p-0"
+                      title="Edit entry"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteEntry(entry)}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      title="Delete entry"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+          {hasMoreEntries && (
+            <div className="pt-4 flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setDisplayCount(prev => Math.min(prev + ENTRIES_PER_LOAD, sortedEntries.length))}
+                className="w-full sm:w-auto"
+              >
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Show {Math.min(ENTRIES_PER_LOAD, remainingEntries)} more
+                {remainingEntries > ENTRIES_PER_LOAD && ` (${remainingEntries} remaining)`}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

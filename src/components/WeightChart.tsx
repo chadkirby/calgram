@@ -159,13 +159,10 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
   };
 
   return (
-    <Card>
+    <Card className="pt-3 sm:pt-6 pb-0">
       <CardHeader>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <label htmlFor="time-range" className="text-sm font-medium">
-              Time Range:
-            </label>
             <Select value={timeRange} onValueChange={onTimeRangeChange}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Select time range" />
@@ -201,8 +198,8 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-2 sm:p-6">
-        <div className="h-72 sm:h-96 lg:h-[500px] w-full min-h-[18rem] sm:min-h-[24rem] lg:min-h-[31rem]">
+      <CardContent className="pt-2 sm:pt-6 pb-0">
+        <div className="h-56 sm:h-96 lg:h-[500px] w-full min-h-[14rem] sm:min-h-[24rem] lg:min-h-[31rem]">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-gray-900"></div>
@@ -215,7 +212,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                 margin={{
                   top: 20,
                   right: windowWidth >= 1024 ? 40 : windowWidth >= 640 ? 30 : 5,
-                  bottom: windowWidth >= 640 ? 20 : 35,
+                  bottom: windowWidth >= 640 ? 20 : 10, // reduced bottom margin for mobile
                   left: windowWidth >= 1024 ? 40 : windowWidth >= 640 ? 20 : 5,
                 }}
               >
@@ -246,7 +243,6 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                 />
                 <Legend
                   wrapperStyle={{
-                    paddingTop: '10px',
                     fontSize: windowWidth >= 1024 ? '14px' : windowWidth >= 640 ? '13px' : '10px'
                   }}
                   iconType="line"
