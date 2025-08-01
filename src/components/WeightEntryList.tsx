@@ -140,7 +140,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
                 key={entry.id}
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center space-x-4 w-full">
+                <div className="flex items-center space-x-2 sm:space-x-4 w-full">
                   {/* Vertically centered icon */}
                   <div className="flex-shrink-0 flex items-center h-full">
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -149,7 +149,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
                   </div>
                   {/* Stack fields vertically */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-md font-semibold text-gray-900">
                       {formatWeightDisplay(entry)}
                     </p>
                     <Badge variant="outline" className="text-xs w-fit mt-1 mb-1">

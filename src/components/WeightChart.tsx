@@ -139,8 +139,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
       const isMobile = windowWidth < 640;
 
       return (
-        <div className={`bg-white p-2 sm:p-4 border border-gray-300 rounded-lg shadow-lg ${
-          isMobile ? 'max-w-[280px] text-xs' : 'max-w-xs text-sm'
+        <div className={`bg-white p-2 sm:p-4 border border-gray-300 rounded-lg shadow-lg ${isMobile ? 'max-w-[280px] text-xs' : 'max-w-xs text-sm'
         }`}>
           <p className={`font-semibold text-gray-900 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
             {fullDate ? fullDate.toLocaleDateString('en-US', {
@@ -209,7 +208,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
               </Badge>
               {summaryStats.weightChange && (
                 <Badge variant={summaryStats.weightChange > 0 ? "destructive" : "default"} className="text-xs">
-                  {summaryStats.weightChange > 0 ? '+' : ''}{TrendAnalyzer.formatWeightTooltip(Math.abs(summaryStats.weightChange), me?.profile)}
+                  Δ: {summaryStats.weightChange > 0 ? '+' : ''}{TrendAnalyzer.formatWeightTooltip(Math.abs(summaryStats.weightChange), me?.profile)}
                 </Badge>
               )}
             </div>
@@ -228,10 +227,10 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
               <ComposedChart
                 data={chartData}
                 margin={{
-                  top: 20,
-                  right: windowWidth >= 1024 ? 40 : windowWidth >= 640 ? 30 : 5,
-                  bottom: windowWidth >= 640 ? 20 : 10, // reduced bottom margin for mobile
-                  left: windowWidth >= 1024 ? 40 : windowWidth >= 640 ? 20 : 5,
+                  top: 10,
+                  right: windowWidth >= 1024 ? 60 : windowWidth >= 640 ? 50 : 25,
+                  bottom: windowWidth >= 640 ? 15 : 5,
+                  left: windowWidth >= 1024 ? 30 : windowWidth >= 640 ? 15 : 5,
                 }}
               >
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -241,18 +240,20 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                   interval={windowWidth >= 1024 ? "preserveStartEnd" : windowWidth >= 640 ? "preserveStartEnd" : windowWidth >= 300 ? Math.ceil(chartData.length / 12) : Math.ceil(chartData.length / 4)}
                   angle={windowWidth >= 640 ? -45 : -45}
                   textAnchor="end"
-                  height={windowWidth >= 640 ? 60 : 50}
+                  height={windowWidth >= 640 ? 45 : 35}
                   axisLine={{ stroke: '#e5e7eb' }}
                   tickLine={{ stroke: '#e5e7eb' }}
                 />
                 <YAxis
+                  yAxisId="left"
+                  orientation="left"
                   tick={{ fontSize: windowWidth >= 1024 ? 12 : windowWidth >= 640 ? 11 : 8 }}
                   label={windowWidth >= 640 ? { value: axisLabel, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } } : undefined}
                   domain={[weightAxisConfig?.min || 0, weightAxisConfig?.max || 20]}
                   ticks={weightAxisConfig ? Array.from({ length: Math.floor((weightAxisConfig.max - weightAxisConfig.min) / weightAxisConfig.tickInterval) + 1 }, (_, i) => weightAxisConfig.min + i * weightAxisConfig.tickInterval) : undefined}
                   axisLine={{ stroke: '#e5e7eb' }}
                   tickLine={{ stroke: '#e5e7eb' }}
-                  width={windowWidth >= 640 ? 60 : 35}
+                  width={windowWidth >= 640 ? 45 : 25}
                 />
                 <Tooltip
                   content={<CustomTooltip />}
@@ -267,9 +268,10 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                   layout={windowWidth >= 640 ? 'horizontal' : 'horizontal'}
                   align="center"
                   verticalAlign="bottom"
-                  height={windowWidth >= 640 ? 40 : 30}
+                  height={windowWidth >= 640 ? 30 : 20}
                 />
                 <Line
+                  yAxisId="left"
                   type="monotone"
                   dataKey="weight"
                   stroke="#3b82f6"
@@ -281,6 +283,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                   animationDuration={CHART_ANIMATION_DURATION}
                 />
                 <Line
+                  yAxisId="left"
                   type="monotone"
                   dataKey="weightTrend"
                   stroke="#1d4ed8"

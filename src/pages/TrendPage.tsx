@@ -60,11 +60,11 @@ function TrendPageContent() {
   // Prepare chart data using TrendAnalyzer with unit conversion
   const { chartData, summaryStats, calorieAxisConfig, weightAxisConfig, hasData, weightAxisLabel } = useMemo(() => {
     if (!me?.root?.mealEntries || !me?.root?.weightEntries) {
-      return { 
-        chartData: [], 
-        summaryStats: null, 
-        calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 }, 
-        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, 
+      return {
+        chartData: [],
+        summaryStats: null,
+        calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 },
+        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
         hasData: false,
         weightAxisLabel: 'Weight (lbs)'
       };
@@ -81,11 +81,11 @@ function TrendPageContent() {
     const weightAxisLabel = TrendAnalyzer.getWeightAxisLabel(me.profile);
 
     if (combinedData.length === 0) {
-      return { 
-        chartData: [], 
-        summaryStats: null, 
-        calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 }, 
-        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, 
+      return {
+        chartData: [],
+        summaryStats: null,
+        calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 },
+        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
         hasData: false,
         weightAxisLabel
       };
@@ -211,7 +211,7 @@ function TrendPageContent() {
             {summaryStats && (
               <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary" className="text-xs">
-                  Avg: {summaryStats.avgCalories} cal/day
+                  Avg Cal: {summaryStats.avgCalories} cal/day
                 </Badge>
                 {summaryStats.avgWeight && (
                   <Badge variant="secondary" className="text-xs">
@@ -220,7 +220,7 @@ function TrendPageContent() {
                 )}
                 {summaryStats.weightChange && (
                   <Badge variant={summaryStats.weightChange > 0 ? "destructive" : "default"} className="text-xs">
-                    {summaryStats.weightChange > 0 ? '+' : ''}{TrendAnalyzer.formatWeightTooltip(Math.abs(summaryStats.weightChange), me?.profile)}
+                    Δ: {summaryStats.weightChange > 0 ? '+' : ''}{TrendAnalyzer.formatWeightTooltip(Math.abs(summaryStats.weightChange), me?.profile)}
                   </Badge>
                 )}
               </div>
