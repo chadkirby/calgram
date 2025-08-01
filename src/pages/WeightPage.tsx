@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAccount } from "jazz-tools/react";
-import { JazzAccount, WeightEntry } from "../schema";
+import { JazzAccount, WeightEntry, type BodyWeightUnit } from "../schema";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WeightPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
@@ -69,6 +69,7 @@ function WeightPageContent() {
   const handleSaveWeight = async (data: {
     date: string;
     weightValue: number;
+    unit: BodyWeightUnit;
     notes?: string;
   }) => {
     if (!me?.root) return;
@@ -80,6 +81,7 @@ function WeightPageContent() {
           const weightEntry = WeightEntry.create({
             timestamp: data.date,
             weightValue: data.weightValue,
+            unit: data.unit,
             notes: data.notes || "",
           }, me.root._owner);
 

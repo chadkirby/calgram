@@ -29,6 +29,7 @@ import { DailyPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
 import { JazzAccount, type MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
+import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
 import { type Loaded } from "jazz-tools";
 
 function DailyPageContent() {
@@ -354,7 +355,10 @@ function DailyPageContent() {
                           <div className="text-xs sm:text-sm text-muted-foreground">{meal.foodCategory}</div>
                           <div className="font-medium text-xs sm:text-sm">{meal.foodName}</div>
                           <div className="text-xs sm:text-sm">
-                            {meal.weightInGrams}g
+                            {CalorieCalculator.getFormattedWeight(
+                              meal,
+                              UnitPreferenceManager.getMealWeightUnit(me?.profile)
+                            )}
                           </div>
                           <div className="text-xs sm:text-sm font-medium">
                             {meal.totalCalories.toFixed(1)} cal

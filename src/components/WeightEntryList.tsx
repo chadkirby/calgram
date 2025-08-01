@@ -9,6 +9,7 @@ import { DateTime } from "luxon";
 import { Edit, Trash2, Weight, ChevronDown } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
+import { WeightConverter } from "@/utils/WeightConverter";
 import type { Loaded } from "jazz-tools";
 
 interface WeightEntryListProps {
@@ -30,7 +31,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
   const [deleteEntry, setDeleteEntry] = useState<Loaded<typeof WeightEntry> | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [displayCount, setDisplayCount] = useState(10);
-  const ENTRIES_PER_LOAD = 10;
+  const ENTRIES_PER_LOAD = 50;
 
   // Sort weight entries by date (newest first)
   const sortedEntries = useMemo(() => {
@@ -88,9 +89,24 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
     return date.toLocaleString(DateTime.DATE_MED);
   };
 
+  const formatWeightDisplay = (entry: Loaded<typeof WeightEntry>) => {
+    // Get the stored unit (default to 'lbs' for legacy entries)
+    const storedUnit = entry.unit || 'lbs';
+
+    // Format the original value in its stored unit
+    const originalDisplay = WeightConverter.formatDisplay(entry.weightValue, storedUnit);
+
+    // Always show the opposite unit in parentheses
+    const oppositeUnit = storedUnit === 'kg' ? 'lbs' : 'kg';
+    const convertedWeight = WeightConverter.convert(entry.weightValue, storedUnit, oppositeUnit);
+    const convertedDisplay = WeightConverter.formatDisplay(convertedWeight, oppositeUnit);
+
+    return `${originalDisplay} (${convertedDisplay})`;
+  };
+
   if (sortedEntries.length === 0) {
     return (
-      <Card>
+      <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <div className="flex flex-row justify-between items-center gap-2">
             <CardTitle className="text-lg sm:text-xl">Weight Entries</CardTitle>
@@ -110,7 +126,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
 
   return (
     <>
-      <Card>
+      <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <div className="flex flex-row justify-between items-center gap-2">
             <CardTitle className="text-lg sm:text-xl">Weight Entries</CardTitle>
@@ -134,7 +150,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
                   {/* Stack fields vertically */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <p className="text-lg font-semibold text-gray-900">
-                      {entry.weightValue} lbs
+                      {formatWeightDisplay(entry)}
                     </p>
                     <Badge variant="outline" className="text-xs w-fit mt-1 mb-1">
                       {formatRelativeDate(entry.timestamp)}

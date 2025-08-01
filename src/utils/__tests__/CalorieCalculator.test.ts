@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CalorieCalculator } from '../CalorieCalculator';
 import { type Loaded } from 'jazz-tools';
-import { MealEntry } from '../../schema';
+import { MealEntry, type MealWeightUnit } from '../../schema';
 import { DateTime } from 'luxon';
 
 // Mock meal entry data for testing
@@ -11,7 +11,8 @@ const createMockMealEntry = (
   foodCategory: string,
   caloriesPerGram: number,
   weightInGrams: number,
-  totalCalories: number
+  totalCalories: number,
+  displayUnit?: MealWeightUnit
 ) => ({
   timestamp,
   foodName,
@@ -20,6 +21,7 @@ const createMockMealEntry = (
   weightInGrams,
   notes: '',
   totalCalories,
+  displayUnit,
 } as Loaded<typeof MealEntry>);
 
 describe('CalorieCalculator', () => {
@@ -219,6 +221,248 @@ describe('CalorieCalculator', () => {
       const easternTime = '2025-07-27T10:36:00.000-04:00'; // July 27, 10:36 AM Eastern
       
       expect(CalorieCalculator.isSameDay(pacificTime, easternTime)).toBe(true);
+    });
+  });
+
+  describe('formatMealDisplay', () => {
+    it('should format meal display with default grams unit for legacy entries', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Chicken Breast',
+        'Protein',
+        1.65,
+        150,
+        247.5
+      );
+
+      const formatted = CalorieCalculator.formatMealDisplay(meal);
+      expect(formatted).toBe('Chicken Breast (150g * 1.65 cal/g) Protein 247.5 cal');
+    });
+
+    it('should format meal display with stored displayUnit', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Chicken Breast',
+        'Protein',
+        1.65,
+        150,
+        247.5,
+        'oz'
+      );
+
+      const formatted = CalorieCalculator.formatMealDisplay(meal);
+      expect(formatted).toBe('Chicken Breast (5.3oz * 1.65 cal/g) Protein 247.5 cal');
+    });
+
+    it('should format meal display with override displayUnit', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Chicken Breast',
+        'Protein',
+        1.65,
+        150,
+        247.5,
+        'g'
+      );
+
+      const formatted = CalorieCalculator.formatMealDisplay(meal, 'lb');
+      expect(formatted).toBe('Chicken Breast (0.33lb * 1.65 cal/g) Protein 247.5 cal');
+    });
+
+    it('should handle different weight units correctly', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Apple',
+        'Fruit',
+        0.52,
+        200,
+        104
+      );
+
+      // Test with kilograms
+      const kgFormatted = CalorieCalculator.formatMealDisplay(meal, 'kg');
+      expect(kgFormatted).toBe('Apple (0.20kg * 0.52 cal/g) Fruit 104.0 cal');
+
+      // Test with ounces
+      const ozFormatted = CalorieCalculator.formatMealDisplay(meal, 'oz');
+      expect(ozFormatted).toBe('Apple (7.1oz * 0.52 cal/g) Fruit 104.0 cal');
+
+      // Test with pounds
+      const lbFormatted = CalorieCalculator.formatMealDisplay(meal, 'lb');
+      expect(lbFormatted).toBe('Apple (0.44lb * 0.52 cal/g) Fruit 104.0 cal');
+    });
+
+    it('should format calories per gram with 2 decimal places', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.234567,
+        100,
+        123.46
+      );
+
+      const formatted = CalorieCalculator.formatMealDisplay(meal);
+      expect(formatted).toBe('Test Food (100g * 1.23 cal/g) Test 123.5 cal');
+    });
+
+    it('should format total calories with 1 decimal place', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.5,
+        100,
+        150.123456
+      );
+
+      const formatted = CalorieCalculator.formatMealDisplay(meal);
+      expect(formatted).toBe('Test Food (100g * 1.50 cal/g) Test 150.1 cal');
+    });
+
+    it('should handle zero weight correctly', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.5,
+        0,
+        0
+      );
+
+      const formatted = CalorieCalculator.formatMealDisplay(meal);
+      expect(formatted).toBe('Test Food (0g * 1.50 cal/g) Test 0.0 cal');
+    });
+
+    it('should handle mixed legacy and new data entries', () => {
+      // Legacy entry without displayUnit
+      const legacyMeal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Legacy Food',
+        'Legacy',
+        2.0,
+        100,
+        200
+      );
+
+      // New entry with displayUnit
+      const newMeal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'New Food',
+        'New',
+        2.0,
+        100,
+        200,
+        'oz'
+      );
+
+      const legacyFormatted = CalorieCalculator.formatMealDisplay(legacyMeal, 'oz');
+      const newFormatted = CalorieCalculator.formatMealDisplay(newMeal, 'oz');
+
+      // Both should display in ounces when requested
+      expect(legacyFormatted).toBe('Legacy Food (3.5oz * 2.00 cal/g) Legacy 200.0 cal');
+      expect(newFormatted).toBe('New Food (3.5oz * 2.00 cal/g) New 200.0 cal');
+    });
+  });
+
+  describe('getDisplayWeight', () => {
+    it('should return weight in specified unit', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        1000, // 1000 grams
+        1000
+      );
+
+      expect(CalorieCalculator.getDisplayWeight(meal, 'g')).toBe(1000);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'kg')).toBe(1);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'lb')).toBeCloseTo(2.205, 3);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'oz')).toBeCloseTo(35.274, 3);
+    });
+
+    it('should handle zero weight', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        0,
+        0
+      );
+
+      expect(CalorieCalculator.getDisplayWeight(meal, 'g')).toBe(0);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'kg')).toBe(0);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'lb')).toBe(0);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'oz')).toBe(0);
+    });
+  });
+
+  describe('getFormattedWeight', () => {
+    it('should use meal displayUnit when available', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        150, // 150 grams
+        150,
+        'oz' // Stored as ounces
+      );
+
+      // Should use the meal's stored displayUnit (oz) regardless of preferred unit
+      const formatted = CalorieCalculator.getFormattedWeight(meal, 'g');
+      expect(formatted).toBe('5.3oz');
+    });
+
+    it('should use preferred unit when meal has no displayUnit', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Legacy Food',
+        'Test',
+        1.0,
+        150, // 150 grams
+        150
+        // No displayUnit (legacy entry)
+      );
+
+      // Should use the preferred unit for legacy entries
+      const formattedOz = CalorieCalculator.getFormattedWeight(meal, 'oz');
+      expect(formattedOz).toBe('5.3oz');
+
+      const formattedG = CalorieCalculator.getFormattedWeight(meal, 'g');
+      expect(formattedG).toBe('150g');
+    });
+
+    it('should handle different weight units correctly', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        1000, // 1000 grams
+        1000
+      );
+
+      expect(CalorieCalculator.getFormattedWeight(meal, 'g')).toBe('1000g');
+      expect(CalorieCalculator.getFormattedWeight(meal, 'kg')).toBe('1kg');
+      expect(CalorieCalculator.getFormattedWeight(meal, 'lb')).toBe('2.2lb');
+      expect(CalorieCalculator.getFormattedWeight(meal, 'oz')).toBe('35.3oz');
+    });
+
+    it('should handle zero weight', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        0,
+        0
+      );
+
+      expect(CalorieCalculator.getFormattedWeight(meal, 'g')).toBe('0g');
+      expect(CalorieCalculator.getFormattedWeight(meal, 'oz')).toBe('0oz');
     });
   });
 });

@@ -57,20 +57,35 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
     { value: "90", label: "Last 90 days" },
   ];
 
-  // Prepare chart data using TrendAnalyzer
-  const { chartData, summaryStats, weightAxisConfig, hasData } = useMemo(() => {
+  // Prepare chart data using TrendAnalyzer with unit conversion
+  const { chartData, summaryStats, weightAxisConfig, hasData, axisLabel } = useMemo(() => {
     if (!me?.root?.weightEntries) {
-      return { chartData: [], summaryStats: null, weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, hasData: false };
+      return { 
+        chartData: [], 
+        summaryStats: null, 
+        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, 
+        hasData: false,
+        axisLabel: 'Weight (lbs)'
+      };
     }
 
     const days = parseInt(timeRange);
     const weightData = TrendAnalyzer.prepareWeightData(
       me.root.weightEntries.filter((weight): weight is Loaded<typeof WeightEntry> => weight != null),
+      me.profile,
       days
     );
 
+    const axisLabel = TrendAnalyzer.getWeightAxisLabel(me.profile);
+
     if (weightData.length === 0) {
-      return { chartData: [], summaryStats: null, weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, hasData: false };
+      return { 
+        chartData: [], 
+        summaryStats: null, 
+        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, 
+        hasData: false,
+        axisLabel
+      };
     }
 
     // Calculate trend lines using LOWESS
@@ -111,11 +126,12 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
       chartData: formattedData,
       summaryStats: stats,
       weightAxisConfig,
-      hasData: true
+      hasData: true,
+      axisLabel
     };
-  }, [me?.root?.weightEntries, timeRange]);
+  }, [me?.root?.weightEntries, me?.profile, timeRange]);
 
-  // Custom tooltip component with enhanced information
+  // Custom tooltip component with enhanced information and unit-aware display
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const dataPoint = payload[0]?.payload;
@@ -137,15 +153,17 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
           <div className="space-y-1">
             {payload.map((entry: any, index: number) => {
               if (entry.dataKey === 'weight' && entry.value) {
+                const formattedWeight = TrendAnalyzer.formatWeightTooltip(entry.value, me?.profile);
                 return (
                   <p key={index} className={isMobile ? 'text-xs' : 'text-sm'} style={{ color: entry.color }}>
-                    ⚖️ Weight: <span className="font-medium">{entry.value} lbs</span>
+                    ⚖️ Weight: <span className="font-medium">{formattedWeight}</span>
                   </p>
                 );
               } else if (entry.dataKey === 'weightTrend' && entry.value) {
+                const formattedTrend = TrendAnalyzer.formatWeightTooltip(entry.value, me?.profile);
                 return (
                   <p key={index} className={isMobile ? 'text-xs' : 'text-sm'} style={{ color: entry.color }}>
-                    📉 {isMobile ? 'Trend:' : 'Weight Trend:'} <span className="font-medium">{entry.value.toFixed(1)} lbs</span>
+                    📉 {isMobile ? 'Trend:' : 'Weight Trend:'} <span className="font-medium">{formattedTrend}</span>
                   </p>
                 );
               }
@@ -177,21 +195,21 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
             </Select>
           </div>
 
-          {/* Summary statistics */}
+          {/* Summary statistics with unit-aware display */}
           {summaryStats && (
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary" className="text-xs">
-                Avg: {summaryStats.avgWeight} lbs
+                Avg: {TrendAnalyzer.formatWeightTooltip(summaryStats.avgWeight, me?.profile)}
               </Badge>
               <Badge variant="secondary" className="text-xs">
-                Min: {summaryStats.minWeight} lbs
+                Min: {TrendAnalyzer.formatWeightTooltip(summaryStats.minWeight, me?.profile)}
               </Badge>
               <Badge variant="secondary" className="text-xs">
-                Max: {summaryStats.maxWeight} lbs
+                Max: {TrendAnalyzer.formatWeightTooltip(summaryStats.maxWeight, me?.profile)}
               </Badge>
               {summaryStats.weightChange && (
                 <Badge variant={summaryStats.weightChange > 0 ? "destructive" : "default"} className="text-xs">
-                  {summaryStats.weightChange > 0 ? '+' : ''}{summaryStats.weightChange} lbs
+                  {summaryStats.weightChange > 0 ? '+' : ''}{TrendAnalyzer.formatWeightTooltip(Math.abs(summaryStats.weightChange), me?.profile)}
                 </Badge>
               )}
             </div>
@@ -229,7 +247,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                 />
                 <YAxis
                   tick={{ fontSize: windowWidth >= 1024 ? 12 : windowWidth >= 640 ? 11 : 8 }}
-                  label={windowWidth >= 640 ? { value: 'Weight (lbs)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } } : undefined}
+                  label={windowWidth >= 640 ? { value: axisLabel, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } } : undefined}
                   domain={[weightAxisConfig?.min || 0, weightAxisConfig?.max || 20]}
                   ticks={weightAxisConfig ? Array.from({ length: Math.floor((weightAxisConfig.max - weightAxisConfig.min) / weightAxisConfig.tickInterval) + 1 }, (_, i) => weightAxisConfig.min + i * weightAxisConfig.tickInterval) : undefined}
                   axisLine={{ stroke: '#e5e7eb' }}

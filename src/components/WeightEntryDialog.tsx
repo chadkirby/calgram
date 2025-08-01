@@ -14,7 +14,11 @@ import {
 import { Check, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { DateTime } from "luxon";
-import { WeightEntry } from "../schema";
+import { WeightEntry, type BodyWeightUnit, bodyWeightUnits } from "../schema";
+import { WeightInput, getStepForUnit, getPlaceholderForUnit } from "@/components/WeightInput";
+import { UnitPreferenceManager } from "@/utils/UnitPreferenceManager";
+import { useAccount } from "jazz-tools/react";
+import { JazzAccount } from "../schema";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 import type { Loaded } from "jazz-tools";
@@ -23,6 +27,7 @@ import type { Loaded } from "jazz-tools";
 const weightFormSchema = z.object({
   date: z.string().min(1, "Date is required"),
   weightValue: z.coerce.number().positive("Weight must be a positive number"),
+  unit: z.enum(bodyWeightUnits),
   notes: z.string().optional().default(""),
 });
 
@@ -35,6 +40,7 @@ interface WeightEntryDialogProps {
   onSave?: (data: {
     date: string;
     weightValue: number;
+    unit: BodyWeightUnit;
     notes?: string;
   }) => Promise<void>;
   entry?: Loaded<typeof WeightEntry>;
@@ -42,6 +48,11 @@ interface WeightEntryDialogProps {
 }
 
 export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, mode }: WeightEntryDialogProps) {
+  const { me } = useAccount(JazzAccount, {
+    resolve: {
+      profile: true,
+    },
+  });
   const { updateSyncStatus } = useNetworkStatus();
 
   // Get current date in YYYY-MM-DD format for default (timezone-aware)
@@ -49,9 +60,15 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
     return DateTime.now().toISODate();
   };
 
+  // Get default unit from user preferences
+  const getDefaultUnit = (): BodyWeightUnit => {
+    return UnitPreferenceManager.getBodyWeightUnit(me?.profile);
+  };
+
   const [formData, setFormData] = useState<WeightFormValues>({
     date: getCurrentDate(),
     weightValue: 0,
+    unit: getDefaultUnit(),
     notes: "",
   });
 
@@ -66,19 +83,21 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
         setFormData({
           date: DateTime.fromISO(entry.timestamp).toISODate() || getCurrentDate(),
           weightValue: entry.weightValue,
+          unit: entry.unit || getDefaultUnit(),
           notes: entry.notes || "",
         });
       } else {
         setFormData({
           date: getCurrentDate(),
           weightValue: 0,
+          unit: getDefaultUnit(),
           notes: "",
         });
       }
       setErrors({});
       setSubmitSuccess(false);
     }
-  }, [isOpen, entry, mode]);
+  }, [isOpen, entry, mode, me?.profile]);
 
   // Real-time validation helper
   const validateField = (field: keyof WeightFormValues, value: any) => {
@@ -130,6 +149,7 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
           async () => {
             entry.timestamp = validatedData.date;
             entry.weightValue = validatedData.weightValue;
+            entry.unit = validatedData.unit;
             entry.notes = validatedData.notes || "";
           },
           'weight-update',
@@ -141,9 +161,15 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
           await onSave({
             date: validatedData.date,
             weightValue: validatedData.weightValue,
+            unit: validatedData.unit,
             notes: validatedData.notes,
           });
         }
+      }
+
+      // Save unit preference for future use
+      if (me?.profile) {
+        UnitPreferenceManager.setBodyWeightUnit(me.profile, validatedData.unit);
       }
 
       // Show success feedback
@@ -207,23 +233,30 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Weight (lbs)</label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="Enter your weight"
-              value={formData.weightValue || ""}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value) || 0;
+            <label className="text-sm font-medium">Weight</label>
+            <WeightInput
+              value={formData.weightValue}
+              unit={formData.unit}
+              onValueChange={(value) => {
                 setFormData(prev => ({ ...prev, weightValue: value }));
                 validateField('weightValue', value);
               }}
-              className={`${errors.weightValue ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
+              onUnitChange={(unit) => {
+                const bodyUnit = unit as BodyWeightUnit;
+                setFormData(prev => ({ ...prev, unit: bodyUnit }));
+                validateField('unit', bodyUnit);
+              }}
+              availableUnits={[...bodyWeightUnits]}
+              placeholder={getPlaceholderForUnit(formData.unit)}
+              step={getStepForUnit(formData.unit)}
+              error={!!errors.weightValue}
+              className="touch-manipulation min-h-[44px] sm:min-h-[40px]"
               inputMode="decimal"
-              autoFocus
+              aria-label="Weight input with unit selector"
+              aria-describedby={errors.weightValue ? "weight-error" : undefined}
             />
             {errors.weightValue && (
-              <p className="text-sm text-destructive">{errors.weightValue}</p>
+              <p id="weight-error" className="text-sm text-destructive">{errors.weightValue}</p>
             )}
           </div>
 

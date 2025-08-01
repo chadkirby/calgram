@@ -15,6 +15,7 @@ export const MealEntry = co.map({
   weightInGrams: z.number(),
   notes: z.string().optional(),
   totalCalories: z.number(),
+  displayUnit: z.enum(['g', 'oz', 'lb', 'kg']).optional(),
 });
 
 export type MealEntryType = z.infer<typeof MealEntry>;
@@ -24,6 +25,7 @@ export const WeightEntry = co.map({
   timestamp: z.iso.date(),
   weightValue: z.number().positive("Weight value must be positive"),
   notes: z.string().optional(),
+  unit: z.enum(['lbs', 'kg']).optional(),
 });
 
 export type WeightEntryType = z.infer<typeof WeightEntry>;
@@ -47,6 +49,13 @@ export const FoodIntelligence = co.map({
 
 export type FoodIntelligenceType = z.infer<typeof FoodIntelligence>;
 
+export const mealWeightUnits = ['g', 'oz', 'lb', 'kg'] as const;
+export const bodyWeightUnits = ['lbs', 'kg'] as const;
+
+/** Weight unit types for meal and body weight preferences */
+export type MealWeightUnit = typeof mealWeightUnits[number];
+export type BodyWeightUnit = typeof bodyWeightUnits[number];
+
 /** The account profile is an app-specific per-user public `CoMap`
  *  where you can store top-level objects for that user */
 export const CalorieTrackerProfile = co.profile({
@@ -56,6 +65,10 @@ export const CalorieTrackerProfile = co.profile({
    */
   name: z.string(),
   firstName: z.string(),
+
+  // Unit preferences for weight measurements
+  mealWeightUnit: z.enum(mealWeightUnits).optional(),
+  bodyWeightUnit: z.enum(bodyWeightUnits).optional(),
 
   // Add public fields here
 });

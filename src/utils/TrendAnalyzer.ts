@@ -1,6 +1,9 @@
 import { type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
-import { MealEntry, WeightEntry } from "../schema";
+import { MealEntry, WeightEntry, CalorieTrackerProfile } from "../schema";
+import { WeightConverter } from "./WeightConverter";
+import { UnitPreferenceManager } from "./UnitPreferenceManager";
+import type { BodyWeightUnit } from "../schema";
 
 /**
  * Data point interface for chart data
@@ -94,18 +97,23 @@ export class TrendAnalyzer {
   }
 
   /**
-   * Prepare weight data for chart visualization
+   * Prepare weight data for chart visualization with unit conversion
    * @param weights - Array of weight entries
+   * @param profile - User profile for unit preferences
    * @param days - Number of days to include (default 30)
-   * @returns Array of chart data points with date and weight
+   * @returns Array of chart data points with date and weight in display unit
    */
   static prepareWeightData(
     weights: Loaded<typeof WeightEntry>[] | undefined,
+    profile?: Loaded<typeof CalorieTrackerProfile>,
     days: number = 30
   ): ChartDataPoint[] {
     if (!weights || weights.length === 0) {
       return [];
     }
+
+    // Get user's preferred display unit
+    const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
 
     // Calculate the date range using Luxon
     const endDate = DateTime.now().startOf('day');
@@ -119,27 +127,39 @@ export class TrendAnalyzer {
       })
       .sort((a, b) => DateTime.fromISO(a.timestamp).toMillis() - DateTime.fromISO(b.timestamp).toMillis());
 
-    // Convert to chart data points
-    return filteredWeights.map(weight => ({
-      date: DateTime.fromISO(weight.timestamp).toJSDate(), // Convert to JS Date for chart compatibility
-      weight: weight.weightValue,
-    }));
+    // Convert to chart data points with unit conversion
+    return filteredWeights.map(weight => {
+      // Get the stored unit (default to 'lbs' for legacy entries)
+      const storedUnit = weight.unit || 'lbs';
+      
+      // Convert to display unit if different
+      const convertedWeight = storedUnit === displayUnit 
+        ? weight.weightValue 
+        : WeightConverter.convert(weight.weightValue, storedUnit, displayUnit);
+
+      return {
+        date: DateTime.fromISO(weight.timestamp).toJSDate(), // Convert to JS Date for chart compatibility
+        weight: convertedWeight,
+      };
+    });
   }
 
   /**
    * Prepare combined calorie and weight data for dual-axis charts
    * @param meals - Array of meal entries
    * @param weights - Array of weight entries
+   * @param profile - User profile for unit preferences
    * @param days - Number of days to include (default 30)
    * @returns Array of chart data points with date, calories, and weight
    */
   static prepareCombinedData(
     meals: Loaded<typeof MealEntry>[] | undefined,
     weights: Loaded<typeof WeightEntry>[] | undefined,
+    profile?: Loaded<typeof CalorieTrackerProfile>,
     days: number = 30
   ): ChartDataPoint[] {
     const calorieData = this.prepareDailyCalorieData(meals, days);
-    const weightData = this.prepareWeightData(weights, days);
+    const weightData = this.prepareWeightData(weights, profile, days);
 
     // Create a map of weight data by date for quick lookup
     const weightByDate = new Map<string, number>();
@@ -427,6 +447,36 @@ export class TrendAnalyzer {
    */
   private static formatDateKey(date: Date): string {
     return DateTime.fromJSDate(date).toISODate() || '';
+  }
+
+  /**
+   * Get the weight axis label with current display unit
+   * @param profile - User profile for unit preferences
+   * @returns Formatted axis label string
+   */
+  static getWeightAxisLabel(profile?: Loaded<typeof CalorieTrackerProfile>): string {
+    const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
+    return `Weight (${displayUnit})`;
+  }
+
+  /**
+   * Format weight value for tooltip display
+   * @param value - Weight value
+   * @param profile - User profile for unit preferences
+   * @returns Formatted weight string with unit
+   */
+  static formatWeightTooltip(value: number, profile?: Loaded<typeof CalorieTrackerProfile>): string {
+    const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
+    return WeightConverter.formatDisplay(value, displayUnit);
+  }
+
+  /**
+   * Get the current display unit for weight
+   * @param profile - User profile for unit preferences
+   * @returns Current body weight unit
+   */
+  static getWeightDisplayUnit(profile?: Loaded<typeof CalorieTrackerProfile>): BodyWeightUnit {
+    return UnitPreferenceManager.getBodyWeightUnit(profile);
   }
 
   /**

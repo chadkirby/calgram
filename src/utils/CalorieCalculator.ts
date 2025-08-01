@@ -1,6 +1,7 @@
 import { type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
-import { MealEntry } from "../schema";
+import { MealEntry, type MealWeightUnit } from "../schema";
+import { WeightConverter } from "./WeightConverter";
 
 /**
  * Utility class for calorie-related calculations
@@ -161,5 +162,53 @@ export class CalorieCalculator {
    */
   static createIsoFromDateInput(dateInputValue: string): string {
     return DateTime.fromISO(dateInputValue).startOf('day').toISO() || '';
+  }
+
+  /**
+   * Format meal entry for display with unit-aware weight formatting
+   * @param meal - The meal entry to format
+   * @param displayUnit - Optional unit to display weight in (defaults to meal's displayUnit or grams)
+   * @returns Formatted string: "<food name> (<weight><unit> * <cpg> cal/g) <category> <total calories> cal"
+   */
+  static formatMealDisplay(meal: Loaded<typeof MealEntry>, displayUnit?: MealWeightUnit): string {
+    // Determine the unit to use for display
+    const unitToUse = displayUnit || meal.displayUnit || 'g';
+    
+    // Convert weight from grams to display unit
+    const displayWeight = WeightConverter.fromGrams(meal.weightInGrams, unitToUse);
+    
+    // Format weight with appropriate precision
+    const formattedWeight = WeightConverter.formatDisplay(displayWeight, unitToUse);
+    
+    // Format calories per gram with appropriate precision
+    const formattedCPG = meal.caloriesPerGram.toFixed(2);
+    
+    // Format total calories
+    const formattedCalories = meal.totalCalories.toFixed(1);
+    
+    return `${meal.foodName} (${formattedWeight} * ${formattedCPG} cal/g) ${meal.foodCategory} ${formattedCalories} cal`;
+  }
+
+  /**
+   * Get formatted weight for display in user's preferred unit
+   * @param meal - The meal entry
+   * @param preferredUnit - The user's preferred unit for display
+   * @returns Formatted weight string with unit
+   */
+  static getFormattedWeight(meal: Loaded<typeof MealEntry>, preferredUnit: MealWeightUnit): string {
+    // Use the meal's stored displayUnit if available, otherwise use the preferred unit
+    const unitToUse = meal.displayUnit || preferredUnit;
+    const displayWeight = WeightConverter.fromGrams(meal.weightInGrams, unitToUse);
+    return WeightConverter.formatDisplay(displayWeight, unitToUse);
+  }
+
+  /**
+   * Get display weight for a meal entry in the specified unit
+   * @param meal - The meal entry
+   * @param displayUnit - The unit to display the weight in
+   * @returns Weight value in the specified unit
+   */
+  static getDisplayWeight(meal: Loaded<typeof MealEntry>, displayUnit: MealWeightUnit): number {
+    return WeightConverter.fromGrams(meal.weightInGrams, displayUnit);
   }
 }
