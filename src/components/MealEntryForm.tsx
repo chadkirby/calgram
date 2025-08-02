@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
@@ -14,10 +13,9 @@ import { JazzAccount, MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { CalorieUnitConverter } from "../utils/CalorieUnitConverter";
 import { FoodIntelligenceManager } from "../utils/FoodIntelligenceManager";
-import { DataImporter } from "../utils/DataImporter";
 import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
 import { WeightConverter } from "../utils/WeightConverter";
-import { Info, Check, Upload, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
 import { DateTime } from "luxon";
@@ -71,7 +69,6 @@ export function MealEntryForm({
   onSuccess,
   onCancel,
   me,
-  showImport = false,
   title,
   defaultDate
 }: MealEntryFormProps) {
@@ -93,23 +90,23 @@ export function MealEntryForm({
     const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
     // Default calorie unit to grams
     const preferredCalorieUnit = 'g' as const;
-    
+
     if (mode === 'edit' && initialData) {
       const dateTime = DateTime.fromISO(initialData.timestamp);
-      
+
       // For edit mode, use the stored display unit or convert from grams to preferred unit
       const displayUnit = initialData.displayUnit || preferredWeightUnit;
-      const weightValue = initialData.displayUnit 
+      const weightValue = initialData.displayUnit
         ? WeightConverter.fromGrams(initialData.weightInGrams, displayUnit)
         : WeightConverter.fromGrams(initialData.weightInGrams, preferredWeightUnit);
-      
+
       // For calories, use stored display unit or default to grams
       const calorieUnit = initialData.caloriesPerDisplayUnit || preferredCalorieUnit;
       const caloriesPerDisplayValue = CalorieUnitConverter.fromCaloriesPerGram(
-        initialData.caloriesPerGram, 
+        initialData.caloriesPerGram,
         calorieUnit
       );
-      
+
       return {
         date: dateTime.toISODate() || getCurrentDate(),
         time: dateTime.toFormat('HH:mm'),
@@ -141,28 +138,6 @@ export function MealEntryForm({
   const [errors, setErrors] = React.useState<Partial<Record<keyof MealFormValues, string>>>({});
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitSuccess, setSubmitSuccess] = React.useState(false);
-  const [importStatus, setImportStatus] = React.useState<{
-    isImporting: boolean;
-    success: boolean;
-    message: string;
-  }>({
-    isImporting: false,
-    success: false,
-    message: "",
-  });
-
-  // File input ref for import functionality
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const importTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-
-  // Cleanup timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (importTimeoutRef.current) {
-        clearTimeout(importTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Real-time validation helper
   const validateField = (field: keyof MealFormValues, value: any) => {
@@ -202,7 +177,7 @@ export function MealEntryForm({
           foodData.lastUsedCPG,
           formData.calorieUnit
         );
-        
+
         // Auto-populate calories and category from previous usage
         setFormData(prev => ({
           ...prev,
@@ -226,7 +201,7 @@ export function MealEntryForm({
     : 0;
 
   // Convert weight to grams for calorie calculations
-  const currentWeightInGrams = currentWeightValue > 0 
+  const currentWeightInGrams = currentWeightValue > 0
     ? WeightConverter.toGrams(currentWeightValue, currentWeightUnit)
     : 0;
 
@@ -244,72 +219,6 @@ export function MealEntryForm({
     )
     : 0;
 
-  // Handle data import (only for create mode)
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !me) {
-      return;
-    }
-
-    // Clear any existing timeout
-    if (importTimeoutRef.current) {
-      clearTimeout(importTimeoutRef.current);
-      importTimeoutRef.current = null;
-    }
-
-    // Clear any previous status messages and set importing state
-    setImportStatus({
-      isImporting: true,
-      success: false,
-      message: "Importing data...",
-    });
-
-    try {
-      // Read file content
-      const fileContent = await file.text();
-
-      // Parse JSON data
-      const jsonData = DataImporter.parseJsonFile(fileContent);
-
-      // Import data
-      const result = await DataImporter.importData(jsonData, me);
-
-      setImportStatus({
-        isImporting: false,
-        success: true,
-        message: `Imported ${result.mealCount} meals, ${result.weightCount} weights`,
-      });
-
-      // Clear success message after 5 seconds
-      importTimeoutRef.current = setTimeout(() => {
-        setImportStatus(prev => ({ ...prev, success: false, message: "" }));
-        importTimeoutRef.current = null;
-      }, 5000);
-
-    } catch (error) {
-      console.error("Import failed:", error);
-      setImportStatus({
-        isImporting: false,
-        success: false,
-        message: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      });
-
-      // Clear error message after 8 seconds (longer timeout for actual errors)
-      importTimeoutRef.current = setTimeout(() => {
-        setImportStatus(prev => ({ ...prev, message: "" }));
-        importTimeoutRef.current = null;
-      }, 8000);
-    }
-
-    // Clear file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
 
   const onSubmit = async (e: React.FormEvent) => {
     console.log("Submitting meal form:", formData);
@@ -349,7 +258,7 @@ export function MealEntryForm({
 
       // Convert calories per display unit to calories per gram for storage
       const caloriesPerGram = CalorieUnitConverter.toCaloriesPerGram(
-        validatedData.caloriesPerDisplayValue, 
+        validatedData.caloriesPerDisplayValue,
         validatedData.calorieUnit
       );
 
@@ -509,60 +418,9 @@ export function MealEntryForm({
           <CardTitle className="text-base sm:text-lg lg:text-xl truncate">
             {title || defaultTitle}
           </CardTitle>
-          {showImport && mode === 'create' && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleImportClick}
-                disabled={importStatus.isImporting}
-                className="flex items-center gap-1 text-xs touch-manipulation flex-shrink-0"
-              >
-                <Upload className="h-3 w-3 flex-shrink-0" />
-                <span>Import</span>
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleFileImport}
-                className="hidden"
-              />
-            </>
-          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4 lg:p-6 pt-2 pb-4 sm:pb-6">
-        {/* Import Status Alert */}
-        {importStatus.message && (
-          <Alert className={`py-1.5 ${
-            importStatus.success
-              ? "border-green-200 bg-green-50"
-              : importStatus.isImporting
-                ? "border-blue-200 bg-blue-50"
-                : "border-red-200 bg-red-50"
-          }`}>
-            {importStatus.success ? (
-              <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
-            ) : importStatus.isImporting ? (
-              <Loader2 className="h-4 w-4 text-blue-600 flex-shrink-0 animate-spin" />
-            ) : (
-              <Info className="h-4 w-4 text-red-600 flex-shrink-0" />
-            )}
-            <span className={`text-sm truncate ${
-              importStatus.success
-                ? "text-green-800"
-                : importStatus.isImporting
-                  ? "text-blue-800"
-                  : "text-red-800"
-            }`}>
-              {importStatus.isImporting
-                ? "Importing data..."
-                : importStatus.message}
-            </span>
-          </Alert>
-        )}
 
         <form onSubmit={onSubmit} className="space-y-2.5" noValidate>
           {/* Date and Time - Stacked on mobile, side-by-side on larger screens */}
