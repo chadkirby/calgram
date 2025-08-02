@@ -12,6 +12,7 @@ export const MealEntry = co.map({
   foodName: z.string().min(1, "Food name is required"),
   foodCategory: z.string().min(1, "Food category is required"),
   caloriesPerGram: z.number().nonnegative("Calories per gram cannot be negative"),
+  caloriesPerDisplayUnit: z.enum(['g', 'oz', 'lb', 'kg']).optional(),
   weightInGrams: z.number(),
   notes: z.string().optional(),
   totalCalories: z.number(),
@@ -51,10 +52,12 @@ export type FoodIntelligenceType = z.infer<typeof FoodIntelligence>;
 
 export const mealWeightUnits = ['g', 'oz', 'lb', 'kg'] as const;
 export const bodyWeightUnits = ['lbs', 'kg'] as const;
+export const calorieUnits = ['g', 'oz', 'lb', 'kg'] as const;
 
 /** Weight unit types for meal and body weight preferences */
 export type MealWeightUnit = typeof mealWeightUnits[number];
 export type BodyWeightUnit = typeof bodyWeightUnits[number];
+export type CalorieUnit = typeof calorieUnits[number];
 
 /** The account profile is an app-specific per-user public `CoMap`
  *  where you can store top-level objects for that user */

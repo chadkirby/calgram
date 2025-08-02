@@ -164,30 +164,7 @@ export class CalorieCalculator {
     return DateTime.fromISO(dateInputValue).startOf('day').toISO() || '';
   }
 
-  /**
-   * Format meal entry for display with unit-aware weight formatting
-   * @param meal - The meal entry to format
-   * @param displayUnit - Optional unit to display weight in (defaults to meal's displayUnit or grams)
-   * @returns Formatted string: "<food name> (<weight><unit> * <cpg> cal/g) <category> <total calories> cal"
-   */
-  static formatMealDisplay(meal: Loaded<typeof MealEntry>, displayUnit?: MealWeightUnit): string {
-    // Determine the unit to use for display
-    const unitToUse = displayUnit || meal.displayUnit || 'g';
-    
-    // Convert weight from grams to display unit
-    const displayWeight = WeightConverter.fromGrams(meal.weightInGrams, unitToUse);
-    
-    // Format weight with appropriate precision
-    const formattedWeight = WeightConverter.formatDisplay(displayWeight, unitToUse);
-    
-    // Format calories per gram with appropriate precision
-    const formattedCPG = meal.caloriesPerGram.toFixed(2);
-    
-    // Format total calories
-    const formattedCalories = meal.totalCalories.toFixed(1);
-    
-    return `${meal.foodName} (${formattedWeight} * ${formattedCPG} cal/g) ${meal.foodCategory} ${formattedCalories} cal`;
-  }
+
 
   /**
    * Get formatted weight for display in user's preferred unit

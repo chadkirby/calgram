@@ -89,7 +89,7 @@ export class WeightConverter {
 
     const formatted = value.toFixed(decimals);
     // Remove trailing zeros after decimal point only
-    const cleaned = formatted.replace(/(?<=\.)0+$/, '').replace(/\.$/, '');
+    const cleaned = formatted.replace(/(\.\d*)0+$/, (_, dot) => dot === '.' ? '' : dot);
 
     return `${cleaned}${unit}`;
   }

@@ -60,10 +60,10 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
   // Prepare chart data using TrendAnalyzer with unit conversion
   const { chartData, summaryStats, weightAxisConfig, hasData, axisLabel } = useMemo(() => {
     if (!me?.root?.weightEntries) {
-      return { 
-        chartData: [], 
-        summaryStats: null, 
-        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, 
+      return {
+        chartData: [],
+        summaryStats: null,
+        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
         hasData: false,
         axisLabel: 'Weight (lbs)'
       };
@@ -79,10 +79,10 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
     const axisLabel = TrendAnalyzer.getWeightAxisLabel(me.profile);
 
     if (weightData.length === 0) {
-      return { 
-        chartData: [], 
-        summaryStats: null, 
-        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 }, 
+      return {
+        chartData: [],
+        summaryStats: null,
+        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
         hasData: false,
         axisLabel
       };
@@ -93,11 +93,11 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
     const weightTrend = TrendAnalyzer.calculateLOWESSTrend(weightValues, 0.3);
 
     const stats: {
-        totalDays: number;
-        avgWeight: number;
-        minWeight: number;
-        maxWeight: number;
-        weightChange?: number;
+      totalDays: number;
+      avgWeight: number;
+      minWeight: number;
+      maxWeight: number;
+      weightChange?: number;
     } = {
       totalDays: weightData.length,
       avgWeight: Math.round((weightValues.reduce((sum, val) => sum + val, 0) / weightValues.length) * 10) / 10,
@@ -140,7 +140,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
 
       return (
         <div className={`bg-white p-2 sm:p-4 border border-gray-300 rounded-lg shadow-lg ${isMobile ? 'max-w-[280px] text-xs' : 'max-w-xs text-sm'
-        }`}>
+          }`}>
           <p className={`font-semibold text-gray-900 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
             {fullDate ? fullDate.toLocaleDateString('en-US', {
               weekday: isMobile ? 'short' : 'long',

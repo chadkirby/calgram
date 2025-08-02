@@ -1,17 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { WeightInput } from "@/components/WeightInput";
+import { CalorieInput } from "@/components/CalorieInput";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 
 import { JazzAccount, MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
+import { CalorieUnitConverter } from "../utils/CalorieUnitConverter";
 import { FoodIntelligenceManager } from "../utils/FoodIntelligenceManager";
 import { DataImporter } from "../utils/DataImporter";
 import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
@@ -38,9 +39,10 @@ const mealFormSchema = z.object({
     .string()
     .min(1, "Food category is required")
     .trim(),
-  caloriesPerGram: z
+  caloriesPerDisplayValue: z
     .number()
-    .nonnegative("Calories per gram cannot be negative"),
+    .nonnegative("Calories per unit cannot be negative"),
+  calorieUnit: z.enum(['g', 'oz', 'lb', 'kg']),
   weightValue: z
     .number(), // Weight in display unit (allow negative for discarded food)
   weightUnit: z.enum(['g', 'oz', 'lb', 'kg']),
@@ -88,23 +90,33 @@ export function MealEntryForm({
   // Parse initial data for edit mode
   const getInitialFormData = (): MealFormValues => {
     // Get user's preferred meal weight unit
-    const preferredUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
+    const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
+    // Default calorie unit to grams
+    const preferredCalorieUnit = 'g' as const;
     
     if (mode === 'edit' && initialData) {
       const dateTime = DateTime.fromISO(initialData.timestamp);
       
       // For edit mode, use the stored display unit or convert from grams to preferred unit
-      const displayUnit = initialData.displayUnit || preferredUnit;
+      const displayUnit = initialData.displayUnit || preferredWeightUnit;
       const weightValue = initialData.displayUnit 
         ? WeightConverter.fromGrams(initialData.weightInGrams, displayUnit)
-        : WeightConverter.fromGrams(initialData.weightInGrams, preferredUnit);
+        : WeightConverter.fromGrams(initialData.weightInGrams, preferredWeightUnit);
+      
+      // For calories, use stored display unit or default to grams
+      const calorieUnit = initialData.caloriesPerDisplayUnit || preferredCalorieUnit;
+      const caloriesPerDisplayValue = CalorieUnitConverter.fromCaloriesPerGram(
+        initialData.caloriesPerGram, 
+        calorieUnit
+      );
       
       return {
         date: dateTime.toISODate() || getCurrentDate(),
         time: dateTime.toFormat('HH:mm'),
         foodName: initialData.foodName,
         foodCategory: initialData.foodCategory,
-        caloriesPerGram: initialData.caloriesPerGram,
+        caloriesPerDisplayValue: caloriesPerDisplayValue,
+        calorieUnit: calorieUnit,
         weightValue: weightValue,
         weightUnit: displayUnit,
         notes: initialData.notes || "",
@@ -116,9 +128,10 @@ export function MealEntryForm({
       time: getCurrentTime(),
       foodName: "",
       foodCategory: "",
-      caloriesPerGram: 0,
+      caloriesPerDisplayValue: 0,
+      calorieUnit: preferredCalorieUnit,
       weightValue: 0,
-      weightUnit: preferredUnit,
+      weightUnit: preferredWeightUnit,
       notes: "",
     };
   };
@@ -184,11 +197,17 @@ export function MealEntryForm({
     if (foodIntelligence) {
       const foodData = foodIntelligence.foodData?.[foodName];
       if (foodData) {
-        // Auto-populate calories per gram and category from previous usage
+        // Convert stored calories per gram to display unit
+        const caloriesPerDisplayValue = CalorieUnitConverter.fromCaloriesPerGram(
+          foodData.lastUsedCPG,
+          formData.calorieUnit
+        );
+        
+        // Auto-populate calories and category from previous usage
         setFormData(prev => ({
           ...prev,
           foodName,
-          caloriesPerGram: foodData.lastUsedCPG,
+          caloriesPerDisplayValue: caloriesPerDisplayValue,
           foodCategory: foodData.lastUsedCategory,
         }));
       }
@@ -196,9 +215,15 @@ export function MealEntryForm({
   };
 
   // Get current values for reactive calculations
-  const currentCaloriesPerGram = formData.caloriesPerGram || 0;
+  const currentCaloriesPerDisplayValue = formData.caloriesPerDisplayValue || 0;
+  const currentCalorieUnit = formData.calorieUnit;
   const currentWeightValue = formData.weightValue || 0;
   const currentWeightUnit = formData.weightUnit;
+
+  // Convert calories per display unit to calories per gram for calculations
+  const currentCaloriesPerGram = currentCaloriesPerDisplayValue > 0
+    ? CalorieUnitConverter.toCaloriesPerGram(currentCaloriesPerDisplayValue, currentCalorieUnit)
+    : 0;
 
   // Convert weight to grams for calorie calculations
   const currentWeightInGrams = currentWeightValue > 0 
@@ -322,10 +347,16 @@ export function MealEntryForm({
       // Convert weight to grams for storage and calculations
       const weightInGrams = WeightConverter.toGrams(validatedData.weightValue, validatedData.weightUnit);
 
+      // Convert calories per display unit to calories per gram for storage
+      const caloriesPerGram = CalorieUnitConverter.toCaloriesPerGram(
+        validatedData.caloriesPerDisplayValue, 
+        validatedData.calorieUnit
+      );
+
       // Calculate total calories (always use grams)
       const totalCalories = CalorieCalculator.calculateMealCalories(
         weightInGrams,
-        validatedData.caloriesPerGram
+        caloriesPerGram
       );
 
       // Save user's unit preference
@@ -349,7 +380,8 @@ export function MealEntryForm({
             initialData.timestamp = isoTimestamp;
             initialData.foodName = validatedData.foodName;
             initialData.foodCategory = validatedData.foodCategory;
-            initialData.caloriesPerGram = validatedData.caloriesPerGram;
+            initialData.caloriesPerGram = caloriesPerGram; // Store as calories per gram
+            initialData.caloriesPerDisplayUnit = validatedData.calorieUnit; // Store display unit
             initialData.weightInGrams = weightInGrams; // Store in grams
             initialData.displayUnit = validatedData.weightUnit; // Store display unit
             initialData.notes = validatedData.notes || "";
@@ -379,7 +411,8 @@ export function MealEntryForm({
               timestamp: isoTimestamp,
               foodName: validatedData.foodName,
               foodCategory: validatedData.foodCategory,
-              caloriesPerGram: validatedData.caloriesPerGram,
+              caloriesPerGram: caloriesPerGram, // Store as calories per gram
+              caloriesPerDisplayUnit: validatedData.calorieUnit, // Store display unit
               weightInGrams: weightInGrams, // Store in grams
               displayUnit: validatedData.weightUnit, // Store display unit
               notes: validatedData.notes || "",
@@ -412,15 +445,17 @@ export function MealEntryForm({
 
       // For create mode, reset form after success
       if (mode === 'create') {
-        const preferredUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
+        const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
+        const preferredCalorieUnit = 'g' as const;
         setFormData({
           date: getCurrentDate(),
           time: getCurrentTime(),
           foodName: "",
           foodCategory: "",
-          caloriesPerGram: 0,
+          caloriesPerDisplayValue: 0,
+          calorieUnit: preferredCalorieUnit,
           weightValue: 0,
-          weightUnit: preferredUnit,
+          weightUnit: preferredWeightUnit,
           notes: "",
         });
         setErrors({});
@@ -446,15 +481,17 @@ export function MealEntryForm({
       setFormData(getInitialFormData());
     } else {
       // Clear form for create mode
-      const preferredUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
+      const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
+      const preferredCalorieUnit = 'g' as const;
       setFormData({
         date: getCurrentDate(),
         time: getCurrentTime(),
         foodName: "",
         foodCategory: "",
-        caloriesPerGram: 0,
+        caloriesPerDisplayValue: 0,
+        calorieUnit: preferredCalorieUnit,
         weightValue: 0,
-        weightUnit: preferredUnit,
+        weightUnit: preferredWeightUnit,
         notes: "",
       });
     }
@@ -632,22 +669,28 @@ export function MealEntryForm({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs sm:text-sm font-medium">Calories per Gram</label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={formData.caloriesPerGram || ""}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, caloriesPerGram: value }));
-                  validateField('caloriesPerGram', value);
+              <label className="text-xs sm:text-sm font-medium">Calories per Unit</label>
+              <CalorieInput
+                value={formData.caloriesPerDisplayValue}
+                unit={formData.calorieUnit}
+                onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, caloriesPerDisplayValue: value }));
+                  validateField('caloriesPerDisplayValue', value);
                 }}
-                className={`${errors.caloriesPerGram ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[40px]`}
+                onUnitChange={(unit) => {
+                  setFormData(prev => ({ ...prev, calorieUnit: unit }));
+                  validateField('calorieUnit', unit);
+                }}
+                placeholder="0.00"
+                error={!!errors.caloriesPerDisplayValue || !!errors.calorieUnit}
                 inputMode="decimal"
+                className="touch-manipulation min-h-[40px]"
+                aria-label="Calorie density input"
               />
-              {errors.caloriesPerGram && (
-                <p className="text-xs text-destructive">{errors.caloriesPerGram}</p>
+              {(errors.caloriesPerDisplayValue || errors.calorieUnit) && (
+                <p className="text-xs text-destructive">
+                  {errors.caloriesPerDisplayValue || errors.calorieUnit}
+                </p>
               )}
             </div>
           </div>
@@ -679,7 +722,7 @@ export function MealEntryForm({
                 <div className="text-xs text-muted-foreground">Today</div>
               </div>
               <div>
-                <div className={`text-sm sm:text-base font-semibold ${currentCaloriesPerGram > 0 && currentWeightValue !== 0
+                <div className={`text-sm sm:text-base font-semibold ${currentCaloriesPerDisplayValue > 0 && currentWeightValue !== 0
                   ? "text-foreground"
                   : "text-muted-foreground"
                   }`}>
