@@ -190,7 +190,11 @@ function TrendPageContent() {
       <ConnectionStatus />
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Calorie Trend</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Calorie Trend {me?.profile?.firstName && (
+              <span className="text-sm text-muted-foreground truncate">
+                ({me.profile.firstName})
+              </span>
+            )}</CardTitle>
           <div className="flex flex-col gap-4 pt-2 sm:pt-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <Select value={timeRange} onValueChange={handleTimeRangeChange}>

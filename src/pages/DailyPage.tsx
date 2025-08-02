@@ -196,7 +196,11 @@ function DailyPageContent() {
       <ConnectionStatus />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg lg:text-xl">Daily Calories</CardTitle>
+          <CardTitle className="text-base sm:text-lg lg:text-xl">Daily Calories {me?.profile?.firstName && (
+              <span className="text-sm text-muted-foreground truncate">
+                ({me.profile.firstName})
+              </span>
+            )}</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Compact Date Navigation */}

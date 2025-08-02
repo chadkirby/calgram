@@ -27,11 +27,6 @@ export function Layout() {
           <div className="sm:hidden flex items-center justify-between p-2 min-h-[48px]">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <h1 className="text-sm font-semibold truncate">Calorie Tracker</h1>
-              {me?.profile?.firstName && (
-                <span className="text-xs text-muted-foreground truncate">
-                  {me.profile.firstName}
-                </span>
-              )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {isAuthenticated && (

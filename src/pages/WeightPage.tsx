@@ -108,7 +108,11 @@ function WeightPageContent() {
         <CardHeader>
           <div className="flex flex-row justify-between items-center gap-2">
             <CardTitle className="text-lg sm:text-xl lg:text-2xl">
-              Weight Tracking
+              Weight Tracking {me?.profile?.firstName && (
+              <span className="text-sm text-muted-foreground truncate">
+                ({me.profile.firstName})
+              </span>
+            )}
             </CardTitle>
             {/* Removed Add Weight button from here */}
           </div>
