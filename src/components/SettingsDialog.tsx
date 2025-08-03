@@ -62,7 +62,7 @@ export function SettingsDialog() {
           <SettingsIcon className="w-3 h-3 sm:w-4 sm:h-4" />
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" autoFocus={false}>
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -84,6 +84,8 @@ export function SettingsDialog() {
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Enter your full name"
                   className="w-full"
+                  autoFocus={false}
+                  tabIndex={-1}
                 />
               </div>
               <div className="grid gap-2">
@@ -94,6 +96,8 @@ export function SettingsDialog() {
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Enter your first name"
                   className="w-full"
+                  autoFocus={false}
+                  tabIndex={-1}
                 />
                 <p className="text-xs text-muted-foreground">
                   This is how you'll be greeted in the app
