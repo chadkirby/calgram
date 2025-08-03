@@ -1,3 +1,37 @@
+/**
+ * UnitInput
+ *
+ * Layout overview:
+ * - This component renders a "composite input": a single bordered wrapper that visually
+ *   looks like one input, but internally it contains two children in a grid:
+ *     1) The numeric Input (left column, flexing to fill available space)
+ *     2) The UnitSelector (right column, intrinsic width)
+ *
+ * Why grid:
+ * - We use CSS Grid with columns [1fr auto] so the Input consumes the remaining width
+ *   while the UnitSelector only takes the space it needs. This eliminates the need for
+ *   absolute positioning and hardcoded right padding (e.g., pr-20).
+ *
+ * Focus and states:
+ * - The outer wrapper owns border, background, rounding, and the unified focus ring via
+ *   Tailwind `focus-within:*` utilities. When either the Input or UnitSelector is focused,
+ *   the wrapper shows the ring, making the control feel cohesive.
+ * - Error and disabled visuals are applied on the wrapper for consistency. We still forward
+ *   aria-invalid to the Input for accessibility tooling.
+ *
+ * Spacing (important for compactness):
+ * - The Input intentionally has asymmetric horizontal padding:
+ *     - Left: pl-2 (8px) — small but readable left breathing room
+ *     - Right: pr-0 — maximize visible digits; the UnitSelector cell provides its own
+ *       small left padding so the number doesn’t collide with the dropdown.
+ * - The UnitSelector’s container uses `pl-1 pr-1` to create a subtle gap between the
+ *   number and the dropdown trigger without wasting horizontal space.
+ *
+ * Mobile, side-by-side layouts:
+ * - The combination of grid and `min-w-0` on the Input allows the text field to shrink
+ *   properly without overflow. This preserves compact side-by-side rows on small screens
+ *   while avoiding unusable gaps.
+ */
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { UnitSelector } from "@/components/UnitSelector";
@@ -137,9 +171,31 @@ export function UnitInput<T extends string>({
   const currentUnitConfig = units.find(u => u.value === unit);
   const unitLabel = currentUnitConfig?.fullName || unit;
 
+  // Layout notes:
+  // - Composite input wrapper renders a single control visually, containing:
+  //   left: number Input (flexible) and right: UnitSelector (intrinsic width).
+  // - Grid columns [1fr auto] allocate remaining space to the Input and minimal space to the selector.
+  // - Wrapper owns the chrome (border/bg/radius) and the unified focus ring (focus-within:*).
+  // - Error/disabled states are applied to the wrapper; aria-invalid is also passed to the Input.
+  // - Spacing: Input uses pl-2 (left padding) and pr-0; selector container adds pl-1 to prevent collision.
   return (
-    <div className={cn("relative flex items-center", className)}>
-      {/* Input Field */}
+    <div
+      className={cn(
+        // Composite input wrapper (visual single input)
+        "grid grid-cols-[1fr_auto] items-center rounded-md border bg-background",
+        // Unify focus for both child elements
+        "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        // Error/disabled styling applied here for consistency
+        error && [
+          "border-destructive",
+          "focus-within:ring-destructive/40",
+        ],
+        disabled && "opacity-60 pointer-events-none",
+        className
+      )}
+      aria-invalid={error || undefined}
+    >
+      {/* Left cell: numeric input (borderless; wrapper provides chrome) */}
       <Input
         type="number"
         step={step}
@@ -156,25 +212,23 @@ export function UnitInput<T extends string>({
         aria-describedby={ariaDescribedBy}
         aria-invalid={error}
         className={cn(
-          // Base styling
-          "pr-20", // Make room for unit selector
-          // Error states
-          error && [
-            "border-destructive",
-            "focus-visible:ring-destructive",
-            "aria-invalid:border-destructive",
-            "aria-invalid:ring-destructive/20"
-          ],
-          // Mobile optimization
-          "touch-manipulation",
-          "min-h-[40px]",
-          // Ensure proper focus behavior
-          "focus-visible:z-10"
+          // Wrapper owns border/shadow/focus
+          "border-0 bg-transparent shadow-none",
+          "focus-visible:outline-none focus-visible:ring-0",
+          // Spacing: pl-2 (8px) per visual preference, pr-0 to maximize digits
+          "pl-2 pr-0 py-2",
+          // Sizing and shrink behavior
+          "min-h-[40px] w-full min-w-0",
+          // Touch ergonomics
+          "touch-manipulation"
         )}
       />
 
-      {/* Unit Selector - Positioned as suffix */}
-      <div className="absolute right-1 top-1/2 -translate-y-1/2 z-20">
+      {/* Right cell: Unit selector in flow; shrink-wrap width */}
+      <div
+        // Left padding keeps a small gap between number text and dropdown trigger
+        className="pl-1 pr-1"
+      >
         <UnitSelector
           value={unit}
           onChange={handleUnitChange}
@@ -183,14 +237,12 @@ export function UnitInput<T extends string>({
           disabled={disabled}
           labelSuffix={labelSuffix}
           className={cn(
-            // Ensure it fits within the input
+            // Integrate with wrapper; no extra chrome here
             "border-0 bg-transparent shadow-none",
-            // Maintain proper sizing
+            // Compact sizing to minimize horizontal footprint
             "h-7 min-w-[45px] max-w-[70px]",
-            // Focus styling to work with input
-            "focus-visible:ring-1 focus-visible:ring-ring",
-            // Ensure proper layering
-            "relative z-10"
+            // The wrapper shows the ring; suppress local ring to avoid double visuals
+            "focus-visible:ring-0"
           )}
         />
       </div>
