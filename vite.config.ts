@@ -6,6 +6,10 @@ import { fileURLToPath, URL } from "node:url";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), cloudflare()],
+  server: {
+    host: true, // Allow external connections
+    allowedHosts: ["ck.lion-solfege.ts.net"],
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
@@ -13,6 +17,9 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      external: (id) => {
+        return id.includes('__tests__')
+      },
       onwarn(warning, warn) {
         // Suppress warnings about comments that Rollup can't interpret
         if (warning.code === 'INVALID_ANNOTATION') {
