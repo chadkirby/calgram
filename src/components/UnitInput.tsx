@@ -113,6 +113,10 @@ export function UnitInput<T extends string>({
 
   const handleFocus = () => {
     setIsEditing(true);
+    // When entering edit mode, show the un-rounded full value
+    if (value > 0) {
+      setDisplayValue(value.toString());
+    }
   };
 
   const handleBlur = () => {
