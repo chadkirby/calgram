@@ -51,18 +51,22 @@ export function UnitInput<T extends string>({
   // Track the displayed value separately from the prop value to handle conversion smoothly
   const [displayValue, setDisplayValue] = React.useState<string>("");
   const [isConverting, setIsConverting] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(false);
 
   // Update display value when value or unit changes from parent
   React.useEffect(() => {
-    if (!isConverting) {
+    // Only update from props when not actively editing and not converting
+    if (!isConverting && !isEditing) {
       setDisplayValue(value > 0 ? roundForDisplay(value) : "");
     }
-  }, [value, unit, isConverting]);
+  }, [value, unit, isConverting, isEditing]);
 
   // Handle input value changes
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
-    setDisplayValue(roundForDisplay(parseFloat(inputValue)));
+
+    // While editing, preserve raw input without rounding so users can type freely
+    setDisplayValue(inputValue);
 
     // Parse and validate the input
     const numericValue = parseFloat(inputValue);
@@ -71,6 +75,21 @@ export function UnitInput<T extends string>({
     } else if (!isNaN(numericValue) && numericValue >= 0) {
       onValueChange(numericValue);
     }
+  };
+
+  const handleFocus = () => {
+    setIsEditing(true);
+  };
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    // On blur (at-rest), apply rounding to what is displayed
+    const numericValue = parseFloat(displayValue);
+    if (displayValue === "" || isNaN(numericValue)) {
+      setDisplayValue("");
+      return;
+    }
+    setDisplayValue(numericValue > 0 ? roundForDisplay(numericValue) : "");
   };
 
   // Handle unit changes with optional automatic value conversion
@@ -90,7 +109,7 @@ export function UnitInput<T extends string>({
       onUnitChange(newUnit);
       onValueChange(convertedValue);
 
-      // Update display value to show converted amount
+      // Update display value to show converted amount, but only rounded once conversion completes
       setDisplayValue(roundForDisplay(convertedValue));
 
     } catch (error) {
@@ -129,6 +148,8 @@ export function UnitInput<T extends string>({
         placeholder={placeholder}
         value={displayValue}
         onChange={handleValueChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         disabled={disabled}
         inputMode={inputMode}
         aria-label={ariaLabel || `${labelSuffix} input in ${unitLabel}`}
