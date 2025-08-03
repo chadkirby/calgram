@@ -9,7 +9,7 @@ export const router = createBrowserRouter([
     path: "/",
     element: <Layout />,
     children: [
-      { index: true, element: <Navigate to="/meals" replace /> },
+      { index: true, element: <Navigate to="/daily" replace /> },
       { path: "weight", element: <WeightPage /> },
       { path: "daily", element: <DailyPage /> },
       { path: "trends", element: <TrendPage /> },

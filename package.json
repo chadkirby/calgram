@@ -43,7 +43,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@cloudflare/vite-plugin": "^1.9.6",
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.54.1",
     "@tailwindcss/postcss": "^4.1.10",
     "@types/luxon": "^3.6.2",
     "@types/node": "^24.0.15",

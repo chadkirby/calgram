@@ -64,7 +64,7 @@ export function Layout() {
 
       <main className="max-w-7xl mx-auto p-1 sm:p-4 lg:p-6">
         <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto mb-0 sm:mb-6">
+          <TabsList data-testid="main-tabs" className="grid w-full grid-cols-3 h-auto mb-0 sm:mb-6">
             <TabsTrigger
               value="daily"
               className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
