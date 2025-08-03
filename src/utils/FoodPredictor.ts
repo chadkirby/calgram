@@ -2,24 +2,26 @@ import { DateTime } from "luxon";
 import { type Loaded } from "jazz-tools";
 import { FoodIntelligence, MealEntry } from "../schema";
 
+export type PredictionEntry = Pick<Loaded<typeof MealEntry>, 'timestamp' | 'foodName' | 'foodCategory'>;
+
 export interface FoodScore {
   foodName: string; // display-cased food name
   score: number;
-  entries: Loaded<typeof MealEntry>[];
+  entries: PredictionEntry[];
 }
 
 /**
  * Normalize a food name for grouping (case-insensitive scoring groups).
  */
 function normalizeFoodName(name: string): string {
-  return name.trim().toLowerCase();
+  return name?.trim().toLowerCase() || "";
 }
 
 /**
  * Choose a display casing for a normalized group.
  * Strategy: prefer the most recent casing among entries in the group.
  */
-function chooseDisplayName(entries: Loaded<typeof MealEntry>[]): string {
+function chooseDisplayName(entries: PredictionEntry[]): string {
   if (entries.length === 0) return "";
   // entries contain ISO timestamps; pick the max
   const mostRecent = entries.reduce((acc, cur) => {
@@ -65,8 +67,11 @@ export function calculateTimeOfDayScore(entryDate: Date | DateTime, currentTimeO
   }
 
   const hoursDiff = timeDiff / 60;
-  // Gaussian-like with variance factor tuned (denominator = 8 as per outline)
-  return Math.exp(-(hoursDiff * hoursDiff) / 8);
+
+  // Stronger exponential falloff: exp(-lambda * |hoursDiff|)
+  // Tunable lambda chosen to penalize > ~45-60 min deltas aggressively.
+  const lambda = 1.2; // at 1h => ~0.30, 2h => ~0.09, 3h => ~0.03
+  return Math.exp(-lambda * Math.abs(hoursDiff));
 }
 
 /**
@@ -79,7 +84,7 @@ function isoToDateTime(iso: string): DateTime {
 /**
  * Calculates majority category among provided entries (ties broken by most recent)
  */
-function majorityCategory(entries: Loaded<typeof MealEntry>[]): string | null {
+function majorityCategory(entries: PredictionEntry[]): string | null {
   if (!entries.length) return null;
   const counts = new Map<string, number>();
   for (const e of entries) {
@@ -111,7 +116,7 @@ export class FoodPredictor {
    * Returns null if no recent entries within window.
    */
   static predictMostLikelyFood(
-    entries: Loaded<typeof MealEntry>[],
+    entries: PredictionEntry[],
     currentTime: Date = new Date(),
     daysToConsider: number = 7
   ): string | null {
@@ -123,7 +128,7 @@ export class FoodPredictor {
    * Get top N predictions with scores and grouped entries.
    */
   static getTopFoodPredictions(
-    entries: Loaded<typeof MealEntry>[],
+    entries: PredictionEntry[],
     currentTime: Date = new Date(),
     daysToConsider: number = 7,
     topN: number = 3
@@ -131,22 +136,42 @@ export class FoodPredictor {
     if (!entries || entries.length === 0) return [];
 
     const currentDT = DateTime.fromJSDate(currentTime);
+    const startOfCurrentDay = currentDT.startOf('day');
     const cutoff = currentDT.minus({ days: daysToConsider });
 
     // Filter to recent entries
-    const recentEntries = entries.filter((e): e is Loaded<typeof MealEntry> => {
-      if (!e) return false;
+    let recentEntries: PredictionEntry[] = [];
+    const todayEntries: PredictionEntry[] = [];
+    for (const e of entries) {
+      if (!e) continue;
       const dt = DateTime.fromISO(e.timestamp);
-      if (!dt.isValid) return false;
-      return dt >= cutoff;
-    });
+      if (!dt.isValid) continue;
+      // Only include entries within the window AND not today AND not in the future
+      if (dt >= cutoff && dt < startOfCurrentDay) {
+        recentEntries.push(e);
+      } else if (dt >= startOfCurrentDay && dt <= currentDT) {
+        todayEntries.push(e);
+      }
+    }
 
     if (recentEntries.length === 0) return [];
 
+    // make sure today entries are sorted by timestamp (newest first)
+    todayEntries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    const lastEntryFromToday = todayEntries[0];
+    if (lastEntryFromToday) {
+      // If we have an entry from today, then remove items with the same
+      // food name from recent entries because we don't want to predict
+      // the same food item that was just eaten
+      const todayFoodName = normalizeFoodName(lastEntryFromToday.foodName);
+      recentEntries = recentEntries.filter(e => normalizeFoodName(e.foodName) !== todayFoodName);
+    }
+
     // Group by normalized food name
-    const groupMap = new Map<string, Loaded<typeof MealEntry>[]>();
+    const groupMap = new Map<string, PredictionEntry[]>();
     for (const e of recentEntries) {
-      const key = normalizeFoodName(e.foodName || "");
+      const key = normalizeFoodName(e.foodName);
       if (!groupMap.has(key)) groupMap.set(key, []);
       groupMap.get(key)!.push(e);
     }
@@ -161,11 +186,10 @@ export class FoodPredictor {
         const entryDT = isoToDateTime(e.timestamp);
         const dayRecencyScore = calculateDayRecencyScore(entryDT, currentDT);
         const timeOfDayScore = calculateTimeOfDayScore(entryDT, currentTimeOfDay);
-        const combinedScore = dayRecencyScore * 0.3 + timeOfDayScore * 0.7;
+        const combinedScore = dayRecencyScore * 0.3 + timeOfDayScore;
+        // if (/stick|pup cup/i.test(e.foodName)) console.log(`Scoring entry: ${e.foodName} | Day Delta: ${currentDT.diff(entryDT, "days").days.toFixed(2)} | Day Recency: ${dayRecencyScore.toFixed(2)} | Time Delta: ${currentTimeOfDay - getTimeOfDay(entryDT)} | Time of Day: ${timeOfDayScore.toFixed(2)} | Combined: ${combinedScore.toFixed(2)} | Total: ${(totalScore + combinedScore).toFixed(2)}`);
         totalScore += combinedScore;
       }
-      // const frequencyBonus = Math.log(foodEntries.length + 1) * 0.5;
-      // const finalScore = totalScore + frequencyBonus;
 
       const displayName = chooseDisplayName(foodEntries);
 
@@ -186,7 +210,7 @@ export class FoodPredictor {
   static resolveCategoryForFood(
     intelligence: Loaded<typeof FoodIntelligence> | undefined,
     predictedFoodDisplayName: string,
-    groupedEntries: Loaded<typeof MealEntry>[]
+    groupedEntries: PredictionEntry[]
   ): string | null {
     if (intelligence?.foodData) {
       const md = intelligence.foodData[predictedFoodDisplayName];

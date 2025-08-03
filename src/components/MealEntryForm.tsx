@@ -175,7 +175,7 @@ export function MealEntryForm({
     const entries = [...me.root.mealEntries].filter((e): e is NonNullable<typeof e> => e != null);
     if (entries.length === 0) return;
 
-    const prediction = FoodPredictor.getTopFoodPredictions(entries, new Date(), 10, 1)[0];
+    const prediction = FoodPredictor.getTopFoodPredictions(entries, new Date(), 4, 1)[0];
     if (!prediction) return;
 
     const predictedFood = prediction.foodName;
