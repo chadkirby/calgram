@@ -20,6 +20,7 @@ import * as React from "react";
 import { z } from "zod";
 import { DateTime } from "luxon";
 import { type Loaded } from "jazz-tools";
+import { FoodPredictor } from "../utils/FoodPredictor";
 
 // Enhanced Zod schema for comprehensive form validation
 const mealFormSchema = z.object({
@@ -138,6 +139,7 @@ export function MealEntryForm({
   const [errors, setErrors] = React.useState<Partial<Record<keyof MealFormValues, string>>>({});
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitSuccess, setSubmitSuccess] = React.useState(false);
+  const [prefilled, setPrefilled] = React.useState<{ foodName?: string; foodCategory?: string } | null>(null);
 
   // Real-time validation helper
   const validateField = (field: keyof MealFormValues, value: any) => {
@@ -162,6 +164,43 @@ export function MealEntryForm({
   const foodIntelligence = me?.root?.foodIntelligence;
   const recentFoods = foodIntelligence ? FoodIntelligenceManager.getRecentFoods(foodIntelligence) : [];
   const recentCategories = foodIntelligence ? FoodIntelligenceManager.getRecentCategories(foodIntelligence) : [];
+
+  // Mount-only prefill for create mode using FoodPredictor; never overwrite after user types
+  React.useEffect(() => {
+    if (mode !== 'create') return;
+    if (!me?.root?.mealEntries) return;
+    // Only prefill if fields are still empty
+    if (formData.foodName?.trim() || formData.foodCategory?.trim()) return;
+
+    const entries = [...me.root.mealEntries].filter((e): e is NonNullable<typeof e> => e != null);
+    if (entries.length === 0) return;
+
+    const prediction = FoodPredictor.getTopFoodPredictions(entries, new Date(), 10, 1)[0];
+    if (!prediction) return;
+
+    const predictedFood = prediction.foodName;
+    const resolvedCategory = FoodPredictor.resolveCategoryForFood(
+      foodIntelligence || undefined,
+      predictedFood,
+      prediction.entries
+    ) || "";
+
+    // If food intelligence has a lastUsedCPG for this food, prefill calories per display unit (keep current unit)
+    let caloriesPerDisplayValue = formData.caloriesPerDisplayValue;
+    if (foodIntelligence?.foodData?.[predictedFood]?.lastUsedCPG != null) {
+      const cpg = foodIntelligence.foodData[predictedFood].lastUsedCPG;
+      caloriesPerDisplayValue = CalorieUnitConverter.fromCaloriesPerGram(cpg, formData.calorieUnit);
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      foodName: predictedFood,
+      foodCategory: resolvedCategory,
+      caloriesPerDisplayValue,
+    }));
+    setPrefilled({ foodName: predictedFood, foodCategory: resolvedCategory || undefined });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, me?.root?.mealEntries, foodIntelligence]);
 
   // Handle food selection to auto-populate fields
   const handleFoodSelection = (foodName: string) => {
@@ -465,6 +504,8 @@ export function MealEntryForm({
                 value={formData.foodName}
                 onValueChange={(value) => {
                   handleFoodSelection(value);
+                  // If the user types/changes the food name manually, clear prefill hint
+                  setPrefilled(null);
                   validateField('foodName', value);
                 }}
                 options={recentFoods}
@@ -482,6 +523,8 @@ export function MealEntryForm({
                 value={formData.foodCategory}
                 onValueChange={(value) => {
                   setFormData(prev => ({ ...prev, foodCategory: value }));
+                  // If user changes category manually, also clear prefill hint
+                  setPrefilled(null);
                   validateField('foodCategory', value);
                 }}
                 options={recentCategories}
@@ -493,6 +536,9 @@ export function MealEntryForm({
               )}
             </div>
           </div>
+          {!errors.foodName && prefilled?.foodName && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">Prediction based on recent meals</p>
+          )}
 
           {/* Row 3: Weight and Calories per Gram */}
           <div className="grid grid-cols-2 gap-2">
