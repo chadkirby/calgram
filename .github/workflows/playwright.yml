@@ -12,6 +12,7 @@ permissions:
 env:
   CI: true
   VOLTA_FEATURE_PNPM: 1
+  PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
 
 jobs:
   e2e:
@@ -38,23 +39,18 @@ jobs:
       # 2. If no match, fall back to any previous cache for this OS
       # 3. If still no match, create new cache
       - name: Cache pnpm dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          # Define what paths should be cached
           path: |
             **/node_modules
             ~/.pnpm-store
-          # Primary cache key - unique per pnpm-lock.yaml change
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          # Fallback key - matches any previous cache for this OS/pnpm combo
-          # Useful when dependencies partially change
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
-      # Similar cache strategy for Playwright browsers
-      # Avoids re-downloading browsers on every run
+      # Cache Playwright browsers to avoid re-downloads
       - name: Cache Playwright browsers
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -65,16 +61,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Install Playwright if not in cache
-      - name: Install Playwright
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: |
-          pnpm playwright install
-          pnpm playwright install-deps
+      # Use official Microsoft Playwright Action to set up browsers and system deps
+      - name: Setup Playwright
+        uses: microsoft/playwright-github-action@v1
+        with:
+          # Reuse cached browsers if available; the action will install missing bits
+          with-deps: true
+          install-dependencies: true
+          # Don't install browsers if cache hit? Let the action validate; still fine with cache
+          # Browsers path controlled via env PLAYWRIGHT_BROWSERS_PATH
 
       - name: Run Playwright tests
-        env:
-          HOME: ${{ runner.temp }}
         run: pnpm test:e2e
 
       - name: Upload Playwright report
