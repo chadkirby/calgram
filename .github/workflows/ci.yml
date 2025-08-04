@@ -1,0 +1,69 @@
+name: CI - Unit Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (if needed by tests)
+        run: |
+          if pnpm -s run | grep -q "^build\b"; then
+            pnpm build
+          else
+            echo "No build script found, skipping"
+          fi
+
+      - name: Run unit tests
+        run: |
+          if pnpm -s run | grep -qE "^(test|test:unit)\b"; then
+            if pnpm -s run | grep -q "^test:unit\b"; then
+              pnpm test:unit -- --reporter=default --coverage --run
+            else
+              pnpm test -- --reporter=default --coverage --run
+            fi
+          else
+            # Fallback to vitest if no scripts present
+            npx vitest run --reporter=default --coverage
+          fi
+
+      - name: Upload coverage (if exists)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: |
+            coverage/**
+            .coverage/**
+          if-no-files-found: ignore
+          retention-days: 7
