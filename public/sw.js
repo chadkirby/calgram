@@ -1,9 +1,11 @@
 /* eslint-disable no-restricted-globals */
-// Plain JS service worker for serving at /sw.js
+// Plain JS service worker compiled from src/sw.ts for serving at /sw.js
 
-// VERSION is injected by the post-build script to ensure byte-diff per deploy.
-// During local dev (when the script hasn't run), fall back to a timestamp so the SW still registers.
-const VERSION = 'dev-' + new Date().toISOString();
+// VERSION is injected in app builds, but public files are not transformed by Vite.
+// Use a safe fallback that still changes across dev sessions.
+const VERSION = (typeof self !== 'undefined' && typeof self.__BUILD_HASH__ !== 'undefined')
+  ? self.__BUILD_HASH__
+  : 'dev-' + Date.now();
 
 const CACHE_NAME = `calgram-cache-${VERSION}`;
 
