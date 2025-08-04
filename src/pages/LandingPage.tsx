@@ -154,7 +154,7 @@ export function LandingPage() {
                     placeholder="Jane"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                autoFocus
+                    autoFocus={false}
                   />
               <p className="text-xs text-muted-foreground">
                 We’ll label your passkey as Sammygram ({firstName || "User"}).
