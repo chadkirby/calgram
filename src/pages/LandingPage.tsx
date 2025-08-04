@@ -78,7 +78,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center text-center gap-6 sm:gap-8 px-4">
+    <div className="min-h-[70vh] flex flex-col items-center justify-center text-center gap-6 sm:gap-8 px-4 pb-16">
       <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
         Calorie tracking for real life (and real pups)
       </h1>
