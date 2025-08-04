@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useIsAuthenticated, usePasskeyAuth } from "jazz-tools/react";
 import { APPLICATION_NAME } from "../Main";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export function LandingPage() {
         }
       }
       // Now start the passkey flow with a meaningful WebAuthn user name
-      const label = `Calorie Tracker (${(firstName || "").trim() || "User"})`;
+      const label = `Sammygram (${(firstName || "").trim() || "User"})`;
       await auth.signUp(label);
       // After successful signup, redirect will be handled by the isAuthenticated effect
       // but also navigate here as a fallback
@@ -79,6 +79,8 @@ export function LandingPage() {
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center text-center gap-6 sm:gap-8 px-4 pb-16">
+      {/* Optional small brand logo above hero, tasteful size */}
+      <img src="/logo.webp" alt="Sammygram Calorie Tracker" className="h-10 sm:h-12 w-auto" />
       <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
         Calorie tracking for real life (and real pups)
       </h1>
@@ -147,15 +149,15 @@ export function LandingPage() {
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="firstName">First name</Label>
-              <Input
-                id="firstName"
-                placeholder="Jane"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                  <Input
+                    id="firstName"
+                    placeholder="Jane"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                 autoFocus
-              />
+                  />
               <p className="text-xs text-muted-foreground">
-                We’ll label your passkey as Calorie Tracker ({firstName || "User"}).
+                We’ll label your passkey as Sammygram ({firstName || "User"}).
               </p>
             </div>
             <div className="flex justify-end gap-2">

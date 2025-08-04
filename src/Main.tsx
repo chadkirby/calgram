@@ -9,7 +9,7 @@ import { JazzAccount } from "./schema.ts";
 import { router } from "./router.tsx";
 
 // This identifies the app in the passkey auth
-export const APPLICATION_NAME = "jazz-react-tailwind-starter";
+export const APPLICATION_NAME = "Sammygram Calorie Tracker";
 
 // Service worker registration with update flow
 function ServiceWorkerRegistrar() {

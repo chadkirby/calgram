@@ -6,7 +6,10 @@ export function AboutPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8 px-6 sm:px-8 pb-16 pt-4">
       <header className="text-center space-y-2">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">About Calorie Tracker</h1>
+        <div className="flex items-center justify-center gap-2">
+          <img src="/logo.webp" alt="Sammygram Calorie Tracker" className="h-8 w-auto" />
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">About Sammygram Calorie Tracker</h1>
         <p className="text-sm sm:text-base text-muted-foreground">
           A simple, accurate way to track calories and weight using a kitchen scale.
         </p>
@@ -30,7 +33,7 @@ export function AboutPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm sm:text-base leading-relaxed">
           <p>
-            Calorie Tracker began with Sammy, a 14.5 lb Pom‑Chi who put on about a pound over the holidays.
+            Sammygram Calorie Tracker began with Sammy, a 14.5 lb Pom‑Chi who put on about a pound over the holidays.
             That doesn’t sound like much—until you realize it’s a big deal for a small dog.
           </p>
           <p>

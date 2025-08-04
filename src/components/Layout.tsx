@@ -26,7 +26,13 @@ export function Layout() {
           {/* Mobile compact header */}
           <div className="sm:hidden flex items-center justify-between p-2 min-h-[48px]">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <h1 className="text-sm font-semibold truncate">Calorie Tracker</h1>
+              {/* Mobile: prefer short name; if space allows, show logo + long name */}
+              <span className="text-sm font-semibold truncate">Sammygram</span>
+              {/* Optional logo + long name when space permits; hidden by default for compactness */}
+              <div className="hidden xs:flex items-center gap-2 truncate">
+                <img src="/logo.webp" alt="" className="h-5 w-auto flex-shrink-0" height="20" width="80" />
+                <span className="text-sm font-semibold truncate">Sammygram Calorie Tracker</span>
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {isAuthenticated && (
@@ -40,7 +46,8 @@ export function Layout() {
           {/* Desktop header */}
           <div className="hidden sm:flex justify-between items-center p-4 gap-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-lg lg:text-xl font-semibold truncate">Calorie Tracker</h1>
+              <img src="/logo.webp" alt="Sammygram Calorie Tracker" className="h-7 w-auto" height="28" width="112" />
+              <h1 className="text-lg lg:text-xl font-semibold truncate">Sammygram Calorie Tracker</h1>
               {isAuthenticated && me?.profile?.firstName && me.profile.firstName !== "Nobody" && (
                 <span className="text-sm text-muted-foreground truncate">
                   Welcome, {me.profile.firstName}!
