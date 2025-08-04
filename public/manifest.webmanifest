@@ -1,7 +1,7 @@
 {
   "name": "Calorie Tracker",
   "short_name": "Calorie",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",

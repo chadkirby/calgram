@@ -16,6 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataCard } from "@/components/DataCard";
 import { JazzAccount } from "../schema";
 
+// Vite define injects __BUILD_HASH__ at build time in ['vite.config.ts.define'](vite.config.ts:1)
+declare const __BUILD_HASH__: string;
+
 export function SettingsDialog() {
   const { me } = useAccount(JazzAccount, {
     resolve: { profile: true },
@@ -51,6 +54,9 @@ export function SettingsDialog() {
     }
     setOpen(false);
   };
+
+  // Render-time safe hash (fallback for dev if not injected)
+  const BUILD_HASH = (typeof __BUILD_HASH__ !== "undefined" ? __BUILD_HASH__ : "dev");
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -116,6 +122,11 @@ export function SettingsDialog() {
 
           {/* Data Card */}
           <DataCard />
+
+          {/* Build footer */}
+          <div className="text-[10px] text-muted-foreground text-right mt-2">
+            Build: {BUILD_HASH}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
