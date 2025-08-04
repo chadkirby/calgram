@@ -1,15 +1,16 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useAccount, useIsAuthenticated } from "jazz-tools/react";
+import { useAccount } from "jazz-tools/react";
 import { AuthButton } from "../AuthButton";
 import { SettingsDialog } from "./SettingsDialog";
 import { JazzAccount } from "../schema";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuthenticated } from "@/lib/useAuthenticated";
 
 export function Layout() {
   const { me } = useAccount(JazzAccount, {
     resolve: { profile: true, root: true },
   });
-  const isAuthenticated = useIsAuthenticated();
+  const isAuthenticated = useAuthenticated();
   const navigate = useNavigate();
   const location = useLocation();
 

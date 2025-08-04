@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useIsAuthenticated, usePasskeyAuth } from "jazz-tools/react";
+import { useEffect, useMemo, useState } from "react";
+import { useAccount, usePasskeyAuth } from "jazz-tools/react";
+import { useAuthenticated } from "@/lib/useAuthenticated";
 import { APPLICATION_NAME } from "../Main";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,7 +12,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 export function LandingPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const isAuthenticated = useIsAuthenticated();
+  const isAuthenticated = useAuthenticated();
 
   // Track where user originally wanted to go (e.g., /weight) so we can send them there post-auth
   const desiredPath = useMemo(() => {

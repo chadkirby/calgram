@@ -3,12 +3,12 @@ import { Layout } from "./components/Layout";
 import { WeightPage } from "./pages/WeightPage";
 import { DailyPage } from "./pages/DailyPage";
 import { TrendPage } from "./pages/TrendPage";
-import { useIsAuthenticated } from "jazz-tools/react";
 import { LandingPage } from "./pages/LandingPage";
 import { AboutPage } from "./pages/AboutPage";
+import { useAuthenticated } from "./lib/useAuthenticated";
 
 function HomeRoute() {
-  const isAuthenticated = useIsAuthenticated();
+  const isAuthenticated = useAuthenticated();
   if (isAuthenticated) {
     return <Navigate to="/daily" replace />;
   }
@@ -17,7 +17,7 @@ function HomeRoute() {
 
 // Gate that redirects any unauthenticated access to landing, remembering intended path
 function AuthedOutlet() {
-  const isAuthenticated = useIsAuthenticated();
+  const isAuthenticated = useAuthenticated();
   const location = useLocation();
   if (!isAuthenticated) {
     const redirect = encodeURIComponent(location.pathname + location.search);
