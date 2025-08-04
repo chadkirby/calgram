@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CalorieCalculator } from '../CalorieCalculator';
 import { type Loaded } from 'jazz-tools';
-import { MealEntry } from '../../schema';
+import { MealEntry, type MealWeightUnit } from '../../schema';
 import { DateTime } from 'luxon';
 
 // Mock meal entry data for testing
@@ -11,7 +11,8 @@ const createMockMealEntry = (
   foodCategory: string,
   caloriesPerGram: number,
   weightInGrams: number,
-  totalCalories: number
+  totalCalories: number,
+  displayUnit?: MealWeightUnit
 ) => ({
   timestamp,
   foodName,
@@ -20,6 +21,7 @@ const createMockMealEntry = (
   weightInGrams,
   notes: '',
   totalCalories,
+  displayUnit,
 } as Loaded<typeof MealEntry>);
 
 describe('CalorieCalculator', () => {
@@ -94,6 +96,18 @@ describe('CalorieCalculator', () => {
 
       const total = CalorieCalculator.calculateDailyTotal(sameDay, '2024-01-15T00:00:00.000Z');
       expect(total).toBe(600);
+    });
+
+    it('should handle meals with timezone offsets correctly', () => {
+      const mealsWithTimezone = [
+        createMockMealEntry('2025-07-27T19:36:00.000-07:00', 'Dinner', 'Meal', 1.0, 100, 100),
+        createMockMealEntry('2025-07-27T08:30:00.000-07:00', 'Breakfast', 'Meal', 1.0, 200, 200),
+        createMockMealEntry('2025-07-28T01:00:00.000-07:00', 'Late Snack', 'Meal', 1.0, 50, 50), // Next day
+      ];
+
+      // Should only include meals from July 27th local time
+      const total = CalorieCalculator.calculateDailyTotal(mealsWithTimezone, '2025-07-27T00:00:00.000-07:00');
+      expect(total).toBe(300); // 100 + 200 (excluding the July 28th meal)
     });
   });
 
@@ -191,6 +205,125 @@ describe('CalorieCalculator', () => {
       expect(CalorieCalculator.isSameDay(null, '2024-01-15T12:00:00.000Z')).toBe(false);
       expect(CalorieCalculator.isSameDay('2024-01-15T12:00:00.000Z', undefined)).toBe(false);
       expect(CalorieCalculator.isSameDay(null, undefined)).toBe(false);
+    });
+
+    it('should handle timezone offsets correctly', () => {
+      // A meal entry with Pacific timezone should match a date picker selection for the same local date
+      const mealWithTimezone = '2025-07-27T19:36:00.000-07:00'; // July 27, 7:36 PM Pacific
+      const selectedDate = '2025-07-27T00:00:00.000-07:00'; // July 27 at midnight Pacific
+      
+      expect(CalorieCalculator.isSameDay(mealWithTimezone, selectedDate)).toBe(true);
+    });
+
+    it('should preserve local date across different timezones', () => {
+      // Same local date but different timezones should match
+      const pacificTime = '2025-07-27T19:36:00.000-07:00'; // July 27, 7:36 PM Pacific
+      const easternTime = '2025-07-27T10:36:00.000-04:00'; // July 27, 10:36 AM Eastern
+      
+      expect(CalorieCalculator.isSameDay(pacificTime, easternTime)).toBe(true);
+    });
+  });
+
+
+
+  describe('getDisplayWeight', () => {
+    it('should return weight in specified unit', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        1000, // 1000 grams
+        1000
+      );
+
+      expect(CalorieCalculator.getDisplayWeight(meal, 'g')).toBe(1000);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'kg')).toBe(1);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'lb')).toBeCloseTo(2.205, 3);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'oz')).toBeCloseTo(35.274, 3);
+    });
+
+    it('should handle zero weight', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        0,
+        0
+      );
+
+      expect(CalorieCalculator.getDisplayWeight(meal, 'g')).toBe(0);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'kg')).toBe(0);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'lb')).toBe(0);
+      expect(CalorieCalculator.getDisplayWeight(meal, 'oz')).toBe(0);
+    });
+  });
+
+  describe('getFormattedWeight', () => {
+    it('should use meal displayUnit when available', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        150, // 150 grams
+        150,
+        'oz' // Stored as ounces
+      );
+
+      // Should use the meal's stored displayUnit (oz) regardless of preferred unit
+      const formatted = CalorieCalculator.getFormattedWeight(meal, 'g');
+      expect(formatted).toBe('5.3oz');
+    });
+
+    it('should use preferred unit when meal has no displayUnit', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Legacy Food',
+        'Test',
+        1.0,
+        150, // 150 grams
+        150
+        // No displayUnit (legacy entry)
+      );
+
+      // Should use the preferred unit for legacy entries
+      const formattedOz = CalorieCalculator.getFormattedWeight(meal, 'oz');
+      expect(formattedOz).toBe('5.3oz');
+
+      const formattedG = CalorieCalculator.getFormattedWeight(meal, 'g');
+      expect(formattedG).toBe('150g');
+    });
+
+    it('should handle different weight units correctly', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        1000, // 1000 grams
+        1000
+      );
+
+      expect(CalorieCalculator.getFormattedWeight(meal, 'g')).toBe('1000g');
+      expect(CalorieCalculator.getFormattedWeight(meal, 'kg')).toBe('1kg');
+      expect(CalorieCalculator.getFormattedWeight(meal, 'lb')).toBe('2.2lb');
+      expect(CalorieCalculator.getFormattedWeight(meal, 'oz')).toBe('35.3oz');
+    });
+
+    it('should handle zero weight', () => {
+      const meal = createMockMealEntry(
+        '2024-01-15T12:00:00.000Z',
+        'Test Food',
+        'Test',
+        1.0,
+        0,
+        0
+      );
+
+      expect(CalorieCalculator.getFormattedWeight(meal, 'g')).toBe('0g');
+      expect(CalorieCalculator.getFormattedWeight(meal, 'oz')).toBe('0oz');
     });
   });
 });

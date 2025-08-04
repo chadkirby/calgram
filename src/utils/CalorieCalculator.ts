@@ -1,6 +1,7 @@
 import { type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
-import { MealEntry } from "../schema";
+import { MealEntry, type MealWeightUnit } from "../schema";
+import { WeightConverter } from "./WeightConverter";
 
 /**
  * Utility class for calorie-related calculations
@@ -79,6 +80,17 @@ export class CalorieCalculator {
    * @returns Date string in YYYY-MM-DD format
    */
   private static getDateOnlyFromIso(isoString: string): string {
+    // If the string ends with 'Z', it's UTC, so parse as UTC to maintain backward compatibility
+    if (isoString.endsWith('Z')) {
+      return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
+    }
+    
+    // If it has timezone offset info (+ or - in the last 6 characters), parse with timezone
+    if (/[+-]\d{2}:\d{2}$/.test(isoString)) {
+      return DateTime.fromISO(isoString).toISODate() || '';
+    }
+    
+    // Fallback: assume UTC for backward compatibility
     return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
   }
 
@@ -150,5 +162,30 @@ export class CalorieCalculator {
    */
   static createIsoFromDateInput(dateInputValue: string): string {
     return DateTime.fromISO(dateInputValue).startOf('day').toISO() || '';
+  }
+
+
+
+  /**
+   * Get formatted weight for display in user's preferred unit
+   * @param meal - The meal entry
+   * @param preferredUnit - The user's preferred unit for display
+   * @returns Formatted weight string with unit
+   */
+  static getFormattedWeight(meal: Loaded<typeof MealEntry>, preferredUnit: MealWeightUnit): string {
+    // Use the meal's stored displayUnit if available, otherwise use the preferred unit
+    const unitToUse = meal.displayUnit || preferredUnit;
+    const displayWeight = WeightConverter.fromGrams(meal.weightInGrams, unitToUse);
+    return WeightConverter.formatDisplay(displayWeight, unitToUse);
+  }
+
+  /**
+   * Get display weight for a meal entry in the specified unit
+   * @param meal - The meal entry
+   * @param displayUnit - The unit to display the weight in
+   * @returns Weight value in the specified unit
+   */
+  static getDisplayWeight(meal: Loaded<typeof MealEntry>, displayUnit: MealWeightUnit): number {
+    return WeightConverter.fromGrams(meal.weightInGrams, displayUnit);
   }
 }

@@ -31,13 +31,6 @@ export function AuthButton() {
   return (
     <div className="flex gap-1 sm:gap-2">
       <button
-        className="bg-stone-100 py-1 px-2 sm:py-1.5 sm:px-3 text-xs sm:text-sm rounded-md touch-manipulation"
-        onClick={() => auth.signUp("")}
-      >
-        <span className="sm:hidden">Sign up</span>
-        <span className="hidden sm:inline">Sign up</span>
-      </button>
-      <button
         onClick={() => auth.logIn()}
         className="bg-stone-100 py-1 px-2 sm:py-1.5 sm:px-3 text-xs sm:text-sm rounded-md touch-manipulation"
       >

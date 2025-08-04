@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { TrendAnalyzer, type ChartDataPoint } from '../TrendAnalyzer';
 import { type Loaded } from 'jazz-tools';
 import { DateTime } from 'luxon';
-import { MealEntry, WeightEntry } from '../../schema';
+import { MealEntry, WeightEntry, CalorieTrackerProfile } from '../../schema';
 
 // Helper function to create mock meal entry
 const createMockMealEntry = (
@@ -24,13 +24,24 @@ const createMockMealEntry = (
 // Helper function to create mock weight entry
 const createMockWeightEntry = (
   timestamp: string,
-  weightValue: number
+  weightValue: number,
+  unit?: 'lbs' | 'kg'
 ) => {
   return {
     timestamp,
     weightValue,
     notes: '',
+    unit,
   } as Loaded<typeof WeightEntry>;
+};
+
+// Helper function to create mock profile
+const createMockProfile = (bodyWeightUnit?: 'lbs' | 'kg') => {
+  return {
+    name: 'Test User',
+    firstName: 'Test',
+    bodyWeightUnit,
+  } as Loaded<typeof CalorieTrackerProfile>;
 };
 
 describe('TrendAnalyzer', () => {
@@ -78,7 +89,7 @@ describe('TrendAnalyzer', () => {
       expect(TrendAnalyzer.prepareDailyCalorieData([])).toEqual([]);
     });
 
-    it('should prepare daily calorie data for the specified number of days', () => {
+    it('should prepare daily calorie data for days with meals', () => {
       const today = DateTime.now().startOf('day').toISO() || '';
       const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
 
@@ -90,7 +101,7 @@ describe('TrendAnalyzer', () => {
 
       const result = TrendAnalyzer.prepareDailyCalorieData(meals, 7);
 
-      expect(result).toHaveLength(7);
+      expect(result).toHaveLength(2); // Only days with meals
       expect(result.every(point => point.date instanceof Date)).toBe(true);
       expect(result.every(point => typeof point.calories === 'number')).toBe(true);
 
@@ -107,7 +118,7 @@ describe('TrendAnalyzer', () => {
       expect(yesterdayData?.calories).toBe(600);
     });
 
-    it('should include days with zero calories', () => {
+    it('should only include days with meals (no zero-calorie days)', () => {
       const today = DateTime.now().startOf('day').toISO() || '';
       const meals = [
         createMockMealEntry(today, 'Breakfast', 300),
@@ -115,14 +126,13 @@ describe('TrendAnalyzer', () => {
 
       const result = TrendAnalyzer.prepareDailyCalorieData(meals, 3);
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(1); // Only days with meals
 
-      // Should have one day with 300 calories and two days with 0 calories
+      // Should have one day with 300 calories
       const totalCalories = result.reduce((sum, point) => sum + point.calories!, 0);
       expect(totalCalories).toBe(300);
 
-      const zeroDays = result.filter(point => point.calories === 0);
-      expect(zeroDays).toHaveLength(2);
+      expect(result[0].calories).toBe(300);
     });
 
     it('should filter out meals outside the date range', () => {
@@ -159,7 +169,7 @@ describe('TrendAnalyzer', () => {
         createMockWeightEntry(oldDate, 69.8), // Should be filtered out
       ];
 
-      const result = TrendAnalyzer.prepareWeightData(weights, 7);
+      const result = TrendAnalyzer.prepareWeightData(weights, undefined, 7);
 
       expect(result).toHaveLength(2); // Only today and yesterday
       expect(result.every(point => point.date instanceof Date)).toBe(true);
@@ -179,7 +189,7 @@ describe('TrendAnalyzer', () => {
         createMockWeightEntry(yesterday, 70.2),
       ];
 
-      const result = TrendAnalyzer.prepareWeightData(weights, 7);
+      const result = TrendAnalyzer.prepareWeightData(weights, undefined, 7);
 
       expect(result[0].date.getTime()).toBeLessThan(result[1].date.getTime());
       expect(result[0].weight).toBe(70.2);
@@ -201,9 +211,9 @@ describe('TrendAnalyzer', () => {
         createMockWeightEntry(today, 70.5),
       ];
 
-      const result = TrendAnalyzer.prepareCombinedData(meals, weights, 3);
+      const result = TrendAnalyzer.prepareCombinedData(meals, weights, undefined, 3);
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(2); // Only days with meals
 
       // Today should have both calories and weight
       const todayData = result.find(point =>
@@ -221,7 +231,7 @@ describe('TrendAnalyzer', () => {
     });
 
     it('should handle empty data arrays', () => {
-      const result = TrendAnalyzer.prepareCombinedData([], [], 7);
+      const result = TrendAnalyzer.prepareCombinedData([], [], undefined, 7);
       expect(result).toEqual([]);
     });
   });
@@ -552,6 +562,104 @@ describe('TrendAnalyzer', () => {
       expect(result.min).toBeLessThan(15.0);
       expect(result.max).toBeGreaterThan(15.0);
       expect(result.tickInterval).toBe(0.5); // Under 25lbs
+    });
+  });
+
+  describe('Unit Conversion Support', () => {
+    describe('prepareWeightData with unit conversion', () => {
+      it('should convert weight data to user preferred unit', () => {
+        const today = DateTime.now().startOf('day').toISO() || '';
+        const profile = createMockProfile('kg');
+
+        const weights = [
+          createMockWeightEntry(today, 150, 'lbs'), // 150 lbs = ~68.04 kg
+        ];
+
+        const result = TrendAnalyzer.prepareWeightData(weights, profile, 7);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].weight).toBeCloseTo(68.04, 1); // Converted to kg
+      });
+
+      it('should handle legacy weight entries without unit field', () => {
+        const today = DateTime.now().startOf('day').toISO() || '';
+        const profile = createMockProfile('kg');
+
+        const weights = [
+          createMockWeightEntry(today, 150), // No unit, should default to lbs
+        ];
+
+        const result = TrendAnalyzer.prepareWeightData(weights, profile, 7);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].weight).toBeCloseTo(68.04, 1); // Converted from lbs to kg
+      });
+
+      it('should not convert when stored unit matches display unit', () => {
+        const today = DateTime.now().startOf('day').toISO() || '';
+        const profile = createMockProfile('lbs');
+
+        const weights = [
+          createMockWeightEntry(today, 150, 'lbs'),
+        ];
+
+        const result = TrendAnalyzer.prepareWeightData(weights, profile, 7);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].weight).toBe(150); // No conversion needed
+      });
+
+      it('should use default unit when no profile provided', () => {
+        const today = DateTime.now().startOf('day').toISO() || '';
+
+        const weights = [
+          createMockWeightEntry(today, 68, 'kg'), // 68 kg = ~149.91 lbs
+        ];
+
+        const result = TrendAnalyzer.prepareWeightData(weights, undefined, 7);
+
+        expect(result).toHaveLength(1);
+        expect(result[0].weight).toBeCloseTo(149.91, 1); // Converted to default lbs
+      });
+    });
+
+    describe('getWeightAxisLabel', () => {
+      it('should return label with user preferred unit', () => {
+        const profile = createMockProfile('kg');
+        const label = TrendAnalyzer.getWeightAxisLabel(profile);
+        expect(label).toBe('Weight (kg)');
+      });
+
+      it('should return default label when no profile provided', () => {
+        const label = TrendAnalyzer.getWeightAxisLabel(undefined);
+        expect(label).toBe('Weight (lbs)');
+      });
+    });
+
+    describe('formatWeightTooltip', () => {
+      it('should format weight with user preferred unit', () => {
+        const profile = createMockProfile('kg');
+        const formatted = TrendAnalyzer.formatWeightTooltip(68.5, profile);
+        expect(formatted).toBe('68.5kg');
+      });
+
+      it('should format weight with default unit when no profile provided', () => {
+        const formatted = TrendAnalyzer.formatWeightTooltip(150.5, undefined);
+        expect(formatted).toBe('150.5lbs');
+      });
+    });
+
+    describe('getWeightDisplayUnit', () => {
+      it('should return user preferred unit', () => {
+        const profile = createMockProfile('kg');
+        const unit = TrendAnalyzer.getWeightDisplayUnit(profile);
+        expect(unit).toBe('kg');
+      });
+
+      it('should return default unit when no profile provided', () => {
+        const unit = TrendAnalyzer.getWeightDisplayUnit(undefined);
+        expect(unit).toBe('lbs');
+      });
     });
   });
 });

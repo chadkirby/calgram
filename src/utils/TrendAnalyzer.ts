@@ -1,6 +1,9 @@
 import { type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
-import { MealEntry, WeightEntry } from "../schema";
+import { MealEntry, WeightEntry, CalorieTrackerProfile } from "../schema";
+import { WeightConverter } from "./WeightConverter";
+import { UnitPreferenceManager } from "./UnitPreferenceManager";
+import type { BodyWeightUnit } from "../schema";
 
 /**
  * Data point interface for chart data
@@ -67,16 +70,17 @@ export class TrendAnalyzer {
       return [];
     }
 
-    // Calculate the date range using Luxon
-    const endDate = DateTime.now().startOf('day');
-    const startDate = endDate.minus({ days: days - 1 });
+    // Use getDateRange for consistency
+    const { startDate, endDate } = this.getDateRange(days);
+    const startDateLuxon = DateTime.fromJSDate(startDate);
+    const endDateLuxon = DateTime.fromJSDate(endDate);
 
     // Group meals by date and calculate daily totals
     const dailyTotals = new Map<string, number>();
 
     meals.forEach(meal => {
       const mealDate = DateTime.fromISO(meal.timestamp);
-      if (mealDate >= startDate && mealDate <= endDate) {
+      if (mealDate >= startDateLuxon && mealDate <= endDateLuxon) {
         const dateKey = mealDate.toISODate() || '';
         const currentTotal = dailyTotals.get(dateKey) || 0;
         dailyTotals.set(dateKey, currentTotal + meal.totalCalories);
@@ -84,37 +88,32 @@ export class TrendAnalyzer {
     });
 
     // Create data points for each day in the range
-    const dataPoints: ChartDataPoint[] = [];
-    let currentDate = startDate;
-
-    while (currentDate <= endDate) {
-      const dateKey = currentDate.toISODate() || '';
-      const calories = dailyTotals.get(dateKey) || 0;
-
-      dataPoints.push({
-        date: currentDate.toJSDate(), // Convert to JS Date for chart compatibility
-        calories,
-      });
-
-      currentDate = currentDate.plus({ days: 1 });
-    }
+    const dataPoints: ChartDataPoint[] = [...dailyTotals.entries()].map(([dateKey, calories]) => ({
+      date: DateTime.fromISO(dateKey).toJSDate(), // Convert to JS Date
+      calories,
+    }));
 
     return dataPoints;
   }
 
   /**
-   * Prepare weight data for chart visualization
+   * Prepare weight data for chart visualization with unit conversion
    * @param weights - Array of weight entries
+   * @param profile - User profile for unit preferences
    * @param days - Number of days to include (default 30)
-   * @returns Array of chart data points with date and weight
+   * @returns Array of chart data points with date and weight in display unit
    */
   static prepareWeightData(
     weights: Loaded<typeof WeightEntry>[] | undefined,
+    profile?: Loaded<typeof CalorieTrackerProfile>,
     days: number = 30
   ): ChartDataPoint[] {
     if (!weights || weights.length === 0) {
       return [];
     }
+
+    // Get user's preferred display unit
+    const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
 
     // Calculate the date range using Luxon
     const endDate = DateTime.now().startOf('day');
@@ -128,27 +127,39 @@ export class TrendAnalyzer {
       })
       .sort((a, b) => DateTime.fromISO(a.timestamp).toMillis() - DateTime.fromISO(b.timestamp).toMillis());
 
-    // Convert to chart data points
-    return filteredWeights.map(weight => ({
-      date: DateTime.fromISO(weight.timestamp).toJSDate(), // Convert to JS Date for chart compatibility
-      weight: weight.weightValue,
-    }));
+    // Convert to chart data points with unit conversion
+    return filteredWeights.map(weight => {
+      // Get the stored unit (default to UnitPreferenceManager default for legacy entries)
+      const storedUnit = weight.unit || UnitPreferenceManager.getDefaultBodyWeightUnit();
+
+      // Convert to display unit if different
+      const convertedWeight = storedUnit === displayUnit
+        ? weight.weightValue
+        : WeightConverter.convert(weight.weightValue, storedUnit, displayUnit);
+
+      return {
+        date: DateTime.fromISO(weight.timestamp).toJSDate(), // Convert to JS Date for chart compatibility
+        weight: convertedWeight,
+      };
+    });
   }
 
   /**
    * Prepare combined calorie and weight data for dual-axis charts
    * @param meals - Array of meal entries
    * @param weights - Array of weight entries
+   * @param profile - User profile for unit preferences
    * @param days - Number of days to include (default 30)
    * @returns Array of chart data points with date, calories, and weight
    */
   static prepareCombinedData(
     meals: Loaded<typeof MealEntry>[] | undefined,
     weights: Loaded<typeof WeightEntry>[] | undefined,
+    profile?: Loaded<typeof CalorieTrackerProfile>,
     days: number = 30
   ): ChartDataPoint[] {
     const calorieData = this.prepareDailyCalorieData(meals, days);
-    const weightData = this.prepareWeightData(weights, days);
+    const weightData = this.prepareWeightData(weights, profile, days);
 
     // Create a map of weight data by date for quick lookup
     const weightByDate = new Map<string, number>();
@@ -439,12 +450,43 @@ export class TrendAnalyzer {
   }
 
   /**
+   * Get the weight axis label with current display unit
+   * @param profile - User profile for unit preferences
+   * @returns Formatted axis label string
+   */
+  static getWeightAxisLabel(profile?: Loaded<typeof CalorieTrackerProfile>): string {
+    const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
+    return `Weight (${displayUnit})`;
+  }
+
+  /**
+   * Format weight value for tooltip display
+   * @param value - Weight value
+   * @param profile - User profile for unit preferences
+   * @returns Formatted weight string with unit
+   */
+  static formatWeightTooltip(value: number, profile?: Loaded<typeof CalorieTrackerProfile>): string {
+    const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
+    return WeightConverter.formatDisplay(value, displayUnit);
+  }
+
+  /**
+   * Get the current display unit for weight
+   * @param profile - User profile for unit preferences
+   * @returns Current body weight unit
+   */
+  static getWeightDisplayUnit(profile?: Loaded<typeof CalorieTrackerProfile>): BodyWeightUnit {
+    return UnitPreferenceManager.getBodyWeightUnit(profile);
+  }
+
+  /**
    * Helper method to get date range for analysis
    * @param days - Number of days
    * @returns Object with start and end dates as JS Dates for compatibility
    */
   static getDateRange(days: number): { startDate: Date; endDate: Date } {
-    const endDate = DateTime.now().startOf('day');
+    // Use endOf('day') to include all entries for today
+    const endDate = DateTime.now().endOf('day');
     const startDate = endDate.minus({ days: days - 1 });
 
     return {

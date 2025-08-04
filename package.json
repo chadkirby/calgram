@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b tsconfig.build.json && vite build",
     "preview": "pnpm run build && vite preview",
     "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
@@ -32,6 +32,7 @@
     "lucide-react": "^0.525.0",
     "luxon": "^3.7.1",
     "react": "19.1.0",
+    "react-day-picker": "^9.8.1",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.60.0",
     "react-router-dom": "^7.7.0",
@@ -42,7 +43,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@cloudflare/vite-plugin": "^1.9.6",
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.54.1",
     "@tailwindcss/postcss": "^4.1.10",
     "@types/luxon": "^3.6.2",
     "@types/node": "^24.0.15",
@@ -60,5 +61,16 @@
     "vite": "7.0.5",
     "vitest": "^3.2.4",
     "wrangler": "^4.25.0"
+  },
+  "volta": {
+    "node": "22.17.1",
+    "pnpm": "10.13.1"
+  },
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10",
+    "yarn": "use pnpm",
+    "npm": "use pnpm"
   }
 }

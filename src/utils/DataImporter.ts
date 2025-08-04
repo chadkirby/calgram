@@ -1,56 +1,122 @@
-import { Group, type Loaded } from "jazz-tools";
+import { Group, type Loaded, z } from "jazz-tools";
 import { DateTime } from "luxon";
-import { MealEntry, WeightEntry, FoodIntelligence, FoodMetadata } from "../schema";
+import {
+  MealEntry,
+  WeightEntry,
+  FoodIntelligence,
+  FoodMetadata,
+  ExportMealShape,
+  ExportWeightShape,
+  type MealEntryType,
+  type WeightEntryType,
+} from "../schema";
 import type { JazzAccount } from "../schema";
 
-// Types for the exported data format
-interface ExportedMealEntry {
-  id: number;
-  food: string;
-  weight: number;
-  calories_per_gram: number;
-  total_calories: number;
-  category: string;
-  date: string;
+// Export format (current only) using schema-derived types
+export type CurrentExportedMealEntry = Pick<
+  MealEntryType,
+  | "timestamp"
+  | "foodName"
+  | "foodCategory"
+  | "caloriesPerGram"
+  | "caloriesPerDisplayUnit"
+  | "weightInGrams"
+  | "displayUnit"
+  | "totalCalories"
+  | "notes"
+>;
+
+export type CurrentExportedWeightEntry = Pick<
+  WeightEntryType,
+  | "timestamp"
+  | "weightValue"
+  | "unit"
+  | "notes"
+>;
+
+export interface CurrentExportedData {
+  version: string;
+  exportDate: string;
+  mealEntries: CurrentExportedMealEntry[];
+  weightEntries: CurrentExportedWeightEntry[];
 }
 
-interface ExportedWeightEntry {
-  id: number;
-  weight: number;
-  date: string;
-  notes: string | null;
-}
+// Strict Zod schemas for current export format (reject unknown keys)
+const ISODateString = z.string().refine((s) => DateTime.fromISO(s).isValid, {
+  message: "Invalid ISO date",
+});
 
-interface ExportedData {
-  meal_entries: ExportedMealEntry[];
-  weight_entries: ExportedWeightEntry[];
+/**
+ * Build import schemas using exported DTO shapes from schema.ts to avoid duplication.
+ * ExportMealShape/ExportWeightShape already encode the serialized constraints.
+ */
+const CurrentExportedMealEntrySchema = z.object(ExportMealShape).strict();
+const CurrentExportedWeightEntrySchema = z.object(ExportWeightShape).strict();
+
+const CurrentExportedDataSchema = z
+  .object({
+    version: z.string(),
+    exportDate: ISODateString,
+    mealEntries: z.array(CurrentExportedMealEntrySchema),
+    weightEntries: z.array(CurrentExportedWeightEntrySchema),
+  })
+  .strict();
+
+export type ExportedData = CurrentExportedData;
+
+// Result interface for import operations
+interface ImportResult {
+  mealCount: number;
+  weightCount: number;
+  duplicatesSkipped: number;
+  errors: string[];
 }
 
 export class DataImporter {
   /**
-   * Import data from exported JSON file
+   * Validate the imported data structure strictly (current format only)
    */
-  static async importData(jsonData: ExportedData, account: Loaded<typeof JazzAccount>): Promise<{
-    mealCount: number;
-    weightCount: number;
-  }> {
+  static validateImportData(jsonData: unknown): { isValid: boolean; errors: string[] } {
+    const result = CurrentExportedDataSchema.safeParse(jsonData);
+    if (result.success) {
+      return { isValid: true, errors: [] };
+    }
+    // Normalize zod issues to deterministic strings our tests expect
+    const errors = result.error.issues.map((i) => {
+      const path = i.path.length ? i.path.join(".") : "(root)";
+      // Ensure unknown key rejections include the canonical message
+      if (i.code === "unrecognized_keys") {
+        return `${path}: Unrecognized key(s) in object`;
+      }
+      return `${path}: ${i.message}`;
+    });
+    return { isValid: false, errors };
+  }
+
+  /**
+   * Import data from exported JSON file (current format only)
+   */
+  static async importData(jsonData: ExportedData, account: Loaded<typeof JazzAccount>): Promise<ImportResult> {
     if (!account.root) {
       throw new Error("Account root not available");
     }
 
+    // Strictly parse to ensure structure is correct and narrow the type
+    const parsed = CurrentExportedDataSchema.parse(jsonData);
+
     // Ensure the account root is loaded first
     const loadedAccount = await account.ensureLoaded({
       resolve: {
-            root: {
-              mealEntries: true,
-              weightEntries: true,
-              foodIntelligence: {
-                recentFoods: true,
-                recentCategories: true,
-                foodData: true,
-              },
-            },
+        root: {
+          mealEntries: true,
+          weightEntries: true,
+          foodIntelligence: {
+            recentFoods: true,
+            recentCategories: true,
+            foodData: true,
           },
+        },
+      },
     });
 
     if (!loadedAccount.root) {
@@ -64,124 +130,135 @@ export class DataImporter {
     const group = Group.create();
     let mealCount = 0;
     let weightCount = 0;
+    let duplicatesSkipped = 0;
+    const errors: string[] = [];
 
     // Import meal entries
-    if (jsonData.meal_entries && Array.isArray(jsonData.meal_entries) && loadedAccount.root.mealEntries) {
-      for (const exportedMeal of jsonData.meal_entries) {
+    if (Array.isArray(parsed.mealEntries) && loadedAccount.root.mealEntries) {
+      for (const exportedMeal of parsed.mealEntries) {
         try {
-          const mealEntry = MealEntry.create({
-            timestamp: DateTime.fromISO(exportedMeal.date).toISO() || exportedMeal.date,
-            foodName: exportedMeal.food,
-            foodCategory: exportedMeal.category,
-            caloriesPerGram: exportedMeal.calories_per_gram,
-            weightInGrams: exportedMeal.weight,
-            totalCalories: exportedMeal.total_calories,
-            notes: undefined, // Old format doesn't have notes
-          }, group);
+          const mealEntry = MealEntry.create(
+            {
+              timestamp: exportedMeal.timestamp,
+              foodName: exportedMeal.foodName,
+              foodCategory: exportedMeal.foodCategory,
+              caloriesPerGram: exportedMeal.caloriesPerGram,
+              caloriesPerDisplayUnit: exportedMeal.caloriesPerDisplayUnit,
+              weightInGrams: exportedMeal.weightInGrams,
+              displayUnit: exportedMeal.displayUnit,
+              notes: exportedMeal.notes,
+              totalCalories: exportedMeal.totalCalories,
+            },
+            group
+          );
 
           loadedAccount.root.mealEntries.push(mealEntry);
           mealCount++;
 
           // Update food intelligence with imported data
           if (loadedAccount.root.foodIntelligence) {
-            this.updateFoodIntelligence(loadedAccount.root.foodIntelligence, exportedMeal);
+            // exportedMeal is validated by schema, but keep type-safety explicit
+            this.updateFoodIntelligenceNewFormat(
+              loadedAccount.root.foodIntelligence,
+              exportedMeal as CurrentExportedMealEntry
+            );
           }
         } catch (error) {
           console.warn("Failed to import meal entry:", exportedMeal, error);
+          errors.push(`Failed to import meal entry: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
       }
     }
 
     // Import weight entries
-    if (jsonData.weight_entries && Array.isArray(jsonData.weight_entries) && loadedAccount.root.weightEntries) {
-      for (const exportedWeight of jsonData.weight_entries) {
+    if (Array.isArray(parsed.weightEntries) && loadedAccount.root.weightEntries) {
+      for (const exportedWeight of parsed.weightEntries) {
         try {
-          const weightEntry = WeightEntry.create({
-            timestamp: DateTime.fromISO(exportedWeight.date).toISO() || exportedWeight.date,
-            weightValue: exportedWeight.weight,
-            notes: exportedWeight.notes || undefined,
-          }, group);
+          const weightEntry = WeightEntry.create(
+            {
+              timestamp: exportedWeight.timestamp,
+              weightValue: exportedWeight.weightValue,
+              unit: exportedWeight.unit,
+              notes: exportedWeight.notes,
+            },
+            group
+          );
 
           loadedAccount.root.weightEntries.push(weightEntry);
           weightCount++;
         } catch (error) {
           console.warn("Failed to import weight entry:", exportedWeight, error);
+          errors.push(`Failed to import weight entry: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
       }
     }
 
-    return { mealCount, weightCount };
+    return { mealCount, weightCount, duplicatesSkipped, errors };
   }
 
   /**
-   * Update food intelligence with imported meal data
+   * Update food intelligence with imported meal data (current format)
    */
-  private static updateFoodIntelligence(
+  private static updateFoodIntelligenceNewFormat(
     foodIntelligence: Loaded<typeof FoodIntelligence>,
-    meal: ExportedMealEntry
+    meal: CurrentExportedMealEntry
   ) {
     try {
       // Add to recent foods if not already present
-      if (foodIntelligence.recentFoods && !foodIntelligence.recentFoods.includes(meal.food)) {
-        foodIntelligence.recentFoods.push(meal.food);
+      if (foodIntelligence.recentFoods && !foodIntelligence.recentFoods.includes(meal.foodName)) {
+        foodIntelligence.recentFoods.push(meal.foodName);
       }
 
       // Add to recent categories if not already present
-      if (foodIntelligence.recentCategories && !foodIntelligence.recentCategories.includes(meal.category)) {
-        foodIntelligence.recentCategories.push(meal.category);
+      if (foodIntelligence.recentCategories && !foodIntelligence.recentCategories.includes(meal.foodCategory)) {
+        foodIntelligence.recentCategories.push(meal.foodCategory);
       }
 
       // Update or create food metadata
       if (foodIntelligence.foodData) {
-        const existingMetadata = foodIntelligence.foodData[meal.food];
+        const existingMetadata = foodIntelligence.foodData[meal.foodName];
         if (existingMetadata) {
           // Update existing metadata
-          existingMetadata.lastUsedCPG = meal.calories_per_gram;
-          existingMetadata.lastUsedCategory = meal.category;
+          existingMetadata.lastUsedCPG = meal.caloriesPerGram;
+          existingMetadata.lastUsedCategory = meal.foodCategory;
           existingMetadata.usageCount = existingMetadata.usageCount + 1;
-          existingMetadata.lastUsed = DateTime.fromISO(meal.date).toISO() || meal.date;
+          existingMetadata.lastUsed = meal.timestamp;
         } else {
           // Create new metadata
           const group = Group.create();
-          const metadata = FoodMetadata.create({
-            lastUsedCPG: meal.calories_per_gram,
-            lastUsedCategory: meal.category,
-            usageCount: 1,
-            lastUsed: DateTime.fromISO(meal.date).toISO() || meal.date,
-          }, group);
+          const metadata = FoodMetadata.create(
+            {
+              lastUsedCPG: meal.caloriesPerGram,
+              lastUsedCategory: meal.foodCategory,
+              usageCount: 1,
+              lastUsed: meal.timestamp,
+            },
+            group
+          );
 
-          foodIntelligence.foodData[meal.food] = metadata;
+          foodIntelligence.foodData[meal.foodName] = metadata;
         }
       }
     } catch (error) {
-      console.warn("Failed to update food intelligence for:", meal.food, error);
+      console.warn("Failed to update food intelligence for:", meal.foodName, error);
     }
   }
 
   /**
-   * Parse and validate JSON file content
+   * Parse and validate JSON file content (parsing only, validation elsewhere)
    */
   static parseJsonFile(fileContent: string): ExportedData {
     try {
       const data = JSON.parse(fileContent);
 
-      // Basic structure validation
-      if (!data || typeof data !== 'object') {
+      // Basic structure validation: must be object
+      if (!data || typeof data !== "object") {
         throw new Error("Invalid JSON structure");
-      }
-
-      // Ensure arrays exist (even if empty)
-      if (!Array.isArray(data.meal_entries)) {
-        data.meal_entries = [];
-      }
-
-      if (!Array.isArray(data.weight_entries)) {
-        data.weight_entries = [];
       }
 
       return data as ExportedData;
     } catch (error) {
-      throw new Error(`Failed to parse JSON file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to parse JSON file: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 }

@@ -6,27 +6,62 @@
 import { Group, co, z, type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
 
-/** MealEntry schema for tracking individual meal entries */
-export const MealEntry = co.map({
+
+export const MealShape = {
   timestamp: z.iso.date(),
   foodName: z.string().min(1, "Food name is required"),
   foodCategory: z.string().min(1, "Food category is required"),
   caloriesPerGram: z.number().nonnegative("Calories per gram cannot be negative"),
+  caloriesPerDisplayUnit: z.enum(['g', 'oz', 'lb', 'kg']).optional(),
   weightInGrams: z.number(),
   notes: z.string().optional(),
   totalCalories: z.number(),
-});
+  displayUnit: z.enum(['g', 'oz', 'lb', 'kg']).optional(),
+};
+
+/** MealEntry schema for tracking individual meal entries */
+export const MealEntry = co.map(MealShape);
 
 export type MealEntryType = z.infer<typeof MealEntry>;
 
-/** WeightEntry schema for tracking weight measurements */
-export const WeightEntry = co.map({
+/** Expose reusable Weight shape similar to MealShape to enable DRY validation reuse */
+export const WeightShape = {
   timestamp: z.iso.date(),
   weightValue: z.number().positive("Weight value must be positive"),
   notes: z.string().optional(),
-});
+  unit: z.enum(['lbs', 'kg']).optional(),
+};
+
+/** WeightEntry schema for tracking weight measurements */
+export const WeightEntry = co.map(WeightShape);
 
 export type WeightEntryType = z.infer<typeof WeightEntry>;
+
+/**
+ * Export-friendly shapes (DTO validators) that consumers like DataImporter/DataExporter
+ * can reuse without duplicating rules. These reuse our canonical shapes but keep timestamp
+ * as ISO z.string() to match the serialized format we write/read in exports.
+ */
+export const ExportMealShape = {
+  ...MealShape,
+  timestamp: z.string().refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" }),
+} as const;
+
+export const ExportWeightShape = {
+  ...WeightShape,
+  timestamp: z.string().refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" }),
+} as const;
+
+/**
+ * Strong TS DTO types derived from the export Zod shapes.
+ * Export these so producers (DataExporter) can assert using `satisfies`
+ * against exactly what consumers (DataImporter) validate.
+ */
+export const ExportMealZod = z.object(ExportMealShape);
+export type ExportMealDTO = z.infer<typeof ExportMealZod>;
+
+export const ExportWeightZod = z.object(ExportWeightShape);
+export type ExportWeightDTO = z.infer<typeof ExportWeightZod>;
 
 /** Food metadata schema for storing food intelligence data */
 export const FoodMetadata = co.map({
@@ -47,6 +82,15 @@ export const FoodIntelligence = co.map({
 
 export type FoodIntelligenceType = z.infer<typeof FoodIntelligence>;
 
+export const mealWeightUnits = ['g', 'oz', 'lb', 'kg'] as const;
+export const bodyWeightUnits = ['lbs', 'kg'] as const;
+export const calorieUnits = ['g', 'oz', 'lb', 'kg'] as const;
+
+/** Weight unit types for meal and body weight preferences */
+export type MealWeightUnit = typeof mealWeightUnits[number];
+export type BodyWeightUnit = typeof bodyWeightUnits[number];
+export type CalorieUnit = typeof calorieUnits[number];
+
 /** The account profile is an app-specific per-user public `CoMap`
  *  where you can store top-level objects for that user */
 export const CalorieTrackerProfile = co.profile({
@@ -56,6 +100,10 @@ export const CalorieTrackerProfile = co.profile({
    */
   name: z.string(),
   firstName: z.string(),
+
+  // Unit preferences for weight measurements
+  mealWeightUnit: z.enum(mealWeightUnits).optional(),
+  bodyWeightUnit: z.enum(bodyWeightUnits).optional(),
 
   // Add public fields here
 });

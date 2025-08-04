@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 import isCI from "is-ci";
 
+const port = 6173; // Port for the local dev server
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -20,11 +22,17 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: "http://localhost:5173/",
+    baseURL: `http://localhost:${port}/`,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
     permissions: ["clipboard-read", "clipboard-write"],
+
+    /**
+     * NOTE: Playwright's `use` block does not support arbitrary env injection.
+     * Instead, we pass the variable to the dev server process below so that Vite exposes it.
+     * See webServer.env configuration further down.
+     */
   },
 
   /* Configure projects for major browsers */
@@ -38,9 +46,17 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: [
     {
-      command: "pnpm preview --port 5173",
-      url: "http://localhost:5173/",
+      command: `pnpm dev --port ${port}`,
+      url: `http://localhost:${port}/`,
       reuseExistingServer: !isCI,
+      /**
+       * Inject env into the dev server so Vite exposes it to the app (import.meta.env).
+       * Default to bypassing auth in E2E unless explicitly disabled.
+       */
+      env: {
+        ...process.env,
+        VITE_E2E_BYPASS_AUTH: process.env.VITE_E2E_BYPASS_AUTH ?? "true",
+      },
     },
   ],
 });

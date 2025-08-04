@@ -1,0 +1,111 @@
+name: E2E - Playwright
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Volta
+        run: |
+          curl https://get.volta.sh | bash -s -- --skip-setup
+          echo "$HOME/.volta/bin" >> $GITHUB_PATH
+
+      - name: Verify toolchain (Volta)
+        run: |
+          volta --version
+          node -v
+          corepack enable
+          pnpm -v || true
+          volta install pnpm@$(jq -r '.volta.pnpm // empty' package.json || echo "")
+          pnpm -v
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Build (if needed by e2e)
+        run: |
+          if pnpm -s run | grep -q "^build\b"; then
+            pnpm build
+          else
+            echo "No build script found, skipping"
+          fi
+
+      - name: Start app (if preview script exists)
+        run: |
+          if pnpm -s run | grep -qE "^(preview|serve|start)\b"; then
+            echo "Starting app in background..."
+            # Try common scripts in order
+            if pnpm -s run | grep -q "^preview\b"; then
+              pnpm preview -- --port 5173 &
+            elif pnpm -s run | grep -q "^serve\b"; then
+              pnpm serve &
+            else
+              pnpm start &
+            fi
+          else
+            echo "No preview/start script found. Assuming tests launch their own server."
+          fi
+
+      - name: Wait for server (optional)
+        run: |
+          npx wait-on --timeout 20000 tcp:5173 || echo "Server not detected on 5173; continuing"
+
+      - name: Run Playwright tests
+        env:
+          HOME: ${{ runner.temp }}
+        run: |
+          if pnpm -s run | grep -qE "^(test:e2e|e2e)\b"; then
+            if pnpm -s run | grep -q "^test:e2e\b"; then
+              pnpm test:e2e
+            else
+              pnpm e2e
+            fi
+          else
+            npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Playwright blob report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-blob-report
+          path: blob-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload test-results (traces/videos)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,14 +1,16 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useAccount, useIsAuthenticated } from "jazz-tools/react";
+import { useAccount } from "jazz-tools/react";
 import { AuthButton } from "../AuthButton";
+import { SettingsDialog } from "./SettingsDialog";
 import { JazzAccount } from "../schema";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuthenticated } from "@/lib/useAuthenticated";
 
 export function Layout() {
   const { me } = useAccount(JazzAccount, {
     resolve: { profile: true, root: true },
   });
-  const isAuthenticated = useIsAuthenticated();
+  const isAuthenticated = useAuthenticated();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -25,17 +27,19 @@ export function Layout() {
           {/* Mobile compact header */}
           <div className="sm:hidden flex items-center justify-between p-2 min-h-[48px]">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <h1 className="text-sm font-semibold truncate">Calorie Tracker</h1>
-              {me?.profile?.firstName && (
-                <span className="text-xs text-muted-foreground truncate">
-                  {me.profile.firstName}
-                </span>
-              )}
+              {/* Mobile: prefer short name; if space allows, show logo + long name */}
+              <span className="text-sm font-semibold truncate">Sammygram</span>
+              {/* Optional logo + long name when space permits; hidden by default for compactness */}
+              <div className="hidden xs:flex items-center gap-2 truncate">
+                <img src="/logo.webp" alt="" className="h-5 w-auto flex-shrink-0" height="20" width="80" />
+                <span className="text-sm font-semibold truncate">Sammygram Calorie Tracker</span>
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {isAuthenticated && (
                 <div className="w-2 h-2 bg-green-500 rounded-full" title="Logged in" />
               )}
+              <SettingsDialog />
               <AuthButton />
             </div>
           </div>
@@ -43,8 +47,9 @@ export function Layout() {
           {/* Desktop header */}
           <div className="hidden sm:flex justify-between items-center p-4 gap-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-lg lg:text-xl font-semibold truncate">Calorie Tracker</h1>
-              {me?.profile?.firstName && (
+              <img src="/logo.webp" alt="Sammygram Calorie Tracker" className="h-7 w-auto" height="28" width="112" />
+              <h1 className="text-lg lg:text-xl font-semibold truncate">Sammygram Calorie Tracker</h1>
+              {isAuthenticated && me?.profile?.firstName && me.profile.firstName !== "Nobody" && (
                 <span className="text-sm text-muted-foreground truncate">
                   Welcome, {me.profile.firstName}!
                 </span>
@@ -58,6 +63,7 @@ export function Layout() {
                   Authenticate to sync data
                 </span>
               )}
+              <SettingsDialog />
               <AuthButton />
             </div>
           </div>
@@ -65,46 +71,44 @@ export function Layout() {
       </header>
 
       <main className="max-w-7xl mx-auto p-1 sm:p-4 lg:p-6">
-        <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-auto mb-0 sm:mb-6">
-            <TabsTrigger
-              value="meals"
-              className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
-            >
-              <span className="text-sm sm:hidden">🍽️</span>
-              <span className="hidden sm:inline">Meals</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Meals</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="weight"
-              className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
-            >
-              <span className="text-sm sm:hidden">⚖️</span>
-              <span className="hidden sm:inline">Weight</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Weight</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="daily"
-              className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
-            >
-              <span className="text-sm sm:hidden">📊</span>
-              <span className="hidden sm:inline">Daily</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Daily</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="trends"
-              className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
-            >
-              <span className="text-sm sm:hidden">📈</span>
-              <span className="hidden sm:inline">Trends</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Trends</span>
-            </TabsTrigger>
-          </TabsList>
+        {isAuthenticated ? (
+          <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList data-testid="main-tabs" className="grid w-full grid-cols-3 h-auto mb-0 sm:mb-6">
+              <TabsTrigger
+                value="daily"
+                className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
+              >
+                <span className="text-sm sm:hidden">🍽️</span>
+                <span className="hidden sm:inline">Daily</span>
+                <span className="sm:hidden text-[10px] leading-tight ml-1">Daily</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="weight"
+                className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
+              >
+                <span className="text-sm sm:hidden">⚖️</span>
+                <span className="hidden sm:inline">Weight</span>
+                <span className="sm:hidden text-[10px] leading-tight ml-1">Weight</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="trends"
+                className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
+              >
+                <span className="text-sm sm:hidden">📈</span>
+                <span className="hidden sm:inline">Trends</span>
+                <span className="sm:hidden text-[10px] leading-tight ml-1">Trends</span>
+              </TabsTrigger>
+            </TabsList>
 
+            <div className="mt-1 sm:mt-4">
+              <Outlet />
+            </div>
+          </Tabs>
+        ) : (
           <div className="mt-1 sm:mt-4">
             <Outlet />
           </div>
-        </Tabs>
+        )}
       </main>
     </div>
   );
