@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b tsconfig.build.json && vite build",
+    "build": "tsc -b tsconfig.build.json && vite build && pnpm run postbuild:sw:hash",
+    "postbuild:sw:hash": "node build-scripts/postbuild.mjs",
     "preview": "pnpm run build && vite preview",
     "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
