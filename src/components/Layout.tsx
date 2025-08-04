@@ -41,7 +41,7 @@ export function Layout() {
           <div className="hidden sm:flex justify-between items-center p-4 gap-4">
             <div className="flex items-center gap-3">
               <h1 className="text-lg lg:text-xl font-semibold truncate">Calorie Tracker</h1>
-              {me?.profile?.firstName && (
+              {isAuthenticated && me?.profile?.firstName && me.profile.firstName !== "Nobody" && (
                 <span className="text-sm text-muted-foreground truncate">
                   Welcome, {me.profile.firstName}!
                 </span>
@@ -63,38 +63,44 @@ export function Layout() {
       </header>
 
       <main className="max-w-7xl mx-auto p-1 sm:p-4 lg:p-6">
-        <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList data-testid="main-tabs" className="grid w-full grid-cols-3 h-auto mb-0 sm:mb-6">
-            <TabsTrigger
-              value="daily"
-              className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
-            >
-              <span className="text-sm sm:hidden">🍽️</span>
-              <span className="hidden sm:inline">Daily</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Daily</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="weight"
-              className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
-            >
-              <span className="text-sm sm:hidden">⚖️</span>
-              <span className="hidden sm:inline">Weight</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Weight</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="trends"
-              className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
-            >
-              <span className="text-sm sm:hidden">📈</span>
-              <span className="hidden sm:inline">Trends</span>
-              <span className="sm:hidden text-[10px] leading-tight ml-1">Trends</span>
-            </TabsTrigger>
-          </TabsList>
+        {isAuthenticated ? (
+          <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList data-testid="main-tabs" className="grid w-full grid-cols-3 h-auto mb-0 sm:mb-6">
+              <TabsTrigger
+                value="daily"
+                className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
+              >
+                <span className="text-sm sm:hidden">🍽️</span>
+                <span className="hidden sm:inline">Daily</span>
+                <span className="sm:hidden text-[10px] leading-tight ml-1">Daily</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="weight"
+                className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
+              >
+                <span className="text-sm sm:hidden">⚖️</span>
+                <span className="hidden sm:inline">Weight</span>
+                <span className="sm:hidden text-[10px] leading-tight ml-1">Weight</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="trends"
+                className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"
+              >
+                <span className="text-sm sm:hidden">📈</span>
+                <span className="hidden sm:inline">Trends</span>
+                <span className="sm:hidden text-[10px] leading-tight ml-1">Trends</span>
+              </TabsTrigger>
+            </TabsList>
 
+            <div className="mt-1 sm:mt-4">
+              <Outlet />
+            </div>
+          </Tabs>
+        ) : (
           <div className="mt-1 sm:mt-4">
             <Outlet />
           </div>
-        </Tabs>
+        )}
       </main>
     </div>
   );
