@@ -62,14 +62,14 @@ export function SettingsDialog() {
           <SettingsIcon className="w-3 h-3 sm:w-4 sm:h-4" />
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]" autoFocus={false}>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col" autoFocus={false}>
+        <DialogHeader className="shrink-0">
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
             Manage your profile and application settings.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 flex-1 overflow-y-auto">
           {/* Profile Card */}
           <Card>
             <CardHeader>
