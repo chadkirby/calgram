@@ -1,63 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { DataImporter } from "../DataImporter";
+import { DataImporter, type ExportedData } from "../DataImporter";
 
-describe("DataImporter", () => {
-  describe("detectDataFormat", () => {
-    it("should detect legacy format", () => {
-      const legacyData = {
-        meal_entries: [],
-        weight_entries: []
-      };
-
-      expect(DataImporter.detectDataFormat(legacyData)).toBe("legacy");
-    });
-
-    it("should detect current format", () => {
-      const currentData = {
-        version: "1.0",
-        exportDate: "2023-01-01T00:00:00Z",
-        mealEntries: [],
-        weightEntries: []
-      };
-
-      expect(DataImporter.detectDataFormat(currentData)).toBe("current");
-    });
-
-    it("should return unknown for invalid format", () => {
-      const invalidData = {
-        some: "random",
-        data: "structure"
-      };
-
-      expect(DataImporter.detectDataFormat(invalidData)).toBe("unknown");
-    });
-
-    it("should return unknown for non-object data", () => {
-      expect(DataImporter.detectDataFormat(null)).toBe("unknown");
-      expect(DataImporter.detectDataFormat(undefined)).toBe("unknown");
-      expect(DataImporter.detectDataFormat("string")).toBe("unknown");
-      expect(DataImporter.detectDataFormat(123)).toBe("unknown");
-    });
-  });
-
+describe("DataImporter (current format only, strict)", () => {
   describe("validateImportData", () => {
-    it("should validate legacy format correctly", () => {
-      const legacyData = {
-        meal_entries: [],
-        weight_entries: []
-      };
-
-      const result = DataImporter.validateImportData(legacyData);
-      expect(result.isValid).toBe(true);
-      expect(result.errors).toEqual([]);
-    });
-
     it("should validate current format correctly", () => {
-      const currentData = {
+      const currentData: ExportedData = {
         version: "1.0",
-        exportDate: "2023-01-01T00:00:00Z",
+        exportDate: "2023-01-01T00:00:00.000Z",
         mealEntries: [],
-        weightEntries: []
+        weightEntries: [],
       };
 
       const result = DataImporter.validateImportData(currentData);
@@ -65,41 +16,66 @@ describe("DataImporter", () => {
       expect(result.errors).toEqual([]);
     });
 
-    it("should reject invalid legacy format", () => {
-      const invalidLegacyData = {
-        meal_entries: "not an array",
-        weight_entries: []
+    it("should reject unknown keys at root (strict)", () => {
+      const withUnknown = {
+        version: "1.0",
+        exportDate: "2023-01-01T00:00:00.000Z",
+        mealEntries: [],
+        weightEntries: [],
+        extra: "nope",
       };
 
-      const result = DataImporter.validateImportData(invalidLegacyData);
+      const result = DataImporter.validateImportData(withUnknown);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("meal_entries must be an array");
+      expect(result.errors.some(e => e.includes("Unrecognized key(s) in object"))).toBe(true);
     });
 
-    it("should reject invalid current format", () => {
-      const invalidCurrentData = {
+    it("should reject unknown keys in mealEntries items (strict)", () => {
+      const withUnknownMeal = {
         version: "1.0",
-        exportDate: "2023-01-01T00:00:00Z",
-        mealEntries: "not an array",
-        weightEntries: []
+        exportDate: "2023-01-01T00:00:00.000Z",
+        mealEntries: [
+          {
+            timestamp: "2023-01-01T12:00:00.000Z",
+            foodName: "Apple",
+            foodCategory: "Fruit",
+            caloriesPerGram: 0.52,
+            weightInGrams: 100,
+            totalCalories: 52,
+            extra: "nope",
+          },
+        ],
+        weightEntries: [],
       };
 
-      const result = DataImporter.validateImportData(invalidCurrentData);
+      const result = DataImporter.validateImportData(withUnknownMeal);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("mealEntries must be an array");
+      expect(result.errors.some(e => e.includes("mealEntries") && e.includes("Unrecognized key(s) in object"))).toBe(true);
+    });
+
+    it("should reject invalid ISO date", () => {
+      const invalidDate = {
+        version: "1.0",
+        exportDate: "not-a-date",
+        mealEntries: [],
+        weightEntries: [],
+      };
+
+      const result = DataImporter.validateImportData(invalidDate);
+      expect(result.isValid).toBe(false);
+      expect(result.errors.some(e => e.includes("exportDate") && e.includes("Invalid ISO date"))).toBe(true);
     });
 
     it("should reject non-object data", () => {
       const result = DataImporter.validateImportData("invalid");
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Invalid JSON structure");
     });
   });
 
   describe("parseJsonFile", () => {
     it("should parse valid JSON", () => {
       const jsonData = '{"test": "data"}';
-      const result = DataImporter.parseJsonFile(jsonData);
+      const result = DataImporter.parseJsonFile(jsonData as unknown as string);
       expect(result).toEqual({ test: "data" });
     });
 

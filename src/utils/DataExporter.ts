@@ -1,25 +1,11 @@
 import { type Loaded } from "jazz-tools";
-import { JazzAccount } from "../schema";
+import {
+  JazzAccount,
+  // Import DTO types inferred from Export* Zod shapes
+  type ExportMealDTO as ExportedMealEntry,
+  type ExportWeightDTO as ExportedWeightEntry,
+} from "../schema";
 
-// Types for the exported data format
-interface ExportedMealEntry {
-  timestamp: string;
-  foodName: string;
-  foodCategory: string;
-  caloriesPerGram: number;
-  caloriesPerDisplayUnit?: string;
-  weightInGrams: number;
-  displayUnit?: string;
-  totalCalories: number;
-  notes?: string;
-}
-
-interface ExportedWeightEntry {
-  timestamp: string;
-  weightValue: number;
-  unit?: string;
-  notes?: string;
-}
 
 interface ExportedData {
   version: string;
@@ -55,47 +41,55 @@ export class DataExporter {
       throw new Error("Failed to load account root");
     }
 
-    // Export meal entries
-    const mealEntries: ExportedMealEntry[] = [];
-    if (loadedAccount.root.mealEntries) {
-      for (const mealEntry of loadedAccount.root.mealEntries) {
-        if (mealEntry) {
-          mealEntries.push({
-            timestamp: mealEntry.timestamp,
-            foodName: mealEntry.foodName,
-            foodCategory: mealEntry.foodCategory,
-            caloriesPerGram: mealEntry.caloriesPerGram,
-            caloriesPerDisplayUnit: mealEntry.caloriesPerDisplayUnit,
-            weightInGrams: mealEntry.weightInGrams,
-            displayUnit: mealEntry.displayUnit,
-            totalCalories: mealEntry.totalCalories,
-            notes: mealEntry.notes,
-          });
+    // Export meal entries (compile-time assertion prevents drift vs importer DTO)
+    const mealEntries = (() => {
+      const arr = [] as ExportedMealEntry[];
+      if (loadedAccount.root.mealEntries) {
+        for (const mealEntry of loadedAccount.root.mealEntries) {
+          if (mealEntry) {
+            arr.push({
+              timestamp: mealEntry.timestamp,
+              foodName: mealEntry.foodName,
+              foodCategory: mealEntry.foodCategory,
+              caloriesPerGram: mealEntry.caloriesPerGram,
+              caloriesPerDisplayUnit: mealEntry.caloriesPerDisplayUnit,
+              weightInGrams: mealEntry.weightInGrams,
+              displayUnit: mealEntry.displayUnit,
+              totalCalories: mealEntry.totalCalories,
+              notes: mealEntry.notes,
+            } satisfies ExportedMealEntry);
+          }
         }
       }
-    }
+      return arr satisfies ExportedMealEntry[];
+    })();
 
-    // Export weight entries
-    const weightEntries: ExportedWeightEntry[] = [];
-    if (loadedAccount.root.weightEntries) {
-      for (const weightEntry of loadedAccount.root.weightEntries) {
-        if (weightEntry) {
-          weightEntries.push({
-            timestamp: weightEntry.timestamp,
-            weightValue: weightEntry.weightValue,
-            unit: weightEntry.unit,
-            notes: weightEntry.notes,
-          });
+    // Export weight entries (compile-time assertion prevents drift vs importer DTO)
+    const weightEntries = (() => {
+      const arr = [] as ExportedWeightEntry[];
+      if (loadedAccount.root.weightEntries) {
+        for (const weightEntry of loadedAccount.root.weightEntries) {
+          if (weightEntry) {
+            arr.push({
+              timestamp: weightEntry.timestamp,
+              weightValue: weightEntry.weightValue,
+              unit: weightEntry.unit,
+              notes: weightEntry.notes,
+            } satisfies ExportedWeightEntry);
+          }
         }
       }
-    }
+      return arr satisfies ExportedWeightEntry[];
+    })();
 
-    return {
+    const payload = {
       version: "1.0",
       exportDate: new Date().toISOString(),
       mealEntries,
       weightEntries,
-    };
+    } satisfies ExportedData;
+
+    return payload;
   }
 
   /**
