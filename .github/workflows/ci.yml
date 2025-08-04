@@ -11,6 +11,7 @@ permissions:
 
 env:
   CI: true
+  VOLTA_FEATURE_PNPM: 1
 
 jobs:
   unit-tests:
@@ -22,43 +23,38 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Volta
-        run: |
-          curl https://get.volta.sh | bash -s -- --skip-setup
-          echo "$HOME/.volta/bin" >> $GITHUB_PATH
+        uses: volta-cli/action@v4
 
       - name: Verify toolchain (Volta)
         run: |
           volta --version
           node -v
           corepack enable
-          pnpm -v || true
-          # Ensure pnpm version from package.json/volta is available
-          volta install pnpm@$(jq -r '.volta.pnpm // empty' package.json || echo "")
           pnpm -v
+
+      # Cache Strategy:
+      # 1. Try exact match using pnpm-lock.yaml hash
+      # 2. If no match, fall back to any previous cache for this OS
+      # 3. If still no match, create new cache
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v3
+        with:
+          # Define what paths should be cached
+          path: |
+            **/node_modules
+            ~/.pnpm-store
+          # Primary cache key - unique per pnpm-lock.yaml change
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          # Fallback key - matches any previous cache for this OS/pnpm combo
+          # Useful when dependencies partially change
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build (if needed by tests)
-        run: |
-          if pnpm -s run | grep -q "^build\b"; then
-            pnpm build
-          else
-            echo "No build script found, skipping"
-          fi
-
       - name: Run unit tests
-        run: |
-          if pnpm -s run | grep -qE "^(test|test:unit)\b"; then
-            if pnpm -s run | grep -q "^test:unit\b"; then
-              pnpm test:unit -- --reporter=default --coverage --run
-            else
-              pnpm test -- --reporter=default --coverage --run
-            fi
-          else
-            # Fallback to vitest if no scripts present
-            npx vitest run --reporter=default --coverage
-          fi
+        run: pnpm test
 
       - name: Upload coverage (if exists)
         if: always()

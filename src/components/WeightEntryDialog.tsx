@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -22,6 +21,7 @@ import { JazzAccount } from "../schema";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 import type { Loaded } from "jazz-tools";
+import { DatePicker } from "@/components/ui/date-picker";
 
 // Zod schema for weight form validation
 const weightFormSchema = z.object({
@@ -216,16 +216,13 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <div className="space-y-2">
             <label className="text-sm font-medium">Date</label>
-            <Input
-              type="date"
+            <DatePicker
               value={formData.date}
-              onChange={(e) => {
-                const value = e.target.value.trim();
+              onChange={(value) => {
                 setFormData(prev => ({ ...prev, date: value }));
                 validateField('date', value);
               }}
-              className={`${errors.date ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[44px] sm:min-h-[40px]`}
-              autoFocus={false}
+              error={!!errors.date}
             />
             {errors.date && (
               <p className="text-sm text-destructive">{errors.date}</p>

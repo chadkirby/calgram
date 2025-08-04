@@ -76,21 +76,32 @@ export class CalorieCalculator {
 
   /**
    * Helper function to extract date-only string from ISO timestamp for comparison
+   *
+   * Normal case:
+   * - Timestamps with an explicit offset (e.g., 2025-07-27T19:36:00.000-07:00) are the standard format the app produces.
+   *   We must preserve the embedded local timezone when computing the calendar day to ensure user-visible behavior is stable
+   *   regardless of the host environment's system timezone (CI vs local). We do this by using { setZone: true }.
+   *
+   * Defensive cases (legacy/outliers):
+   * - Z-terminated UTC timestamps (…Z) likely originate from older data or tests. Treat them deterministically as UTC.
+   * - Naive timestamps (no Z and no explicit offset) are also considered legacy/input errors; we normalize them as UTC to avoid
+   *   environment-dependent interpretation.
+   *
    * @param isoString - ISO date string
    * @returns Date string in YYYY-MM-DD format
    */
   private static getDateOnlyFromIso(isoString: string): string {
-    // If the string ends with 'Z', it's UTC, so parse as UTC to maintain backward compatibility
+    // Normal path: explicit offset; preserve its local zone for calendar-day calculations
+    if (/[+-]\d{2}:\d{2}$/.test(isoString)) {
+      return DateTime.fromISO(isoString, { setZone: true }).toISODate() || '';
+    }
+
+    // Defensive legacy path: explicit UTC (Z)
     if (isoString.endsWith('Z')) {
       return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
     }
-    
-    // If it has timezone offset info (+ or - in the last 6 characters), parse with timezone
-    if (/[+-]\d{2}:\d{2}$/.test(isoString)) {
-      return DateTime.fromISO(isoString).toISODate() || '';
-    }
-    
-    // Fallback: assume UTC for backward compatibility
+
+    // Defensive legacy path: naive input => normalize as UTC
     return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
   }
 
@@ -115,12 +126,27 @@ export class CalorieCalculator {
 
   /**
    * Add days to an ISO date string
+   *
+   * Normal case:
+   * - If the input includes an explicit offset, keep that zone while adding days so navigation is consistent
+   *   with the user's local selection.
+   *
+   * Defensive cases (legacy/outliers):
+   * - UTC (Z) and naive inputs are normalized to UTC to avoid environment-dependent shifts.
+   *
    * @param isoString - ISO date string
    * @param days - Number of days to add (can be negative)
    * @returns New ISO string with days added
    */
   static addDays(isoString: string, days: number): string {
-    return DateTime.fromISO(isoString).plus({ days }).toISO() || '';
+    const hasOffset = /[+-]\d{2}:\d{2}$/.test(isoString);
+    const isUtc = isoString.endsWith('Z');
+    const base = isUtc
+      ? DateTime.fromISO(isoString, { zone: 'utc' })
+      : hasOffset
+        ? DateTime.fromISO(isoString, { setZone: true }) // normal case
+        : DateTime.fromISO(isoString, { zone: 'utc' }); // defensive legacy normalization
+    return base.plus({ days }).toISO() || '';
   }
 
   /**
@@ -157,11 +183,21 @@ export class CalorieCalculator {
 
   /**
    * Create ISO string from HTML date input value
+   *
+   * Normal case:
+   * - The date input (YYYY-MM-DD) reflects the user's local calendar selection. We construct a DateTime at local midnight
+   *   by using { setZone: true }, preserving the user's intended local day.
+   *
+   * Defensive note:
+   * - This function expects a naive YYYY-MM-DD value from a date input. If other formats are passed, they will be treated
+   *   by Luxon with the system's local zone due to setZone: true, which is acceptable for UI-driven input but not
+   *   intended for arbitrary ISO values (handled elsewhere).
+   *
    * @param dateInputValue - Date string from HTML input (YYYY-MM-DD)
    * @returns ISO string at start of day
    */
   static createIsoFromDateInput(dateInputValue: string): string {
-    return DateTime.fromISO(dateInputValue).startOf('day').toISO() || '';
+    return DateTime.fromISO(dateInputValue, { setZone: true }).startOf('day').toISO() || '';
   }
 
 
