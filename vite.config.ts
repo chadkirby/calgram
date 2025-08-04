@@ -8,7 +8,6 @@ export default defineConfig({
   plugins: [react(), cloudflare()],
   server: {
     host: true, // Allow external connections
-    allowedHosts: ["ck.lion-solfege.ts.net"],
   },
   resolve: {
     alias: {

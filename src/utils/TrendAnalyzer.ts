@@ -129,12 +129,12 @@ export class TrendAnalyzer {
 
     // Convert to chart data points with unit conversion
     return filteredWeights.map(weight => {
-      // Get the stored unit (default to 'lbs' for legacy entries)
-      const storedUnit = weight.unit || 'lbs';
-      
+      // Get the stored unit (default to UnitPreferenceManager default for legacy entries)
+      const storedUnit = weight.unit || UnitPreferenceManager.getDefaultBodyWeightUnit();
+
       // Convert to display unit if different
-      const convertedWeight = storedUnit === displayUnit 
-        ? weight.weightValue 
+      const convertedWeight = storedUnit === displayUnit
+        ? weight.weightValue
         : WeightConverter.convert(weight.weightValue, storedUnit, displayUnit);
 
       return {
