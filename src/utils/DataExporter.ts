@@ -20,11 +20,14 @@ export interface ExportedData {
   weightEntries: ExportWeightDTO[];
 }
 
+/** A row whose optional fields may also be null, as Jazz 2 rows store them. */
+type SourceRow<T> = { [K in keyof T]: undefined extends T[K] ? T[K] | null : T[K] };
+
 /** Rows to export. A row's `id`, when present, is written as its source id. */
 export interface ExportSource {
-  profile: ProfileRow | undefined;
-  meals: Iterable<MealRow & { id?: string }>;
-  weights: Iterable<WeightRow & { id?: string }>;
+  profile: SourceRow<ProfileRow> | undefined;
+  meals: Iterable<SourceRow<MealRow> & { id?: string }>;
+  weights: Iterable<SourceRow<WeightRow> & { id?: string }>;
 }
 
 const present = <T>(item: T | null | undefined): item is T => item != null;
@@ -44,11 +47,11 @@ export class DataExporter {
           foodName: meal.foodName,
           foodCategory: meal.foodCategory,
           caloriesPerGram: meal.caloriesPerGram,
-          caloriesPerDisplayUnit: meal.caloriesPerDisplayUnit,
+          caloriesPerDisplayUnit: meal.caloriesPerDisplayUnit ?? undefined,
           weightInGrams: meal.weightInGrams,
-          displayUnit: meal.displayUnit,
+          displayUnit: meal.displayUnit ?? undefined,
           totalCalories: meal.totalCalories,
-          notes: meal.notes,
+          notes: meal.notes ?? undefined,
         }) satisfies ExportMealDTO,
     );
 
@@ -59,18 +62,18 @@ export class DataExporter {
           ...(weight.id ? { id: weight.id } : {}),
           timestamp: weight.timestamp,
           weightValue: weight.weightValue,
-          unit: weight.unit,
-          notes: weight.notes,
+          unit: weight.unit ?? undefined,
+          notes: weight.notes ?? undefined,
         }) satisfies ExportWeightDTO,
     );
 
     const profileData = profile
       ? ({
-          name: profile.name,
-          firstName: profile.firstName,
+          name: profile.name ?? undefined,
+          firstName: profile.firstName ?? undefined,
           dateOfBirth: profile.dateOfBirth || undefined,
-          mealWeightUnit: profile.mealWeightUnit,
-          bodyWeightUnit: profile.bodyWeightUnit,
+          mealWeightUnit: profile.mealWeightUnit ?? undefined,
+          bodyWeightUnit: profile.bodyWeightUnit ?? undefined,
         } satisfies ExportProfileDTO)
       : undefined;
 
