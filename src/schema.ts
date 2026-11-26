@@ -57,6 +57,18 @@ export const ExportWeightShape = {
  * Export these so producers (DataExporter) can assert using `satisfies`
  * against exactly what consumers (DataImporter) validate.
  */
+/** Profile and account settings, included in exports since version 1.1 */
+export const ExportProfileShape = {
+  name: z.string().optional(),
+  firstName: z.string().optional(),
+  dateOfBirth: z.string().refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" }).optional(),
+  mealWeightUnit: z.enum(['g', 'oz', 'lb', 'kg']).optional(),
+  bodyWeightUnit: z.enum(['lbs', 'kg']).optional(),
+} as const;
+
+export const ExportProfileZod = z.object(ExportProfileShape);
+export type ExportProfileDTO = z.infer<typeof ExportProfileZod>;
+
 export const ExportMealZod = z.object(ExportMealShape);
 export type ExportMealDTO = z.infer<typeof ExportMealZod>;
 
