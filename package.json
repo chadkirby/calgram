@@ -62,14 +62,21 @@
     "vitest": "^3.2.4",
     "wrangler": "^4.25.0"
   },
-  "volta": {
-    "node": "22.17.1",
-    "pnpm": "10.13.1"
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "26.13.1",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.23.0",
+      "onFail": "download"
+    }
   },
-  "packageManager": "pnpm@10.13.1",
   "engines": {
-    "node": ">=22",
-    "pnpm": ">=10",
+    "node": ">=26",
+    "pnpm": ">=12",
     "yarn": "use pnpm",
     "npm": "use pnpm"
   }

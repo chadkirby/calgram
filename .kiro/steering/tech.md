@@ -4,7 +4,7 @@
 
 - **Build Tool**: Vite 7.0.5 with TypeScript support
 - **Package Manager**: pnpm (required - enforced in package.json)
-- **Node Version**: 22.17.1+ (managed via Volta)
+- **Node Version**: 26 LTS (pinned in package.json `devEngines`, installed by mise)
 - **Deployment**: Cloudflare Workers via Wrangler
 
 ## Frontend Stack
