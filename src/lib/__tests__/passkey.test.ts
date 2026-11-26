@@ -40,8 +40,11 @@ describe("formatDeviceKey", () => {
   it("matches Jazz's device key format: prefix plus unpadded base64url", () => {
     // 32 bytes of 0xff encode to 42 "_" and a final "8" in base64url.
     expect(formatDeviceKey(new Uint8Array(32).fill(0xff))).toBe(`jazz-auth-v1:${"_".repeat(42)}8`);
-    expect(formatDeviceKey(bytes(32))).toBe(
-      "jazz-auth-v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
-    );
+    // Checked against the platform's own base64 encoder rather than a hard-coded key.
+    const base64url = btoa(String.fromCharCode(...bytes(32)))
+      .replaceAll("+", "-")
+      .replaceAll("/", "_")
+      .replace(/=+$/, "");
+    expect(formatDeviceKey(bytes(32))).toBe(`jazz-auth-v1:${base64url}`);
   });
 });
