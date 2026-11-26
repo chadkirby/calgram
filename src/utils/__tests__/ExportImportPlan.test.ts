@@ -41,13 +41,15 @@ const snack = {
 };
 
 describe("buildExport", () => {
-  it("writes v1.2 with each entry's source id", () => {
+  it("writes v1.3 with the exporting account and each entry's source id", () => {
     const data = DataExporter.buildExport({
+      accountId: "account-a",
       profile,
       meals: [offsetMeal],
       weights: [dateOnlyWeight],
     });
-    expect(data.version).toBe("1.2");
+    expect(data.version).toBe("1.3");
+    expect(data.accountId).toBe("account-a");
     expect(data.mealEntries[0].id).toBe("co_zMealOffset");
     expect(data.weightEntries[0].id).toBe("co_zWeightDateOnly");
     expect(DataImporter.validateImportData(JSON.parse(JSON.stringify(data))).errors).toEqual([]);
@@ -57,6 +59,7 @@ describe("buildExport", () => {
     const { id: _id, ...noId } = offsetMeal;
     const data = DataExporter.buildExport({ profile: undefined, meals: [noId], weights: [] });
     expect("id" in data.mealEntries[0]).toBe(false);
+    expect("accountId" in data).toBe(false);
   });
 });
 
@@ -73,8 +76,8 @@ describe("planImport", () => {
     expect(plan.profile).toEqual(profile);
     const { id: mealId, ...mealRow } = offsetMeal;
     const { id: weightId, ...weightRow } = dateOnlyWeight;
-    expect(plan.meals).toEqual([{ sourceKey: mealId, row: mealRow }]);
-    expect(plan.weights).toEqual([{ sourceKey: weightId, row: weightRow }]);
+    expect(plan.meals).toEqual([{ sourceKey: mealId, hasSourceId: true, row: mealRow }]);
+    expect(plan.weights).toEqual([{ sourceKey: weightId, hasSourceId: true, row: weightRow }]);
     expect(plan.meals[0].row.timestamp).toBe("2025-07-27T19:36:00.000-07:00");
     expect(plan.weights[0].row.timestamp).toBe("2025-07-28");
   });

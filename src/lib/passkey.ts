@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { BrowserPasskeyBackup } from "jazz-tools/passkey-backup";
 import { APPLICATION_NAME } from "./jazz";
 
@@ -87,25 +88,55 @@ export async function savePasskey(deviceKey: string, accountId: string, firstNam
 }
 
 // Per-account flags kept in this browser only. Keyed by account id, so the next
-// account on this browser never inherits them.
+// account on this browser never inherits them. A small store: values live in memory
+// (so they hold even when storage throws), are mirrored to localStorage, and every
+// write notifies subscribers, so each banner and button reading them updates at once.
 const savedKey = (accountId: string) => `calgram-passkey-saved:${accountId}`;
 const dismissedKey = (accountId: string) => `calgram-passkey-offer-dismissed:${accountId}`;
 
+const flags = new Map<string, boolean>();
+const listeners = new Set<() => void>();
+
 function readFlag(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === "true";
-  } catch {
-    return false;
+  let value = flags.get(key);
+  if (value === undefined) {
+    try {
+      value = localStorage.getItem(key) === "true";
+    } catch {
+      value = false;
+    }
+    flags.set(key, value);
   }
+  return value;
 }
 
+const notify = () => {
+  for (const listener of listeners) listener();
+};
+
 function writeFlag(key: string, value: boolean) {
+  flags.set(key, value);
   try {
     if (value) localStorage.setItem(key, "true");
     else localStorage.removeItem(key);
   } catch {
-    // Storage unavailable: the offer just shows again.
+    // Storage unavailable: the flag lasts until the page reloads.
   }
+  notify();
+}
+
+// Another tab changed storage: drop the cached values so the next read sees it.
+globalThis.addEventListener?.("storage", (event: StorageEvent) => {
+  if (event.key !== null && !event.key.startsWith("calgram-passkey-")) return;
+  flags.clear();
+  notify();
+});
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export const hasSavedPasskey = (accountId: string) => readFlag(savedKey(accountId));
@@ -117,4 +148,14 @@ export const dismissPasskeyOffer = (accountId: string) => writeFlag(dismissedKey
 export function forgetPasskeyFlags(accountId: string) {
   writeFlag(savedKey(accountId), false);
   writeFlag(dismissedKey(accountId), false);
+}
+
+/** This account's passkey flags, re-rendering whenever any of them changes. */
+export function usePasskeyFlags(accountId: string | undefined) {
+  const saved = useSyncExternalStore(subscribe, () => !!accountId && hasSavedPasskey(accountId));
+  const dismissed = useSyncExternalStore(
+    subscribe,
+    () => !!accountId && isPasskeyOfferDismissed(accountId),
+  );
+  return { saved, dismissed };
 }

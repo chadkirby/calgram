@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
-import { startNewAccount } from "./support/app";
+import { addMeal, mealNames, startNewAccount } from "./support/app";
 
 // U7: export and import in Settings → Data run on Jazz 2.
 
@@ -95,7 +95,7 @@ test("importing a backup twice adds its entries once, and export gives them back
   await expect(alert).toContainText("Skipped (already present): 5");
 
   const exported = await exportFile(page);
-  expect(exported.version).toBe("1.2");
+  expect(exported.version).toBe("1.3");
   expect(exported.mealEntries.map(content).toSorted(byTimestamp)).toEqual(
     [kibble, treat].toSorted(byTimestamp),
   );
@@ -121,6 +121,46 @@ test("importing a backup twice adds its entries once, and export gives them back
   expect(reloaded.mealEntries).toHaveLength(2);
   expect(reloaded.weightEntries).toHaveLength(2);
   // The server accepted every row the import wrote.
+  expect(rejected).toEqual([]);
+});
+
+test("re-importing this account's export doesn't bring back a meal deleted since", async ({
+  page,
+}) => {
+  const rejected: string[] = [];
+  page.on("console", (message) => {
+    if (message.text().includes("An imported row was rejected")) rejected.push(message.text());
+  });
+  await startNewAccount(page, "Tester");
+  await addMeal(page, { food: "Breakfast", category: "Dry food", caloriesPerUnit: 1 });
+  await addMeal(page, { food: "Mistake", category: "Treats", caloriesPerUnit: 1 });
+  await expect(mealNames(page)).toHaveCount(2);
+
+  await openDataCard(page);
+  const exported = await exportFile(page);
+  expect(exported.mealEntries).toHaveLength(2);
+  await page.keyboard.press("Escape");
+
+  const mistake = page.getByTestId("meal-entry").filter({ hasText: "Mistake" });
+  await mistake.getByRole("button").nth(1).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
+  await expect(mealNames(page)).toHaveText(["Breakfast"]);
+
+  const settings = await openDataCard(page);
+  await importFile(page, exported);
+  // Counts are local-first: the deleted meal's insert counts, then the server rejects it.
+  await expect(settings.getByRole("alert")).toContainText("Imported 1 meals and 0 weights");
+  await page.keyboard.press("Escape");
+  await expect(mealNames(page)).toHaveText(["Breakfast"]);
+
+  await page.reload();
+  await expect(mealNames(page)).toHaveText(["Breakfast"]);
+  await openDataCard(page);
+  const reexported = await exportFile(page);
+  expect(reexported.mealEntries.map((m: { foodName: string }) => m.foodName)).toEqual([
+    "Breakfast",
+  ]);
+  // The server's refusal of the deleted id counts as already present, not an error.
   expect(rejected).toEqual([]);
 });
 

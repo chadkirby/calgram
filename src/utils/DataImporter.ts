@@ -14,11 +14,13 @@ import { contentSourceKey } from "./rowIds";
 export type { ExportedData } from "./DataExporter";
 
 // Strict Zod schemas for the export format (reject unknown keys). Accepts v1.0 (no
-// profile), v1.1 (profile) and v1.2 (optional source `id` on each entry).
+// profile), v1.1 (profile), v1.2 (optional source `id` on each entry) and v1.3
+// (optional exporting `accountId`).
 const ExportedDataSchema = z
   .object({
     version: z.string(),
     exportDate: ExportIsoString,
+    accountId: z.string().optional(),
     profile: z.object(ExportProfileShape).strict().optional(),
     mealEntries: z.array(z.object(ExportMealShape).strict()),
     weightEntries: z.array(z.object(ExportWeightShape).strict()),
@@ -28,10 +30,14 @@ const ExportedDataSchema = z
 /** A row to write, with the source key its row id is derived from. */
 export interface PlannedRow<T> {
   sourceKey: string;
+  /** True when the source key is the entry's own `id` from the file. */
+  hasSourceId: boolean;
   row: T;
 }
 
 export interface ImportPlan {
+  /** The Jazz 2 account the file was exported from (v1.3+), when it names one. */
+  accountId: string | undefined;
   meals: PlannedRow<MealRow>[];
   weights: PlannedRow<WeightRow>[];
   /** Fields from the file's `profile` block (v1.1+), or undefined when it has none. */
@@ -72,11 +78,11 @@ async function planRows<T>(
   return Promise.all(
     entries.map(async ({ id, ...rest }) => {
       const row = rest as T;
-      if (id) return { sourceKey: id, row };
+      if (id) return { sourceKey: id, hasSourceId: true, row };
       const content = JSON.stringify(canonical(row));
       const occurrence = seen.get(content) ?? 0;
       seen.set(content, occurrence + 1);
-      return { sourceKey: await contentSourceKey(content, occurrence), row };
+      return { sourceKey: await contentSourceKey(content, occurrence), hasSourceId: false, row };
     }),
   );
 }
@@ -123,10 +129,17 @@ export class DataImporter {
   static async planImport(jsonData: unknown): Promise<ImportPlan> {
     const result = ExportedDataSchema.safeParse(jsonData);
     if (!result.success) {
-      return { meals: [], weights: [], profile: undefined, errors: formatIssues(result.error) };
+      return {
+        accountId: undefined,
+        meals: [],
+        weights: [],
+        profile: undefined,
+        errors: formatIssues(result.error),
+      };
     }
     const data = result.data;
     return {
+      accountId: data.accountId,
       meals: await planRows<MealRow>(data.mealEntries, canonicalMeal),
       weights: await planRows<WeightRow>(data.weightEntries, canonicalWeight),
       profile: data.profile ? definedFields(data.profile) : undefined,

@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAccount, useSavePasskey } from "@/lib/account";
-import { dismissPasskeyOffer, hasSavedPasskey, isPasskeyOfferDismissed } from "@/lib/passkey";
+import { dismissPasskeyOffer, usePasskeyFlags } from "@/lib/passkey";
 
 /**
  * After first use, offer once to save a passkey for a new account. Dismissing it
@@ -10,18 +9,11 @@ import { dismissPasskeyOffer, hasSavedPasskey, isPasskeyOfferDismissed } from "@
 export function PasskeyOffer() {
   const { accountId, profile } = useAccount();
   const { save, state } = useSavePasskey();
-  const [dismissed, setDismissed] = useState(
-    () => !!accountId && isPasskeyOfferDismissed(accountId),
-  );
+  const { saved, dismissed } = usePasskeyFlags(accountId);
 
-  if (dismissed || !accountId || profile?.setupStatus !== "native" || hasSavedPasskey(accountId)) {
-    return null;
-  }
+  if (dismissed || saved || !accountId || profile?.setupStatus !== "native") return null;
 
-  const dismiss = () => {
-    dismissPasskeyOffer(accountId);
-    setDismissed(true);
-  };
+  const dismiss = () => dismissPasskeyOffer(accountId);
 
   return (
     <section

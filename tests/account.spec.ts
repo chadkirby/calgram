@@ -54,6 +54,25 @@ test("a passkey saved on one device restores the account and its rows on another
   await expect(a.page.getByRole("alertdialog")).toHaveCount(0);
 });
 
+test("saving a passkey from Settings hides the offer banner right away", async ({ browser }) => {
+  const { page } = await openWithAuthenticator(browser);
+  await startNewAccount(page, "Pat");
+  // Behind the open Settings dialog the banner is aria-hidden, so find it by CSS.
+  const offer = page.locator('section[aria-label="Save a passkey"]');
+  await expect(offer).toBeVisible();
+
+  await page.getByTitle("Application settings").filter({ visible: true }).click();
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await expect(offer).toBeAttached();
+  await settings.getByRole("button", { name: "Save a passkey" }).click();
+  await expect(settings.getByText("Passkey saved")).toBeVisible();
+  await expect(offer).toHaveCount(0);
+  await expect(settings).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(offer).toHaveCount(0);
+});
+
 test("a signed-in account the server confirms has no setup status gets the name step", async ({
   page,
 }) => {

@@ -55,7 +55,7 @@ function fakeDb(rejectWith?: string) {
   return { db: db as unknown as Db, inserts, tables };
 }
 
-const planned = (sourceKey: string) => ({ sourceKey, row: meal(sourceKey) });
+const planned = (sourceKey: string) => ({ sourceKey, hasSourceId: true, row: meal(sourceKey) });
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -103,11 +103,61 @@ describe("importIntoAccount", () => {
   it("adds nothing when importing this account's own export", async () => {
     const { db, inserts } = fakeDb();
     await importIntoAccount(db, ACCOUNT, file([meal("Kibble"), meal("Treat")]), () => {});
-    const exported = JSON.parse(JSON.stringify(await exportAccount(db, undefined)));
+    const exported = JSON.parse(JSON.stringify(await exportAccount(db, ACCOUNT, undefined)));
+    expect(exported).toMatchObject({ version: "1.3", accountId: ACCOUNT });
 
     const result = await importIntoAccount(db, ACCOUNT, exported, () => {});
     expect(result).toEqual({ mealCount: 0, weightCount: 0, duplicatesSkipped: 2 });
     expect(inserts).toHaveLength(2);
+  });
+
+  describe("a file's source ids", () => {
+    const mealId = "0f8fad5b-d9cb-469f-a165-70867728950e";
+    const weightId = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+    const withIds = (accountId?: string) => ({
+      ...file(
+        [meal("Kibble", mealId), meal("Treat", "co_zClassicMeal"), meal("Snack")],
+        [weight(10, weightId)],
+      ),
+      version: "1.3",
+      ...(accountId ? { accountId } : {}),
+    });
+
+    it("are reused as row ids when the file is this account's own export", async () => {
+      const { db, inserts } = fakeDb();
+      const result = await importIntoAccount(db, ACCOUNT, withIds(ACCOUNT), () => {});
+      expect(result).toEqual({ mealCount: 3, weightCount: 1, duplicatesSkipped: 0 });
+      expect(inserts.map(({ id }) => id)).toEqual([
+        mealId,
+        // A Classic id and an id-less entry still get derived ids.
+        await rowId(ACCOUNT, "co_zClassicMeal"),
+        expect.not.stringMatching(new RegExp(`^(${mealId}|${weightId})$`)),
+        weightId,
+      ]);
+    });
+
+    it("are only a source key for another account's export", async () => {
+      const { db, inserts } = fakeDb();
+      await importIntoAccount(db, ACCOUNT, withIds("account-b"), () => {});
+      expect(inserts.map(({ id }) => id)).toContain(await rowId(ACCOUNT, mealId));
+      expect(inserts.map(({ id }) => id)).toContain(await rowId(ACCOUNT, weightId));
+      expect(inserts.map(({ id }) => id)).not.toContain(mealId);
+    });
+
+    it("are only a source key in a v1.2 file, which names no account", async () => {
+      const { db, inserts } = fakeDb();
+      await importIntoAccount(db, ACCOUNT, { ...withIds(), version: "1.2" }, () => {});
+      expect(inserts.map(({ id }) => id)).toContain(await rowId(ACCOUNT, mealId));
+      expect(inserts.map(({ id }) => id)).not.toContain(mealId);
+    });
+
+    it("still count once when the same source id repeats in this account's export", async () => {
+      const { db, inserts } = fakeDb();
+      const data = { ...withIds(ACCOUNT), mealEntries: [meal("A", mealId), meal("A", mealId)] };
+      const result = await importIntoAccount(db, ACCOUNT, data, () => {});
+      expect(result.duplicatesSkipped).toBe(1);
+      expect(inserts.filter(({ table }) => table === app.mealEntries)).toHaveLength(1);
+    });
   });
 
   it("writes nothing for an invalid file and reports its validation errors", async () => {

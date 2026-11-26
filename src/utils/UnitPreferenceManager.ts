@@ -1,11 +1,11 @@
 import type { MealWeightUnit, BodyWeightUnit, ProfileRow } from "@/schema";
 
-/** The profile fields this class reads and writes. */
+/** The profile fields this class reads. */
 type UnitProfile = Pick<ProfileRow, "mealWeightUnit" | "bodyWeightUnit">;
 
 /**
- * UnitPreferenceManager handles user preferences for weight units
- * using Jazz profile storage for real-time sync across devices
+ * Reads the profile's weight-unit preferences, falling back to the defaults. Read-only:
+ * preferences are saved by writing the profile row (`saveProfile` from `useAccount`).
  */
 export class UnitPreferenceManager {
   private static readonly DEFAULT_MEAL_UNIT: MealWeightUnit = "g";
@@ -24,19 +24,6 @@ export class UnitPreferenceManager {
   }
 
   /**
-   * Set the user's preferred meal weight unit
-   * @param profile - The user's profile
-   * @param unit - The meal weight unit to set
-   */
-  static setMealWeightUnit(profile: UnitProfile | undefined, unit: MealWeightUnit): void {
-    if (!profile) {
-      console.warn("Cannot set meal weight unit: profile not available");
-      return;
-    }
-    profile.mealWeightUnit = unit;
-  }
-
-  /**
    * Get the user's preferred body weight unit
    * @param profile - The user's profile
    * @returns The preferred body weight unit or default (pounds)
@@ -46,19 +33,6 @@ export class UnitPreferenceManager {
       return this.DEFAULT_BODY_UNIT;
     }
     return profile.bodyWeightUnit;
-  }
-
-  /**
-   * Set the user's preferred body weight unit
-   * @param profile - The user's profile
-   * @param unit - The body weight unit to set
-   */
-  static setBodyWeightUnit(profile: UnitProfile | undefined, unit: BodyWeightUnit): void {
-    if (!profile) {
-      console.warn("Cannot set body weight unit: profile not available");
-      return;
-    }
-    profile.bodyWeightUnit = unit;
   }
 
   /**

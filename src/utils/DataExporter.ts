@@ -7,12 +7,17 @@ import type {
   ExportProfileDTO,
 } from "../schema";
 
-/** v1.2 adds an optional source `id` to each entry. */
-export const EXPORT_VERSION = "1.2";
+/**
+ * v1.2 adds an optional source `id` to each entry; v1.3 adds the exporting Jazz 2
+ * `accountId`, so importing into the same account can reuse those ids as row ids.
+ */
+export const EXPORT_VERSION = "1.3";
 
 export interface ExportedData {
   version: string;
   exportDate: string;
+  /** The Jazz 2 account the file was exported from (v1.3+). */
+  accountId?: string;
   profile?: ExportProfileDTO;
   mealEntries: ExportMealDTO[];
   weightEntries: ExportWeightDTO[];
@@ -23,6 +28,8 @@ type SourceRow<T> = { [K in keyof T]: undefined extends T[K] ? T[K] | null : T[K
 
 /** Rows to export. A row's `id`, when present, is written as its source id. */
 export interface ExportSource {
+  /** The exporting Jazz 2 account, written to the file when given. */
+  accountId?: string;
   profile: SourceRow<ProfileRow> | undefined;
   meals: Iterable<SourceRow<MealRow> & { id?: string }>;
   weights: Iterable<SourceRow<WeightRow> & { id?: string }>;
@@ -33,7 +40,10 @@ export class DataExporter {
    * Build the export file from plain rows. Pure: fields are picked explicitly, so a
    * Jazz 2 row can be passed as is. Timestamps are copied verbatim.
    */
-  static buildExport({ profile, meals, weights }: ExportSource, now = new Date()): ExportedData {
+  static buildExport(
+    { accountId, profile, meals, weights }: ExportSource,
+    now = new Date(),
+  ): ExportedData {
     const mealEntries = Array.from(
       meals,
       (meal) =>
@@ -76,6 +86,7 @@ export class DataExporter {
     return {
       version: EXPORT_VERSION,
       exportDate: now.toISOString(),
+      ...(accountId ? { accountId } : {}),
       ...(profileData ? { profile: profileData } : {}),
       mealEntries,
       weightEntries,

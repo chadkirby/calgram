@@ -25,9 +25,10 @@ export function DataCard() {
   } | null>(null);
 
   const handleExport = async () => {
+    if (!accountId) return;
     setIsExporting(true);
     try {
-      const exportData = await exportAccount(db, profile);
+      const exportData = await exportAccount(db, accountId, profile);
 
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");

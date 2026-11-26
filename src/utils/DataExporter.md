@@ -17,16 +17,16 @@ The DataExporter utility provides functionality for exporting meal and weight tr
 
 ### buildExport
 
-Builds the export file (version `1.2`) from plain rows. Pure: no account access, no I/O. Fields are picked explicitly, so Jazz 2 rows (with `null` optional fields) can be passed as is. Timestamps are copied verbatim.
+Builds the export file (version `1.3`) from plain rows. Pure: no account access, no I/O. Fields are picked explicitly, so Jazz 2 rows (with `null` optional fields) can be passed as is. Timestamps are copied verbatim.
 
 ```typescript
 static buildExport(
-  source: { profile: ProfileRow | undefined; meals: Iterable<MealRow & { id?: string }>; weights: Iterable<WeightRow & { id?: string }> },
+  source: { accountId?: string; profile: ProfileRow | undefined; meals: Iterable<MealRow & { id?: string }>; weights: Iterable<WeightRow & { id?: string }> },
   now?: Date,
 ): ExportedData
 ```
 
-A row's `id`, when present, is written as the entry's source `id` (new in v1.2), so a re-import can recognise entries it already has.
+A row's `id`, when present, is written as the entry's source `id` (new in v1.2), so a re-import can recognise entries it already has. `accountId`, when given, is written at the top level (new in v1.3): the Jazz 2 account the file came from.
 
 ### downloadJsonFile
 
@@ -53,8 +53,9 @@ The main data structure for exported data.
 
 ```typescript
 interface ExportedData {
-  version: string; // "1.2"
+  version: string; // "1.3"
   exportDate: string;
+  accountId?: string; // exporting Jazz 2 account, since 1.3
   profile?: ExportProfileDTO; // since 1.1
   mealEntries: ExportedMealEntry[];
   weightEntries: ExportedWeightEntry[];

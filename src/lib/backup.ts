@@ -5,10 +5,17 @@ import { DataImporter, type PlannedRow } from "@/utils/DataImporter";
 import { rowId } from "@/utils/rowIds";
 import type { Profile } from "./data";
 
-/** Export this account's profile, meals and weigh-ins; each entry's `id` is its row id. */
-export async function exportAccount(db: Db, profile: Profile | undefined): Promise<ExportedData> {
+/**
+ * Export this account's profile, meals and weigh-ins. Each entry's `id` is its row id,
+ * and the file names the account, so importing it back can reuse those ids.
+ */
+export async function exportAccount(
+  db: Db,
+  accountId: string,
+  profile: Profile | undefined,
+): Promise<ExportedData> {
   const [meals, weights] = await Promise.all([db.all(app.mealEntries), db.all(app.weightEntries)]);
-  return DataExporter.buildExport({ profile, meals, weights });
+  return DataExporter.buildExport({ accountId, profile, meals, weights });
 }
 
 export interface RowWrites<T> {
@@ -20,18 +27,34 @@ export interface RowWrites<T> {
   duplicates: number;
 }
 
+/** A Jazz 2 row id (a UUID), as opposed to a Classic CoValue id (`co_z…`). */
+const ROW_ID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Decide which planned rows to insert (KTD5). An entry is skipped when its source id
  * already is one of this account's row ids (re-importing a Jazz 2 export), when its
  * deterministic row id already exists (re-importing any other file), or when an earlier
  * entry in the file had the same source key (a concatenated export).
+ *
+ * With `ownExport` (the file names this account), an entry whose source id is a Jazz 2
+ * row id is inserted under that id itself, so the server's "object already exists" and
+ * "row already deleted" guards apply: a row deleted since the export, or one the server
+ * has but this device hasn't loaded, isn't added again. Everything else gets
+ * `rowId(account, sourceKey)`.
  */
 export async function planRowWrites<T>(
   accountId: string,
   planned: readonly PlannedRow<T>[],
   existingIds: ReadonlySet<string>,
+  ownExport = false,
 ): Promise<RowWrites<T>> {
-  const ids = await Promise.all(planned.map(({ sourceKey }) => rowId(accountId, sourceKey)));
+  const ids = await Promise.all(
+    planned.map(({ sourceKey, hasSourceId }) =>
+      ownExport && hasSourceId && ROW_ID_SHAPE.test(sourceKey)
+        ? sourceKey
+        : rowId(accountId, sourceKey),
+    ),
+  );
   const seen = new Set<string>();
   const result: RowWrites<T> = { inserts: [], alreadyPresent: 0, duplicates: 0 };
   for (const [i, { sourceKey, row }] of planned.entries()) {
@@ -69,7 +92,9 @@ function insertQuietly(write: { wait(options: { tier: "global" }): Promise<unkno
 
 /**
  * Import an export file into this account. Rows are inserted local-first with
- * deterministic ids, only where missing. The file's names and unit preferences are
+ * deterministic ids (or, for this account's own export, their original ids), only
+ * where missing. The counts are local-first: a row the server later rejects as
+ * existing or deleted still counts as imported. The file's names and unit preferences are
  * written to the profile; its date of birth is dropped (no Jazz 2 column for it).
  * Throws, writing nothing, when the file doesn't validate.
  */
@@ -85,11 +110,18 @@ export async function importIntoAccount(
   }
 
   const [meals, weights] = await Promise.all([db.all(app.mealEntries), db.all(app.weightEntries)]);
-  const mealWrites = await planRowWrites(accountId, plan.meals, new Set(meals.map((m) => m.id)));
+  const ownExport = plan.accountId === accountId;
+  const mealWrites = await planRowWrites(
+    accountId,
+    plan.meals,
+    new Set(meals.map((m) => m.id)),
+    ownExport,
+  );
   const weightWrites = await planRowWrites(
     accountId,
     plan.weights,
     new Set(weights.map((w) => w.id)),
+    ownExport,
   );
 
   for (const { id, row } of mealWrites.inserts) {
