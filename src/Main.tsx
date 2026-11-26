@@ -3,7 +3,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import "./index.css";
-// import { JazzInspector } from "jazz-classic/inspector";
 import { apiKey } from "./apiKey.ts";
 import { JazzAccount } from "./schema.ts";
 import { router } from "./router.tsx";

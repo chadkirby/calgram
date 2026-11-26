@@ -9,7 +9,7 @@ import type {
   ExportProfileDTO,
 } from "../schema";
 
-/** v1.2 adds an optional source `id` to each entry (KTD12). */
+/** v1.2 adds an optional source `id` to each entry. */
 export const EXPORT_VERSION = "1.2";
 
 export interface ExportedData {

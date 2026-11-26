@@ -6,7 +6,7 @@ const mealUnit = () => s.enum("g", "oz", "lb", "kg");
 
 export const schema = s.defineSchema({
   mealEntries: s.table({
-    // Stored verbatim: offset ISO datetimes or date-only strings (plan KTD10).
+    // Stored verbatim: offset ISO datetimes or date-only strings.
     timestamp: s.string(),
     foodName: s.string(),
     foodCategory: s.string(),
@@ -29,7 +29,7 @@ export const schema = s.defineSchema({
     mealWeightUnit: mealUnit().optional(),
     bodyWeightUnit: s.enum("lbs", "kg").optional(),
     classicAccountId: s.string().optional(),
-    // "native": started fresh; "migrated": Classic data copied (plan KTD6).
+    // "native": started fresh; "migrated": Classic data copied.
     setupStatus: s.enum("native", "migrated").optional(),
   }),
 });

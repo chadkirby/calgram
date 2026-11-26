@@ -1,5 +1,5 @@
 /**
- * Deterministic row ids for copied data (KTD5).
+ * Deterministic row ids for copied data.
  *
  * A row's id is a UUID built from SHA-256 over a calgram namespace, the owning Jazz 2
  * account id and the entry's source key. Migration and import insert with this fixed id,

@@ -47,9 +47,9 @@ export const WeightEntry = co.map(WeightShape);
 export type WeightEntryType = z.infer<typeof WeightEntry>;
 
 /**
- * Plain row types (KTD12). Utilities take these instead of Classic CoValue types, so
+ * Plain row types Utilities take these instead of Classic CoValue types, so
  * Classic objects satisfy them structurally and Jazz 2 rows can replace them later.
- * Timestamps are verbatim ISO text (KTD10): an offset datetime, a `Z` datetime or a
+ * Timestamps are verbatim ISO text: an offset datetime, a `Z` datetime or a
  * date-only `YYYY-MM-DD`.
  */
 export interface MealRow {
@@ -86,11 +86,11 @@ export interface ProfileRow {
  * validation doesn't depend on Classic. Timestamps are ISO strings that Luxon parses,
  * which includes date-only values.
  */
-const ExportIsoString = zod
+export const ExportIsoString = zod
   .string()
   .refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" });
 
-/** Since v1.2 every entry may carry its source `id` (KTD12). */
+/** Since v1.2 every entry may carry its source `id`. */
 export const ExportMealShape = {
   id: zod.string().min(1).optional(),
   timestamp: ExportIsoString,

@@ -28,8 +28,8 @@ const RECENT_LIMIT = 12;
 type FoodMeal = Pick<MealRow, "timestamp" | "foodName" | "foodCategory" | "caloriesPerGram">;
 
 /**
- * Derive food suggestions from the meals themselves (KTD11), so deletes and edits are
- * always reflected. Meals are ordered by their parsed instant (KTD10); on a tie the one
+ * Derive food suggestions from the meals themselves, so deletes and edits are
+ * always reflected. Meals are ordered by their parsed instant; on a tie the one
  * later in the input counts as newer.
  */
 export function deriveFoodIntelligence(meals: readonly FoodMeal[]): FoodIntelligenceData {

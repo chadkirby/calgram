@@ -18,7 +18,15 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit, Plus } from "lucide-react";
 import { MealEntryForm } from "@/components/MealEntryForm";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+  type PieLabelRenderProps,
+} from "recharts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DailyPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
@@ -297,9 +305,8 @@ function DailyPageContent() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={(props) => {
-                            // Recharts passes each data entry's own fields through.
-                            const { percentage } = props as typeof props & { percentage: string };
+                          label={(props: PieLabelRenderProps & { percentage?: string }) => {
+                            const { percentage } = props;
                             const name = props.name ?? "";
                             const isMobile = window.innerWidth < 640;
                             const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;

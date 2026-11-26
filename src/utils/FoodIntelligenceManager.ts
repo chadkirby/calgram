@@ -5,7 +5,7 @@ import { FoodIntelligence, FoodMetadata, MealEntry } from "../schema";
 /**
  * Classic adapter for the stored `root.foodIntelligence`, kept only so the Classic
  * MealEntryForm behaves as it does today. Jazz 2 derives suggestions from meals instead
- * (`deriveFoodIntelligence` in ./foodIntelligence, KTD11); delete this with Classic.
+ * (`deriveFoodIntelligence` in ./foodIntelligence); delete this with Classic.
  */
 export class FoodIntelligenceManager {
   /**

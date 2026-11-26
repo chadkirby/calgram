@@ -1,10 +1,10 @@
 import { Group, type Loaded } from "jazz-classic";
-import { DateTime } from "luxon";
 import { z } from "zod";
 import {
   MealEntry,
   WeightEntry,
   FoodMetadata,
+  ExportIsoString,
   ExportMealShape,
   ExportWeightShape,
   ExportProfileShape,
@@ -21,14 +21,10 @@ export type { ExportedData } from "./DataExporter";
 
 // Strict Zod schemas for the export format (reject unknown keys). Accepts v1.0 (no
 // profile), v1.1 (profile) and v1.2 (optional source `id` on each entry).
-const ISODateString = z.string().refine((s) => DateTime.fromISO(s).isValid, {
-  message: "Invalid ISO date",
-});
-
 const ExportedDataSchema = z
   .object({
     version: z.string(),
-    exportDate: ISODateString,
+    exportDate: ExportIsoString,
     profile: z.object(ExportProfileShape).strict().optional(),
     mealEntries: z.array(z.object(ExportMealShape).strict()),
     weightEntries: z.array(z.object(ExportWeightShape).strict()),
@@ -43,7 +39,7 @@ interface ImportResult {
   errors: string[];
 }
 
-/** A row to write, with the source key its KTD5 row id is derived from. */
+/** A row to write, with the source key its row id is derived from. */
 export interface PlannedRow<T> {
   sourceKey: string;
   row: T;
@@ -78,7 +74,7 @@ function definedFields<T extends object>(obj: T): Partial<T> {
 }
 
 /**
- * Source keys for a file's entries (KTD5): the entry's source `id` when it has one,
+ * Source keys for a file's entries: the entry's source `id` when it has one,
  * otherwise a hash of its content plus its occurrence among identical entries, so two
  * identical snacks stay two rows and re-planning the same file gives the same keys.
  */
