@@ -3,7 +3,9 @@ import { DateTime } from "luxon";
 import { FoodIntelligence, FoodMetadata, MealEntry } from "../schema";
 
 /**
- * Utility class for managing food intelligence and auto-completion data
+ * Classic adapter for the stored `root.foodIntelligence`, kept only so the Classic
+ * MealEntryForm behaves as it does today. Jazz 2 derives suggestions from meals instead
+ * (`deriveFoodIntelligence` in ./foodIntelligence, KTD11); delete this with Classic.
  */
 export class FoodIntelligenceManager {
   /**
@@ -89,84 +91,6 @@ export class FoodIntelligenceManager {
 
     // Return a copy of the recent categories array (reversed to show most recent first)
     return [...intelligence.recentCategories].toReversed();
-  }
-
-  /**
-   * Get food suggestions (CPG and category) for auto-populating form fields
-   * @param intelligence - The food intelligence CoMap
-   * @param foodName - The food name to get suggestions for
-   * @returns Object with suggested CPG and category, or null if no data exists
-   */
-  static getFoodSuggestions(
-    intelligence: Loaded<typeof FoodIntelligence> | undefined,
-    foodName: string,
-  ): { caloriesPerGram: number; category: string } | null {
-    if (!intelligence?.foodData || !foodName.trim()) {
-      return null;
-    }
-
-    const metadata = intelligence.foodData[foodName.trim()];
-    if (!metadata) {
-      return null;
-    }
-
-    return {
-      caloriesPerGram: metadata.lastUsedCPG,
-      category: metadata.lastUsedCategory,
-    };
-  }
-
-  /**
-   * Get all unique food names sorted by usage frequency and recency
-   * @param intelligence - The food intelligence CoMap
-   * @returns Array of food names sorted by relevance
-   */
-  static getAllFoodsSortedByRelevance(
-    intelligence: Loaded<typeof FoodIntelligence> | undefined,
-  ): string[] {
-    if (!intelligence?.foodData) {
-      return [];
-    }
-
-    const foodEntries = Object.entries(intelligence.foodData);
-
-    // Sort by usage count (descending) and then by last used date (descending)
-    return foodEntries
-      .filter(([, metadata]) => metadata != null)
-      .toSorted(([, a], [, b]) => {
-        if (!a || !b) return 0;
-        // First sort by usage count
-        if (a.usageCount !== b.usageCount) {
-          return b.usageCount - a.usageCount;
-        }
-        // Then by last used date
-        return DateTime.fromISO(b.lastUsed).toMillis() - DateTime.fromISO(a.lastUsed).toMillis();
-      })
-      .map(([foodName]) => foodName);
-  }
-
-  /**
-   * Search for food names that match a query string
-   * @param intelligence - The food intelligence CoMap
-   * @param query - The search query
-   * @returns Array of matching food names
-   */
-  static searchFoods(
-    intelligence: Loaded<typeof FoodIntelligence> | undefined,
-    query: string,
-  ): string[] {
-    if (!intelligence?.foodData || !query.trim()) {
-      return this.getRecentFoods(intelligence);
-    }
-
-    const searchTerm = query.toLowerCase().trim();
-    const allFoods = this.getAllFoodsSortedByRelevance(intelligence);
-
-    // Filter foods that contain the search term
-    const matches = allFoods.filter((food) => food.toLowerCase().includes(searchTerm));
-
-    // Limit to 12 results
-    return matches.slice(0, 12);
   }
 
   /**

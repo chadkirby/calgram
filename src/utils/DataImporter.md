@@ -27,7 +27,26 @@ The DataImporter utility provides functionality for importing meal and weight tr
 
 ## Methods
 
+### planImport
+
+Validates a parsed file and plans its rows without writing anything. Accepts v1.0, v1.1 and v1.2 files.
+
+```typescript
+static async planImport(jsonData: unknown): Promise<ImportPlan>
+
+interface ImportPlan {
+  meals: { sourceKey: string; row: MealRow }[];
+  weights: { sourceKey: string; row: WeightRow }[];
+  profile: Partial<ProfileRow> | undefined; // from the file's `profile` block
+  errors: string[]; // validation errors; when present, nothing is planned
+}
+```
+
+Each row's source key is its source `id` (v1.2) when present. Otherwise it is a hash of the entry's content plus its occurrence index among identical entries, so two identical entries stay two rows and planning the same file twice gives the same keys. `rowId(accountId, sourceKey)` in `rowIds.ts` turns a source key into the row's deterministic id.
+
 ### importData
+
+Classic adapter: writes `planImport`'s rows into a Classic account. It ignores the profile patch, as the Classic importer always has.
 
 Imports data from exported JSON file (supports both legacy and new formats).
 

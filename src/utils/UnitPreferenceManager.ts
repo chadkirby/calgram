@@ -1,5 +1,7 @@
-import type { Loaded } from "jazz-tools";
-import type { CalorieTrackerProfile, MealWeightUnit, BodyWeightUnit } from "@/schema";
+import type { MealWeightUnit, BodyWeightUnit, ProfileRow } from "@/schema";
+
+/** The profile fields this class reads and writes. A Classic profile satisfies it. */
+type UnitProfile = Pick<ProfileRow, "mealWeightUnit" | "bodyWeightUnit">;
 
 /**
  * UnitPreferenceManager handles user preferences for weight units
@@ -11,12 +13,10 @@ export class UnitPreferenceManager {
 
   /**
    * Get the user's preferred meal weight unit
-   * @param profile - The loaded Jazz profile
+   * @param profile - The user's profile
    * @returns The preferred meal weight unit or default (grams)
    */
-  static getMealWeightUnit(
-    profile: Loaded<typeof CalorieTrackerProfile> | undefined,
-  ): MealWeightUnit {
+  static getMealWeightUnit(profile: UnitProfile | undefined): MealWeightUnit {
     if (!profile || !profile.mealWeightUnit) {
       return this.DEFAULT_MEAL_UNIT;
     }
@@ -25,13 +25,10 @@ export class UnitPreferenceManager {
 
   /**
    * Set the user's preferred meal weight unit
-   * @param profile - The loaded Jazz profile
+   * @param profile - The user's profile
    * @param unit - The meal weight unit to set
    */
-  static setMealWeightUnit(
-    profile: Loaded<typeof CalorieTrackerProfile> | undefined,
-    unit: MealWeightUnit,
-  ): void {
+  static setMealWeightUnit(profile: UnitProfile | undefined, unit: MealWeightUnit): void {
     if (!profile) {
       console.warn("Cannot set meal weight unit: profile not available");
       return;
@@ -41,12 +38,10 @@ export class UnitPreferenceManager {
 
   /**
    * Get the user's preferred body weight unit
-   * @param profile - The loaded Jazz profile
+   * @param profile - The user's profile
    * @returns The preferred body weight unit or default (pounds)
    */
-  static getBodyWeightUnit(
-    profile: Loaded<typeof CalorieTrackerProfile> | undefined,
-  ): BodyWeightUnit {
+  static getBodyWeightUnit(profile: UnitProfile | undefined): BodyWeightUnit {
     if (!profile || !profile.bodyWeightUnit) {
       return this.DEFAULT_BODY_UNIT;
     }
@@ -55,13 +50,10 @@ export class UnitPreferenceManager {
 
   /**
    * Set the user's preferred body weight unit
-   * @param profile - The loaded Jazz profile
+   * @param profile - The user's profile
    * @param unit - The body weight unit to set
    */
-  static setBodyWeightUnit(
-    profile: Loaded<typeof CalorieTrackerProfile> | undefined,
-    unit: BodyWeightUnit,
-  ): void {
+  static setBodyWeightUnit(profile: UnitProfile | undefined, unit: BodyWeightUnit): void {
     if (!profile) {
       console.warn("Cannot set body weight unit: profile not available");
       return;

@@ -1,23 +1,91 @@
 import { type Loaded } from "jazz-tools";
-import {
+import type {
   JazzAccount,
-  // Import DTO types inferred from Export* Zod shapes
-  type ExportMealDTO as ExportedMealEntry,
-  type ExportWeightDTO as ExportedWeightEntry,
-  type ExportProfileDTO,
+  MealRow,
+  ProfileRow,
+  WeightRow,
+  ExportMealDTO,
+  ExportWeightDTO,
+  ExportProfileDTO,
 } from "../schema";
 
-interface ExportedData {
+/** v1.2 adds an optional source `id` to each entry (KTD12). */
+export const EXPORT_VERSION = "1.2";
+
+export interface ExportedData {
   version: string;
   exportDate: string;
   profile?: ExportProfileDTO;
-  mealEntries: ExportedMealEntry[];
-  weightEntries: ExportedWeightEntry[];
+  mealEntries: ExportMealDTO[];
+  weightEntries: ExportWeightDTO[];
 }
+
+/** Rows to export. A row's `id`, when present, is written as its source id. */
+export interface ExportSource {
+  profile: ProfileRow | undefined;
+  meals: Iterable<MealRow & { id?: string }>;
+  weights: Iterable<WeightRow & { id?: string }>;
+}
+
+const present = <T>(item: T | null | undefined): item is T => item != null;
 
 export class DataExporter {
   /**
-   * Export user data to a structured format
+   * Build the export file from plain rows. Pure: fields are picked explicitly, so a
+   * Classic CoValue or a Jazz 2 row can be passed as is. Timestamps are copied verbatim.
+   */
+  static buildExport({ profile, meals, weights }: ExportSource, now = new Date()): ExportedData {
+    const mealEntries = Array.from(
+      meals,
+      (meal) =>
+        ({
+          ...(meal.id ? { id: meal.id } : {}),
+          timestamp: meal.timestamp,
+          foodName: meal.foodName,
+          foodCategory: meal.foodCategory,
+          caloriesPerGram: meal.caloriesPerGram,
+          caloriesPerDisplayUnit: meal.caloriesPerDisplayUnit,
+          weightInGrams: meal.weightInGrams,
+          displayUnit: meal.displayUnit,
+          totalCalories: meal.totalCalories,
+          notes: meal.notes,
+        }) satisfies ExportMealDTO,
+    );
+
+    const weightEntries = Array.from(
+      weights,
+      (weight) =>
+        ({
+          ...(weight.id ? { id: weight.id } : {}),
+          timestamp: weight.timestamp,
+          weightValue: weight.weightValue,
+          unit: weight.unit,
+          notes: weight.notes,
+        }) satisfies ExportWeightDTO,
+    );
+
+    const profileData = profile
+      ? ({
+          name: profile.name,
+          firstName: profile.firstName,
+          dateOfBirth: profile.dateOfBirth || undefined,
+          mealWeightUnit: profile.mealWeightUnit,
+          bodyWeightUnit: profile.bodyWeightUnit,
+        } satisfies ExportProfileDTO)
+      : undefined;
+
+    return {
+      version: EXPORT_VERSION,
+      exportDate: now.toISOString(),
+      ...(profileData ? { profile: profileData } : {}),
+      mealEntries,
+      weightEntries,
+    };
+  }
+
+  /**
+   * Classic adapter: load a Classic account and export it with `buildExport`. Each
+   * entry's CoValue id becomes its source id, so the file re-imports without duplicates.
    */
   static async exportUserData(account: Loaded<typeof JazzAccount>): Promise<ExportedData> {
     if (!account.root) {
@@ -39,69 +107,24 @@ export class DataExporter {
       });
     }
 
-    if (!loadedAccount.root) {
+    const root = loadedAccount.root;
+    if (!root) {
       throw new Error("Failed to load account root");
     }
 
-    // Export meal entries (compile-time assertion prevents drift vs importer DTO)
-    const mealEntries = (() => {
-      const arr = [] as ExportedMealEntry[];
-      if (loadedAccount.root.mealEntries) {
-        for (const mealEntry of loadedAccount.root.mealEntries) {
-          if (mealEntry) {
-            arr.push({
-              timestamp: mealEntry.timestamp,
-              foodName: mealEntry.foodName,
-              foodCategory: mealEntry.foodCategory,
-              caloriesPerGram: mealEntry.caloriesPerGram,
-              caloriesPerDisplayUnit: mealEntry.caloriesPerDisplayUnit,
-              weightInGrams: mealEntry.weightInGrams,
-              displayUnit: mealEntry.displayUnit,
-              totalCalories: mealEntry.totalCalories,
-              notes: mealEntry.notes,
-            } satisfies ExportedMealEntry);
-          }
-        }
-      }
-      return arr satisfies ExportedMealEntry[];
-    })();
-
-    // Export weight entries (compile-time assertion prevents drift vs importer DTO)
-    const weightEntries = (() => {
-      const arr = [] as ExportedWeightEntry[];
-      if (loadedAccount.root.weightEntries) {
-        for (const weightEntry of loadedAccount.root.weightEntries) {
-          if (weightEntry) {
-            arr.push({
-              timestamp: weightEntry.timestamp,
-              weightValue: weightEntry.weightValue,
-              unit: weightEntry.unit,
-              notes: weightEntry.notes,
-            } satisfies ExportedWeightEntry);
-          }
-        }
-      }
-      return arr satisfies ExportedWeightEntry[];
-    })();
-
     const profile = loadedAccount.profile;
-    const profileData = {
-      name: profile?.name,
-      firstName: profile?.firstName,
-      dateOfBirth: loadedAccount.root.dateOfBirth || undefined,
-      mealWeightUnit: profile?.mealWeightUnit,
-      bodyWeightUnit: profile?.bodyWeightUnit,
-    } satisfies ExportProfileDTO;
 
-    const payload = {
-      version: "1.1",
-      exportDate: new Date().toISOString(),
-      profile: profileData,
-      mealEntries,
-      weightEntries,
-    } satisfies ExportedData;
-
-    return payload;
+    return this.buildExport({
+      profile: {
+        name: profile?.name,
+        firstName: profile?.firstName,
+        dateOfBirth: root.dateOfBirth,
+        mealWeightUnit: profile?.mealWeightUnit,
+        bodyWeightUnit: profile?.bodyWeightUnit,
+      },
+      meals: [...(root.mealEntries ?? [])].filter(present),
+      weights: [...(root.weightEntries ?? [])].filter(present),
+    });
   }
 
   /**

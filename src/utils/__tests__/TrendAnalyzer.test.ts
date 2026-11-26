@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { TrendAnalyzer, type ChartDataPoint } from "../TrendAnalyzer";
-import { type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
-import { MealEntry, WeightEntry, CalorieTrackerProfile } from "../../schema";
+import type { MealRow, ProfileRow, WeightRow } from "../../schema";
 
 // Helper function to create mock meal entry
 const createMockMealEntry = (timestamp: string, foodName: string, totalCalories: number) => {
@@ -14,7 +13,7 @@ const createMockMealEntry = (timestamp: string, foodName: string, totalCalories:
     weightInGrams: totalCalories,
     notes: "",
     totalCalories,
-  } as Loaded<typeof MealEntry>;
+  } satisfies MealRow;
 };
 
 // Helper function to create mock weight entry
@@ -24,7 +23,7 @@ const createMockWeightEntry = (timestamp: string, weightValue: number, unit?: "l
     weightValue,
     notes: "",
     unit,
-  } as Loaded<typeof WeightEntry>;
+  } satisfies WeightRow;
 };
 
 // Helper function to create mock profile
@@ -33,7 +32,7 @@ const createMockProfile = (bodyWeightUnit?: "lbs" | "kg") => {
     name: "Test User",
     firstName: "Test",
     bodyWeightUnit,
-  } as Loaded<typeof CalorieTrackerProfile>;
+  } satisfies ProfileRow;
 };
 
 describe("TrendAnalyzer", () => {

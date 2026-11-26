@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { MealEntry, WeightEntry, type MealEntryType, type WeightEntryType } from "../../schema";
+import type { MealEntryType, MealRow, WeightEntryType, WeightRow } from "../../schema";
 import { DateTime } from "luxon";
-import { type Loaded } from "jazz-tools";
 
 describe("Schema Migration Tests", () => {
   describe("MealEntry Schema", () => {
@@ -184,7 +183,7 @@ describe("Schema Migration Tests", () => {
   describe("Legacy Data Handling", () => {
     it("should handle legacy meal data without displayUnit gracefully", () => {
       // Simulate how legacy data would be represented in the app
-      const legacyMeal: Loaded<typeof MealEntry> = {
+      const legacyMeal: MealRow = {
         timestamp: DateTime.now().toISO() || "",
         foodName: "Legacy Food",
         foodCategory: "Legacy Category",
@@ -193,7 +192,7 @@ describe("Schema Migration Tests", () => {
         notes: "Legacy entry",
         totalCalories: 400,
         displayUnit: undefined, // Legacy data won't have this field
-      } as Loaded<typeof MealEntry>;
+      };
 
       // Should be able to access all existing fields
       expect(legacyMeal.foodName).toBe("Legacy Food");
@@ -205,12 +204,12 @@ describe("Schema Migration Tests", () => {
 
     it("should handle legacy weight data without unit gracefully", () => {
       // Simulate how legacy data would be represented in the app
-      const legacyWeight: Loaded<typeof WeightEntry> = {
+      const legacyWeight: WeightRow = {
         timestamp: DateTime.now().toISO() || "",
         weightValue: 175.2,
         notes: "Legacy weight entry",
         unit: undefined, // Legacy data won't have this field
-      } as Loaded<typeof WeightEntry>;
+      };
 
       // Should be able to access all existing fields
       expect(legacyWeight.weightValue).toBe(175.2);

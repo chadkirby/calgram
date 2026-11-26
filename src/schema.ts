@@ -5,6 +5,16 @@
 
 import { Group, co, z, type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
+import { z as zod } from "zod";
+
+export const mealWeightUnits = ["g", "oz", "lb", "kg"] as const;
+export const bodyWeightUnits = ["lbs", "kg"] as const;
+export const calorieUnits = ["g", "oz", "lb", "kg"] as const;
+
+/** Weight unit types for meal and body weight preferences */
+export type MealWeightUnit = (typeof mealWeightUnits)[number];
+export type BodyWeightUnit = (typeof bodyWeightUnits)[number];
+export type CalorieUnit = (typeof calorieUnits)[number];
 
 export const MealShape = {
   timestamp: z.iso.date(),
@@ -37,45 +47,92 @@ export const WeightEntry = co.map(WeightShape);
 export type WeightEntryType = z.infer<typeof WeightEntry>;
 
 /**
- * Export-friendly shapes (DTO validators) that consumers like DataImporter/DataExporter
- * can reuse without duplicating rules. These reuse our canonical shapes but keep timestamp
- * as ISO z.string() to match the serialized format we write/read in exports.
+ * Plain row types (KTD12). Utilities take these instead of Classic CoValue types, so
+ * Classic objects satisfy them structurally and Jazz 2 rows can replace them later.
+ * Timestamps are verbatim ISO text (KTD10): an offset datetime, a `Z` datetime or a
+ * date-only `YYYY-MM-DD`.
  */
+export interface MealRow {
+  timestamp: string;
+  foodName: string;
+  foodCategory: string;
+  caloriesPerGram: number;
+  caloriesPerDisplayUnit?: CalorieUnit;
+  weightInGrams: number;
+  notes?: string;
+  totalCalories: number;
+  displayUnit?: MealWeightUnit;
+}
+
+export interface WeightRow {
+  timestamp: string;
+  weightValue: number;
+  notes?: string;
+  unit?: BodyWeightUnit;
+}
+
+/** Profile fields plus `dateOfBirth`, which Classic keeps on the account root. */
+export interface ProfileRow {
+  name?: string;
+  firstName?: string;
+  dateOfBirth?: string;
+  mealWeightUnit?: MealWeightUnit;
+  bodyWeightUnit?: BodyWeightUnit;
+}
+
+/**
+ * Export-friendly shapes (DTO validators) shared by DataImporter and DataExporter.
+ * They are built from the `zod` package, not the copy bundled with jazz-tools, so
+ * validation doesn't depend on Classic. Timestamps are ISO strings that Luxon parses,
+ * which includes date-only values.
+ */
+const ExportIsoString = zod
+  .string()
+  .refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" });
+
+/** Since v1.2 every entry may carry its source `id` (KTD12). */
 export const ExportMealShape = {
-  ...MealShape,
-  timestamp: z.string().refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" }),
+  id: zod.string().min(1).optional(),
+  timestamp: ExportIsoString,
+  foodName: zod.string().min(1, "Food name is required"),
+  foodCategory: zod.string().min(1, "Food category is required"),
+  caloriesPerGram: zod.number().nonnegative("Calories per gram cannot be negative"),
+  caloriesPerDisplayUnit: zod.enum(calorieUnits).optional(),
+  weightInGrams: zod.number(),
+  notes: zod.string().optional(),
+  totalCalories: zod.number(),
+  displayUnit: zod.enum(mealWeightUnits).optional(),
 } as const;
 
 export const ExportWeightShape = {
-  ...WeightShape,
-  timestamp: z.string().refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" }),
+  id: zod.string().min(1).optional(),
+  timestamp: ExportIsoString,
+  weightValue: zod.number().positive("Weight value must be positive"),
+  notes: zod.string().optional(),
+  unit: zod.enum(bodyWeightUnits).optional(),
+} as const;
+
+/** Profile and account settings, included in exports since version 1.1 */
+export const ExportProfileShape = {
+  name: zod.string().optional(),
+  firstName: zod.string().optional(),
+  dateOfBirth: ExportIsoString.optional(),
+  mealWeightUnit: zod.enum(mealWeightUnits).optional(),
+  bodyWeightUnit: zod.enum(bodyWeightUnits).optional(),
 } as const;
 
 /**
- * Strong TS DTO types derived from the export Zod shapes.
- * Export these so producers (DataExporter) can assert using `satisfies`
- * against exactly what consumers (DataImporter) validate.
+ * Strong TS DTO types derived from the export Zod shapes, so producers (DataExporter)
+ * can assert with `satisfies` against exactly what consumers (DataImporter) validate.
  */
-/** Profile and account settings, included in exports since version 1.1 */
-export const ExportProfileShape = {
-  name: z.string().optional(),
-  firstName: z.string().optional(),
-  dateOfBirth: z
-    .string()
-    .refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" })
-    .optional(),
-  mealWeightUnit: z.enum(["g", "oz", "lb", "kg"]).optional(),
-  bodyWeightUnit: z.enum(["lbs", "kg"]).optional(),
-} as const;
+export const ExportProfileZod = zod.object(ExportProfileShape);
+export type ExportProfileDTO = zod.infer<typeof ExportProfileZod>;
 
-export const ExportProfileZod = z.object(ExportProfileShape);
-export type ExportProfileDTO = z.infer<typeof ExportProfileZod>;
+export const ExportMealZod = zod.object(ExportMealShape);
+export type ExportMealDTO = zod.infer<typeof ExportMealZod>;
 
-export const ExportMealZod = z.object(ExportMealShape);
-export type ExportMealDTO = z.infer<typeof ExportMealZod>;
-
-export const ExportWeightZod = z.object(ExportWeightShape);
-export type ExportWeightDTO = z.infer<typeof ExportWeightZod>;
+export const ExportWeightZod = zod.object(ExportWeightShape);
+export type ExportWeightDTO = zod.infer<typeof ExportWeightZod>;
 
 /** Food metadata schema for storing food intelligence data */
 export const FoodMetadata = co.map({
@@ -95,15 +152,6 @@ export const FoodIntelligence = co.map({
 });
 
 export type FoodIntelligenceType = z.infer<typeof FoodIntelligence>;
-
-export const mealWeightUnits = ["g", "oz", "lb", "kg"] as const;
-export const bodyWeightUnits = ["lbs", "kg"] as const;
-export const calorieUnits = ["g", "oz", "lb", "kg"] as const;
-
-/** Weight unit types for meal and body weight preferences */
-export type MealWeightUnit = (typeof mealWeightUnits)[number];
-export type BodyWeightUnit = (typeof bodyWeightUnits)[number];
-export type CalorieUnit = (typeof calorieUnits)[number];
 
 /** The account profile is an app-specific per-user public `CoMap`
  *  where you can store top-level objects for that user */

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CalorieCalculator } from "../CalorieCalculator";
-import { type Loaded } from "jazz-tools";
-import { MealEntry, type MealWeightUnit } from "../../schema";
+import type { MealRow, MealWeightUnit } from "../../schema";
 import { DateTime } from "luxon";
 
 // Mock meal entry data for testing
@@ -23,7 +22,7 @@ const createMockMealEntry = (
     notes: "",
     totalCalories,
     displayUnit,
-  }) as Loaded<typeof MealEntry>;
+  }) satisfies MealRow;
 
 describe("CalorieCalculator", () => {
   describe("calculateMealCalories", () => {

@@ -1,9 +1,7 @@
-import { type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
-import { MealEntry, WeightEntry, CalorieTrackerProfile } from "../schema";
 import { WeightConverter } from "./WeightConverter";
 import { UnitPreferenceManager } from "./UnitPreferenceManager";
-import type { BodyWeightUnit } from "../schema";
+import type { BodyWeightUnit, MealRow, ProfileRow, WeightRow } from "../schema";
 
 /**
  * Data point interface for chart data
@@ -63,7 +61,7 @@ export class TrendAnalyzer {
    * @returns Array of chart data points with date and calories
    */
   static prepareDailyCalorieData(
-    meals: Loaded<typeof MealEntry>[] | undefined,
+    meals: MealRow[] | undefined,
     days: number = 30,
   ): ChartDataPoint[] {
     if (!meals || meals.length === 0) {
@@ -104,8 +102,8 @@ export class TrendAnalyzer {
    * @returns Array of chart data points with date and weight in display unit
    */
   static prepareWeightData(
-    weights: Loaded<typeof WeightEntry>[] | undefined,
-    profile?: Loaded<typeof CalorieTrackerProfile>,
+    weights: WeightRow[] | undefined,
+    profile?: Pick<ProfileRow, "bodyWeightUnit">,
     days: number = 30,
   ): ChartDataPoint[] {
     if (!weights || weights.length === 0) {
@@ -157,9 +155,9 @@ export class TrendAnalyzer {
    * @returns Array of chart data points with date, calories, and weight
    */
   static prepareCombinedData(
-    meals: Loaded<typeof MealEntry>[] | undefined,
-    weights: Loaded<typeof WeightEntry>[] | undefined,
-    profile?: Loaded<typeof CalorieTrackerProfile>,
+    meals: MealRow[] | undefined,
+    weights: WeightRow[] | undefined,
+    profile?: Pick<ProfileRow, "bodyWeightUnit">,
     days: number = 30,
   ): ChartDataPoint[] {
     const calorieData = this.prepareDailyCalorieData(meals, days);
@@ -464,7 +462,7 @@ export class TrendAnalyzer {
    * @param profile - User profile for unit preferences
    * @returns Formatted axis label string
    */
-  static getWeightAxisLabel(profile?: Loaded<typeof CalorieTrackerProfile>): string {
+  static getWeightAxisLabel(profile?: Pick<ProfileRow, "bodyWeightUnit">): string {
     const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
     return `Weight (${displayUnit})`;
   }
@@ -475,10 +473,7 @@ export class TrendAnalyzer {
    * @param profile - User profile for unit preferences
    * @returns Formatted weight string with unit
    */
-  static formatWeightTooltip(
-    value: number,
-    profile?: Loaded<typeof CalorieTrackerProfile>,
-  ): string {
+  static formatWeightTooltip(value: number, profile?: Pick<ProfileRow, "bodyWeightUnit">): string {
     const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
     return WeightConverter.formatDisplay(value, displayUnit);
   }
@@ -488,7 +483,7 @@ export class TrendAnalyzer {
    * @param profile - User profile for unit preferences
    * @returns Current body weight unit
    */
-  static getWeightDisplayUnit(profile?: Loaded<typeof CalorieTrackerProfile>): BodyWeightUnit {
+  static getWeightDisplayUnit(profile?: Pick<ProfileRow, "bodyWeightUnit">): BodyWeightUnit {
     return UnitPreferenceManager.getBodyWeightUnit(profile);
   }
 
