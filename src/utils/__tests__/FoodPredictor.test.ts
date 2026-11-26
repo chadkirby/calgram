@@ -352,7 +352,9 @@ describe("FoodPredictor with sample data", () => {
     expect(predicted?.toLowerCase()).toBe("pup cup");
   });
 
-  test.skip("hourly predictions from 9am to 9pm on 2025-08-03 follow expected pattern", () => {
+  // Known gap: the predictor misses the rare one-off meals at 11, 12, 16 and 19.
+  // `test.fails` keeps this running; drop `.fails` once those hours predict correctly.
+  test.fails("hourly predictions from 9am to 9pm on 2025-08-03 follow expected pattern", () => {
     const hourlyEntries = buildEntriesFromSample();
 
     // Expected dominant items by hour derived from sample:
@@ -387,19 +389,8 @@ describe("FoodPredictor with sample data", () => {
       expect(top.length).toBeGreaterThan(0);
 
       const predicted = top[0].foodName.toLowerCase();
-      const expected = expectations[hour];
-      if (expected) {
-        expect(predicted, `Unexpected prediction for ${hour}:00`).toBe(expected);
-      } else {
-        expect([
-          "people food",
-          "purina kibble",
-          "stick",
-          "pup cup",
-          "fromm pork and applesauce",
-          "yak cheese",
-        ]).toContain(predicted);
-      }
+      // Every hour in 9..21 has an expectation, so assert it directly.
+      expect(predicted, `Unexpected prediction for ${hour}:00`).toBe(expectations[hour]);
     }
   });
 });

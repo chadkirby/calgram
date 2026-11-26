@@ -271,6 +271,7 @@ export class DataImporter {
     } catch (error) {
       throw new Error(
         `Failed to parse JSON file: ${error instanceof Error ? error.message : "Unknown error"}`,
+        { cause: error },
       );
     }
   }

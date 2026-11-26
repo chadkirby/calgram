@@ -158,7 +158,7 @@ export class DataExporter {
       }
     } catch (error) {
       console.error("Failed to trigger download:", error);
-      throw new Error("Failed to trigger download");
+      throw new Error("Failed to trigger download", { cause: error });
     }
   }
 
@@ -171,7 +171,7 @@ export class DataExporter {
       this.triggerDownload(blob, filename);
     } catch (error) {
       console.error("Failed to download JSON file:", error);
-      throw new Error("Failed to generate download file");
+      throw new Error("Failed to generate download file", { cause: error });
     }
   }
 }

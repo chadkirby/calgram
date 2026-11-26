@@ -15,6 +15,27 @@ interface TimePickerProps {
   error?: boolean;
 }
 
+// Parse a 24-hour "HH:MM" value into 12-hour hours/minutes/period fields
+function parseTimeValue(value: string): { hours: string; minutes: string; period: string } {
+  if (!value) {
+    return { hours: "", minutes: "", period: "AM" };
+  }
+
+  const [h, m] = value.split(":");
+  const hour = parseInt(h || "0");
+  const minute = m || "00";
+
+  // Convert from 24-hour to 12-hour format
+  if (hour === 0) {
+    return { hours: "12", minutes: minute, period: "AM" };
+  } else if (hour <= 11) {
+    return { hours: hour.toString(), minutes: minute, period: "AM" };
+  } else if (hour === 12) {
+    return { hours: "12", minutes: minute, period: "PM" };
+  }
+  return { hours: (hour - 12).toString(), minutes: minute, period: "PM" };
+}
+
 export function TimePicker({
   value = "",
   onChange,
@@ -24,38 +45,20 @@ export function TimePicker({
   error = false,
 }: TimePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const [hours, setHours] = React.useState("");
-  const [minutes, setMinutes] = React.useState("");
-  const [period, setPeriod] = React.useState("AM");
+  const initialTime = parseTimeValue(value);
+  const [hours, setHours] = React.useState(initialTime.hours);
+  const [minutes, setMinutes] = React.useState(initialTime.minutes);
+  const [period, setPeriod] = React.useState(initialTime.period);
+  const [prevValue, setPrevValue] = React.useState(value);
 
-  // Parse initial value
-  React.useEffect(() => {
-    if (value) {
-      const [h, m] = value.split(":");
-      const hour = parseInt(h || "0");
-      const minute = m || "00";
-
-      // Convert from 24-hour to 12-hour format
-      if (hour === 0) {
-        setHours("12");
-        setPeriod("AM");
-      } else if (hour <= 11) {
-        setHours(hour.toString());
-        setPeriod("AM");
-      } else if (hour === 12) {
-        setHours("12");
-        setPeriod("PM");
-      } else {
-        setHours((hour - 12).toString());
-        setPeriod("PM");
-      }
-      setMinutes(minute);
-    } else {
-      setHours("");
-      setMinutes("");
-      setPeriod("AM");
-    }
-  }, [value]);
+  // Re-parse when the value prop changes
+  if (value !== prevValue) {
+    setPrevValue(value);
+    const parsed = parseTimeValue(value);
+    setHours(parsed.hours);
+    setMinutes(parsed.minutes);
+    setPeriod(parsed.period);
+  }
 
   // Update parent when hours, minutes, or period change
   const updateTime = React.useCallback(
@@ -125,15 +128,15 @@ export function TimePicker({
   const formatTimeForDisplay = (timeValue: string) => {
     if (!timeValue) return placeholder;
 
-    const [hours, minutes] = timeValue.split(":");
-    const hour = parseInt(hours);
-    const min = minutes || "00";
+    const [hourPart, minutePart] = timeValue.split(":");
+    const hour = parseInt(hourPart);
+    const min = minutePart || "00";
 
     // Convert to 12-hour format for display
-    const period = hour >= 12 ? "PM" : "AM";
+    const displayPeriod = hour >= 12 ? "PM" : "AM";
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
 
-    return `${displayHour}:${min} ${period}`;
+    return `${displayHour}:${min} ${displayPeriod}`;
   };
 
   const displayTime = formatTimeForDisplay(value);

@@ -33,6 +33,78 @@ interface WeightChartProps {
   isLoading?: boolean;
 }
 
+type WeightProfile = Parameters<typeof TrendAnalyzer.formatWeightTooltip>[1];
+
+// Custom tooltip component with enhanced information and unit-aware display
+function WeightTooltip({
+  active,
+  payload,
+  label,
+  windowWidth,
+  profile,
+}: {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  windowWidth: number;
+  profile: WeightProfile;
+}) {
+  if (active && payload && payload.length) {
+    const dataPoint = payload[0]?.payload;
+    const fullDate = dataPoint?.fullDate;
+    const isMobile = windowWidth < 640;
+
+    return (
+      <div
+        className={`bg-white p-2 sm:p-4 border border-gray-300 rounded-lg shadow-lg ${
+          isMobile ? "max-w-[280px] text-xs" : "max-w-xs text-sm"
+        }`}
+      >
+        <p className={`font-semibold text-gray-900 mb-2 ${isMobile ? "text-xs" : "text-sm"}`}>
+          {fullDate
+            ? fullDate.toLocaleDateString("en-US", {
+                weekday: isMobile ? "short" : "long",
+                year: isMobile ? "2-digit" : "numeric",
+                month: isMobile ? "short" : "long",
+                day: "numeric",
+              })
+            : label}
+        </p>
+        <div className="space-y-1">
+          {payload.map((entry: any) => {
+            if (entry.dataKey === "weight" && entry.value) {
+              const formattedWeight = TrendAnalyzer.formatWeightTooltip(entry.value, profile);
+              return (
+                <p
+                  key={entry.dataKey}
+                  className={isMobile ? "text-xs" : "text-sm"}
+                  style={{ color: entry.color }}
+                >
+                  ⚖️ Weight: <span className="font-medium">{formattedWeight}</span>
+                </p>
+              );
+            } else if (entry.dataKey === "weightTrend" && entry.value) {
+              const formattedTrend = TrendAnalyzer.formatWeightTooltip(entry.value, profile);
+              return (
+                <p
+                  key={entry.dataKey}
+                  className={isMobile ? "text-xs" : "text-sm"}
+                  style={{ color: entry.color }}
+                >
+                  📉 {isMobile ? "Trend:" : "Weight Trend:"}{" "}
+                  <span className="font-medium">{formattedTrend}</span>
+                </p>
+              );
+            }
+            return null;
+          })}
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }: WeightChartProps) {
   const { me } = useAccount(JazzAccount, {
     resolve: {
@@ -65,9 +137,12 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
     { value: "90", label: "Last 90 days" },
   ];
 
+  const weightEntries = me?.root?.weightEntries;
+  const profile = me?.profile;
+
   // Prepare chart data using TrendAnalyzer with unit conversion
   const { chartData, summaryStats, weightAxisConfig, hasData, axisLabel } = useMemo(() => {
-    if (!me?.root?.weightEntries) {
+    if (!weightEntries) {
       return {
         chartData: [],
         summaryStats: null,
@@ -79,14 +154,12 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
 
     const days = parseInt(timeRange);
     const weightData = TrendAnalyzer.prepareWeightData(
-      me.root.weightEntries.filter(
-        (weight): weight is Loaded<typeof WeightEntry> => weight != null,
-      ),
-      me.profile,
+      weightEntries.filter((weight): weight is Loaded<typeof WeightEntry> => weight != null),
+      profile,
       days,
     );
 
-    const axisLabel = TrendAnalyzer.getWeightAxisLabel(me.profile);
+    const label = TrendAnalyzer.getWeightAxisLabel(profile);
 
     if (weightData.length === 0) {
       return {
@@ -94,7 +167,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
         summaryStats: null,
         weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
         hasData: false,
-        axisLabel,
+        axisLabel: label,
       };
     }
 
@@ -122,7 +195,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
         Math.round((weightValues[weightValues.length - 1] - weightValues[0]) * 10) / 10;
     }
 
-    const weightAxisConfig = TrendAnalyzer.calculateWeightAxisConfig(weightData);
+    const axisConfig = TrendAnalyzer.calculateWeightAxisConfig(weightData);
 
     // Format data for Recharts
     const formattedData = weightData.map((point, index) => ({
@@ -138,69 +211,11 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
     return {
       chartData: formattedData,
       summaryStats: stats,
-      weightAxisConfig,
+      weightAxisConfig: axisConfig,
       hasData: true,
-      axisLabel,
+      axisLabel: label,
     };
-  }, [me?.root?.weightEntries, me?.profile, timeRange]);
-
-  // Custom tooltip component with enhanced information and unit-aware display
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const dataPoint = payload[0]?.payload;
-      const fullDate = dataPoint?.fullDate;
-      const isMobile = windowWidth < 640;
-
-      return (
-        <div
-          className={`bg-white p-2 sm:p-4 border border-gray-300 rounded-lg shadow-lg ${
-            isMobile ? "max-w-[280px] text-xs" : "max-w-xs text-sm"
-          }`}
-        >
-          <p className={`font-semibold text-gray-900 mb-2 ${isMobile ? "text-xs" : "text-sm"}`}>
-            {fullDate
-              ? fullDate.toLocaleDateString("en-US", {
-                  weekday: isMobile ? "short" : "long",
-                  year: isMobile ? "2-digit" : "numeric",
-                  month: isMobile ? "short" : "long",
-                  day: "numeric",
-                })
-              : label}
-          </p>
-          <div className="space-y-1">
-            {payload.map((entry: any, index: number) => {
-              if (entry.dataKey === "weight" && entry.value) {
-                const formattedWeight = TrendAnalyzer.formatWeightTooltip(entry.value, me?.profile);
-                return (
-                  <p
-                    key={index}
-                    className={isMobile ? "text-xs" : "text-sm"}
-                    style={{ color: entry.color }}
-                  >
-                    ⚖️ Weight: <span className="font-medium">{formattedWeight}</span>
-                  </p>
-                );
-              } else if (entry.dataKey === "weightTrend" && entry.value) {
-                const formattedTrend = TrendAnalyzer.formatWeightTooltip(entry.value, me?.profile);
-                return (
-                  <p
-                    key={index}
-                    className={isMobile ? "text-xs" : "text-sm"}
-                    style={{ color: entry.color }}
-                  >
-                    📉 {isMobile ? "Trend:" : "Weight Trend:"}{" "}
-                    <span className="font-medium">{formattedTrend}</span>
-                  </p>
-                );
-              }
-              return null;
-            })}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
+  }, [weightEntries, profile, timeRange]);
 
   return (
     <Card className="pt-3 sm:pt-6 pb-0">
@@ -322,7 +337,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                   width={windowWidth >= 640 ? 45 : 25}
                 />
                 <Tooltip
-                  content={<CustomTooltip />}
+                  content={<WeightTooltip windowWidth={windowWidth} profile={profile} />}
                   cursor={{ strokeDasharray: "3 3" }}
                   animationDuration={TOOLTIP_ANIMATION_DURATION}
                 />

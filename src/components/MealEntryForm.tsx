@@ -37,6 +37,16 @@ const mealFormSchema = z.object({
 
 type MealFormValues = z.infer<typeof mealFormSchema>;
 
+// Get current date in YYYY-MM-DD format for default (timezone-aware)
+function getCurrentDate() {
+  return DateTime.now().toISODate();
+}
+
+// Get current time in HH:MM format for default
+function getCurrentTime() {
+  return DateTime.now().toFormat("HH:mm");
+}
+
 interface MealEntryFormProps {
   mode: "create" | "edit";
   initialData?: Loaded<typeof MealEntry>;
@@ -58,16 +68,6 @@ export function MealEntryForm({
   defaultDate,
 }: MealEntryFormProps) {
   const { updateSyncStatus } = useNetworkStatus();
-
-  // Get current date in YYYY-MM-DD format for default (timezone-aware)
-  const getCurrentDate = () => {
-    return DateTime.now().toISODate();
-  };
-
-  // Get current time in HH:MM format for default
-  const getCurrentTime = () => {
-    return DateTime.now().toFormat("HH:mm");
-  };
 
   // Parse initial data for edit mode
   const getInitialFormData = (): MealFormValues => {
@@ -156,14 +156,32 @@ export function MealEntryForm({
     ? FoodIntelligenceManager.getRecentCategories(foodIntelligence)
     : [];
 
-  // Mount-only prefill for create mode using FoodPredictor; never overwrite after user types
-  React.useEffect(() => {
+  // Prefill for create mode using FoodPredictor; never overwrite after user types.
+  // Runs during render on mount and whenever mode, the meal entries list or food intelligence
+  // change (the tracker is updated before any bail-out so each change is consumed once).
+  const mealEntries = me?.root?.mealEntries;
+  const [prevPrefillDeps, setPrevPrefillDeps] = React.useState<{
+    mode: typeof mode;
+    mealEntries: typeof mealEntries;
+    foodIntelligence: typeof foodIntelligence;
+  } | null>(null);
+  if (
+    prevPrefillDeps === null ||
+    prevPrefillDeps.mode !== mode ||
+    prevPrefillDeps.mealEntries !== mealEntries ||
+    prevPrefillDeps.foodIntelligence !== foodIntelligence
+  ) {
+    setPrevPrefillDeps({ mode, mealEntries, foodIntelligence });
+    applyPrediction();
+  }
+
+  function applyPrediction() {
     if (mode !== "create") return;
-    if (!me?.root?.mealEntries) return;
+    if (!mealEntries) return;
     // Only prefill if fields are still empty
     if (formData.foodName?.trim() || formData.foodCategory?.trim()) return;
 
-    const entries = [...me.root.mealEntries].filter((e): e is NonNullable<typeof e> => e != null);
+    const entries = [...mealEntries].filter((e): e is NonNullable<typeof e> => e != null);
     if (entries.length === 0) return;
 
     const prediction = FoodPredictor.getTopFoodPredictions(entries, new Date(), 4, 1)[0];
@@ -191,8 +209,7 @@ export function MealEntryForm({
       caloriesPerDisplayValue,
     }));
     setPrefilled({ foodName: predictedFood, foodCategory: resolvedCategory || undefined });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, me?.root?.mealEntries, foodIntelligence]);
+  }
 
   // Handle food selection to auto-populate fields
   const handleFoodSelection = (foodName: string) => {
@@ -298,7 +315,10 @@ export function MealEntryForm({
       );
 
       // Calculate total calories (always use grams)
-      const totalCalories = CalorieCalculator.calculateMealCalories(weightInGrams, caloriesPerGram);
+      const mealTotalCalories = CalorieCalculator.calculateMealCalories(
+        weightInGrams,
+        caloriesPerGram,
+      );
 
       // Save user's unit preference
       UnitPreferenceManager.setMealWeightUnit(me?.profile || undefined, validatedData.weightUnit);
@@ -326,7 +346,7 @@ export function MealEntryForm({
             initialData.weightInGrams = weightInGrams; // Store in grams
             initialData.displayUnit = validatedData.weightUnit; // Store display unit
             initialData.notes = validatedData.notes || "";
-            initialData.totalCalories = totalCalories;
+            initialData.totalCalories = mealTotalCalories;
 
             // Update food intelligence
             if (foodIntelligence) {
@@ -355,7 +375,7 @@ export function MealEntryForm({
                 weightInGrams: weightInGrams, // Store in grams
                 displayUnit: validatedData.weightUnit, // Store display unit
                 notes: validatedData.notes || "",
-                totalCalories,
+                totalCalories: mealTotalCalories,
               },
               me.root!._owner,
             );
@@ -438,6 +458,8 @@ export function MealEntryForm({
     setSubmitSuccess(false);
   };
 
+  const notesId = React.useId();
+
   const userName = me?.profile?.firstName || me?.profile?.name || "User";
   const defaultTitle = mode === "edit" ? `Edit Meal Entry` : `Log Meal for ${userName}`;
 
@@ -454,8 +476,8 @@ export function MealEntryForm({
         <form onSubmit={onSubmit} className="space-y-2.5" noValidate>
           {/* Date and Time - Stacked on mobile, side-by-side on larger screens */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-xs sm:text-sm font-medium">Date</label>
+            <fieldset className="space-y-1 min-w-0">
+              <legend className="text-xs sm:text-sm font-medium">Date</legend>
               <DatePicker
                 value={formData.date}
                 onChange={(value) => {
@@ -465,10 +487,10 @@ export function MealEntryForm({
                 error={!!errors.date}
               />
               {errors.date && <p className="text-xs text-destructive">{errors.date}</p>}
-            </div>
+            </fieldset>
 
-            <div className="space-y-1">
-              <label className="text-xs sm:text-sm font-medium">Time</label>
+            <fieldset className="space-y-1 min-w-0">
+              <legend className="text-xs sm:text-sm font-medium">Time</legend>
               <TimePicker
                 value={formData.time}
                 onChange={(value) => {
@@ -479,13 +501,13 @@ export function MealEntryForm({
                 error={!!errors.time}
               />
               {errors.time && <p className="text-xs text-destructive">{errors.time}</p>}
-            </div>
+            </fieldset>
           </div>
 
           {/* Row 2: Food Name and Food Category */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-xs sm:text-sm font-medium">Food Name</label>
+            <fieldset className="space-y-1 min-w-0">
+              <legend className="text-xs sm:text-sm font-medium">Food Name</legend>
               <Combobox
                 value={formData.foodName}
                 onValueChange={(value) => {
@@ -499,10 +521,10 @@ export function MealEntryForm({
                 emptyText="No recent foods found."
               />
               {errors.foodName && <p className="text-xs text-destructive">{errors.foodName}</p>}
-            </div>
+            </fieldset>
 
-            <div className="space-y-1">
-              <label className="text-xs sm:text-sm font-medium">Food Category</label>
+            <fieldset className="space-y-1 min-w-0">
+              <legend className="text-xs sm:text-sm font-medium">Food Category</legend>
               <Combobox
                 value={formData.foodCategory}
                 onValueChange={(value) => {
@@ -518,7 +540,7 @@ export function MealEntryForm({
               {errors.foodCategory && (
                 <p className="text-xs text-destructive">{errors.foodCategory}</p>
               )}
-            </div>
+            </fieldset>
           </div>
           {!errors.foodName && prefilled?.foodName && (
             <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -528,8 +550,8 @@ export function MealEntryForm({
 
           {/* Row 3: Weight and Calories per Gram */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-xs sm:text-sm font-medium">Weight</label>
+            <fieldset className="space-y-1 min-w-0">
+              <legend className="text-xs sm:text-sm font-medium">Weight</legend>
               <WeightInput
                 value={formData.weightValue}
                 unit={formData.weightUnit}
@@ -556,10 +578,10 @@ export function MealEntryForm({
                   {errors.weightValue || errors.weightUnit}
                 </p>
               )}
-            </div>
+            </fieldset>
 
-            <div className="space-y-1">
-              <label className="text-xs sm:text-sm font-medium">Calories per Unit</label>
+            <fieldset className="space-y-1 min-w-0">
+              <legend className="text-xs sm:text-sm font-medium">Calories per Unit</legend>
               <CalorieInput
                 value={formData.caloriesPerDisplayValue}
                 unit={formData.calorieUnit}
@@ -582,13 +604,16 @@ export function MealEntryForm({
                   {errors.caloriesPerDisplayValue || errors.calorieUnit}
                 </p>
               )}
-            </div>
+            </fieldset>
           </div>
 
           {/* Notes Field */}
           <div>
-            <label className="text-xs sm:text-sm font-medium">Notes (Optional)</label>
+            <label htmlFor={notesId} className="text-xs sm:text-sm font-medium">
+              Notes (Optional)
+            </label>
             <Textarea
+              id={notesId}
               placeholder="Add notes..."
               value={formData.notes}
               onChange={(e) => {

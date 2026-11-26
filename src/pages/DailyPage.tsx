@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount } from "jazz-tools/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,22 @@ import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
 import { type Loaded } from "jazz-tools";
 
+// Custom tooltip for pie chart
+function CustomTooltip({ active, payload }: any) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-background border rounded-lg p-2 shadow-md">
+        <p className="font-medium">{data.name}</p>
+        <p className="text-sm text-muted-foreground">
+          {data.value.toFixed(1)} calories ({data.percentage}%)
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
 function DailyPageContent() {
   const { me } = useAccount(JazzAccount, {
     resolve: {
@@ -48,6 +64,14 @@ function DailyPageContent() {
   const [editingMeal, setEditingMeal] = useState<Loaded<typeof MealEntry> | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddMealDialogOpen, setIsAddMealDialogOpen] = useState(false);
+  const datePickerInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus the date input when the picker opens
+  useEffect(() => {
+    if (showDatePicker) {
+      datePickerInputRef.current?.focus();
+    }
+  }, [showDatePicker]);
 
   // Filter meal entries by selected date
   const filteredMealEntries =
@@ -128,22 +152,6 @@ function DailyPageContent() {
     "#98fb98", // Pale Green
   ];
 
-  // Custom tooltip for pie chart
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-background border rounded-lg p-2 shadow-md">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-sm text-muted-foreground">
-            {data.value.toFixed(1)} calories ({data.percentage}%)
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
   // Handle meal deletion
   const handleDeleteMeal = (mealId: string) => {
     if (!me?.root?.mealEntries) return;
@@ -219,13 +227,13 @@ function DailyPageContent() {
               {showDatePicker ? (
                 <div className="flex items-center justify-center">
                   <Input
+                    ref={datePickerInputRef}
                     type="date"
                     value={CalorieCalculator.formatDateForInput(selectedDate)}
                     onChange={handleDateChange}
                     onKeyDown={handleDatePickerKeyDown}
                     onBlur={handleDatePickerBlur}
                     className="w-auto mx-auto touch-manipulation text-sm sm:text-base font-semibold bg-transparent border border-border/30 shadow-none px-3 py-1 h-auto text-center focus:ring-0 focus:border-border/60 rounded-md"
-                    autoFocus
                   />
                 </div>
               ) : (
@@ -307,8 +315,8 @@ function DailyPageContent() {
                           animationDuration={300}
                           fontSize={window.innerWidth >= 640 ? 12 : 10}
                         >
-                          {pieChartData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
                         <Tooltip content={<CustomTooltip />} />

@@ -63,6 +63,13 @@ interface UnitInputProps<T extends string> {
   convertValue?: (value: number, fromUnit: T, toUnit: T) => number; // Optional conversion function
 }
 
+function roundForDisplay(amount: number): string {
+  if (amount < 1) return amount.toFixed(3);
+  if (amount < 10) return amount.toFixed(2);
+  if (amount < 100) return amount.toFixed(1);
+  return amount.toFixed(0);
+}
+
 export function UnitInput<T extends string>({
   value,
   unit,
@@ -83,17 +90,26 @@ export function UnitInput<T extends string>({
   convertValue,
 }: UnitInputProps<T>) {
   // Track the displayed value separately from the prop value to handle conversion smoothly
-  const [displayValue, setDisplayValue] = React.useState<string>("");
+  const [displayValue, setDisplayValue] = React.useState<string>(() =>
+    value > 0 ? roundForDisplay(value) : "",
+  );
   const [isConverting, setIsConverting] = React.useState(false);
   const [isEditing, setIsEditing] = React.useState(false);
+  const [prevSync, setPrevSync] = React.useState({ value, unit, isConverting, isEditing });
 
-  // Update display value when value or unit changes from parent
-  React.useEffect(() => {
+  // Update display value when value or unit changes from parent (or editing/converting ends)
+  if (
+    !Object.is(prevSync.value, value) ||
+    prevSync.unit !== unit ||
+    prevSync.isConverting !== isConverting ||
+    prevSync.isEditing !== isEditing
+  ) {
+    setPrevSync({ value, unit, isConverting, isEditing });
     // Only update from props when not actively editing and not converting
     if (!isConverting && !isEditing) {
       setDisplayValue(value > 0 ? roundForDisplay(value) : "");
     }
-  }, [value, unit, isConverting, isEditing]);
+  }
 
   // Handle input value changes
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,8 +165,8 @@ export function UnitInput<T extends string>({
 
       // Update display value to show converted amount, but only rounded once conversion completes
       setDisplayValue(roundForDisplay(convertedValue));
-    } catch (error) {
-      console.error(`Error converting ${labelSuffix}s:`, error);
+    } catch (conversionError) {
+      console.error(`Error converting ${labelSuffix}s:`, conversionError);
       // If conversion fails, just change the unit without converting the value
       onUnitChange(newUnit);
     } finally {
@@ -158,13 +174,6 @@ export function UnitInput<T extends string>({
       setTimeout(() => setIsConverting(false), 100);
     }
   };
-
-  function roundForDisplay(value: number): string {
-    if (value < 1) return value.toFixed(3);
-    if (value < 10) return value.toFixed(2);
-    if (value < 100) return value.toFixed(1);
-    return value.toFixed(0);
-  }
 
   // Only use explicit min/max props if provided, no arbitrary range validation
   const effectiveMin = min !== undefined ? min : 0;

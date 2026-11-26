@@ -50,7 +50,7 @@ export class FoodIntelligenceManager {
           );
 
           intelligence.foodData[foodName] = newMetadata;
-        } catch (error) {
+        } catch {
           // Fallback for testing - create a plain object with the same structure
           intelligence.foodData[foodName] = {
             lastUsedCPG: caloriesPerGram,
@@ -74,7 +74,7 @@ export class FoodIntelligenceManager {
     }
 
     // Return a copy of the recent foods array (reversed to show most recent first)
-    return [...intelligence.recentFoods].reverse();
+    return [...intelligence.recentFoods].toReversed();
   }
 
   /**
@@ -88,7 +88,7 @@ export class FoodIntelligenceManager {
     }
 
     // Return a copy of the recent categories array (reversed to show most recent first)
-    return [...intelligence.recentCategories].reverse();
+    return [...intelligence.recentCategories].toReversed();
   }
 
   /**
@@ -133,7 +133,7 @@ export class FoodIntelligenceManager {
     // Sort by usage count (descending) and then by last used date (descending)
     return foodEntries
       .filter(([, metadata]) => metadata != null)
-      .sort(([, a], [, b]) => {
+      .toSorted(([, a], [, b]) => {
         if (!a || !b) return 0;
         // First sort by usage count
         if (a.usageCount !== b.usageCount) {

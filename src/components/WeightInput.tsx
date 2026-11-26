@@ -11,6 +11,11 @@ const WEIGHT_UNIT_CONFIGS = [
   { value: "kg" as const, label: "kg", fullName: "kilograms" },
 ];
 
+// Weight conversion function
+function convertWeight(amount: number, fromUnit: WeightUnit, toUnit: WeightUnit): number {
+  return WeightConverter.convert(amount, fromUnit, toUnit);
+}
+
 interface WeightInputProps {
   value: number;
   unit: WeightUnit;
@@ -50,11 +55,6 @@ export function WeightInput({
   const filteredUnits = WEIGHT_UNIT_CONFIGS.filter((config) =>
     availableUnits.includes(config.value),
   );
-
-  // Weight conversion function
-  const convertWeight = (value: number, fromUnit: WeightUnit, toUnit: WeightUnit): number => {
-    return WeightConverter.convert(value, fromUnit, toUnit);
-  };
 
   return (
     <UnitInput

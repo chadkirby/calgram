@@ -1,4 +1,4 @@
-name: CI - Unit Tests
+name: CI - Lint & Unit Tests
 
 on:
   push:
@@ -14,7 +14,7 @@ env:
 
 jobs:
   unit-tests:
-    name: Unit Tests (Vitest)
+    name: Lint & Unit Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -48,6 +48,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check formatting (oxfmt)
+        run: pnpm format:check
+
+      - name: Lint (oxlint)
+        run: pnpm lint
 
       - name: Run unit tests
         run: pnpm test

@@ -167,22 +167,23 @@ describe("CalorieUnitConverter", () => {
   });
 
   describe("round-trip conversions", () => {
-    const testValues = [0, 0.001, 0.5, 1, 2.5, 10, 100];
+    const testValues = [0.001, 0.5, 1, 2.5, 10, 100];
     const units: CalorieUnit[] = ["g", "oz", "lb", "kg"];
+
+    it("should round-trip zero exactly", () => {
+      units.forEach((unit) => {
+        const converted = CalorieUnitConverter.toCaloriesPerGram(0, unit);
+        const roundTrip = CalorieUnitConverter.fromCaloriesPerGram(converted, unit);
+        expect(roundTrip).toBe(0);
+      });
+    });
 
     it("should maintain precision in round-trip conversions", () => {
       testValues.forEach((originalValue) => {
         units.forEach((unit) => {
-          if (originalValue === 0) {
-            // Special case for zero
-            const converted = CalorieUnitConverter.toCaloriesPerGram(originalValue, unit);
-            const roundTrip = CalorieUnitConverter.fromCaloriesPerGram(converted, unit);
-            expect(roundTrip).toBe(0);
-          } else {
-            const converted = CalorieUnitConverter.toCaloriesPerGram(originalValue, unit);
-            const roundTrip = CalorieUnitConverter.fromCaloriesPerGram(converted, unit);
-            expect(roundTrip).toBeCloseTo(originalValue, 10);
-          }
+          const converted = CalorieUnitConverter.toCaloriesPerGram(originalValue, unit);
+          const roundTrip = CalorieUnitConverter.fromCaloriesPerGram(converted, unit);
+          expect(roundTrip).toBeCloseTo(originalValue, 10);
         });
       });
     });

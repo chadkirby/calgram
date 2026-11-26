@@ -16,6 +16,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataCard } from "@/components/DataCard";
 import { JazzAccount } from "../schema";
 
+/** Writes the edited names onto the Jazz profile CoValue (Jazz syncs automatically). */
+function saveProfileNames(
+  profile: { name: string; firstName: string },
+  fullName: string,
+  firstName: string,
+) {
+  profile.name = fullName.trim() || "Anonymous user";
+  profile.firstName = firstName.trim() || "Nobody";
+}
+
 export function SettingsDialog() {
   const { me } = useAccount(JazzAccount, {
     resolve: { profile: true },
@@ -37,8 +47,7 @@ export function SettingsDialog() {
   const handleSave = () => {
     if (me?.profile) {
       // Update the profile data - Jazz handles synchronization automatically
-      me.profile.name = fullName.trim() || "Anonymous user";
-      me.profile.firstName = firstName.trim() || "Nobody";
+      saveProfileNames(me.profile, fullName, firstName);
     }
     setOpen(false);
   };

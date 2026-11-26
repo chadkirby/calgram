@@ -6,23 +6,29 @@ import { WeightConverter } from "@/utils/WeightConverter";
 // Mock the WeightConverter utility
 vi.mock("@/utils/WeightConverter", () => ({
   WeightConverter: {
-    convert: vi.fn((value: number, fromUnit: string, toUnit: string) => {
-      // Simple mock conversion logic for testing
-      const conversions: Record<string, number> = {
-        g: 1,
-        oz: 28.3495,
-        lb: 453.592,
-        kg: 1000,
-        lbs: 453.592,
-      };
+    convert: vi.fn<(value: number, fromUnit: string, toUnit: string) => number>(
+      (value: number, fromUnit: string, toUnit: string) => {
+        // Simple mock conversion logic for testing
+        const conversions: Record<string, number> = {
+          g: 1,
+          oz: 28.3495,
+          lb: 453.592,
+          kg: 1000,
+          lbs: 453.592,
+        };
 
-      if (fromUnit === toUnit) return value;
+        if (fromUnit === toUnit) return value;
 
-      const grams = value * conversions[fromUnit];
-      return grams / conversions[toUnit];
-    }),
+        const grams = value * conversions[fromUnit];
+        return grams / conversions[toUnit];
+      },
+    ),
   },
 }));
+
+const mockOnValueChange = (_value: number) => {};
+const mockOnMealUnitChange = (_unit: MealWeightUnit) => {};
+const mockOnBodyUnitChange = (_unit: BodyWeightUnit) => {};
 
 describe("WeightInput", () => {
   beforeEach(() => {
@@ -31,14 +37,11 @@ describe("WeightInput", () => {
 
   describe("Component Interface and Props", () => {
     it("should accept all required props for meal weight input", () => {
-      const mockOnValueChange = (_value: number) => {};
-      const mockOnUnitChange = (_unit: MealWeightUnit) => {};
-
       const mealWeightProps = {
         value: 100,
         unit: "g" as MealWeightUnit,
         onValueChange: mockOnValueChange,
-        onUnitChange: mockOnUnitChange,
+        onUnitChange: mockOnMealUnitChange,
         availableUnits: ["g", "oz", "lb", "kg"] as MealWeightUnit[],
       };
 
@@ -50,14 +53,11 @@ describe("WeightInput", () => {
     });
 
     it("should accept all required props for body weight input", () => {
-      const mockOnValueChange = (_value: number) => {};
-      const mockOnUnitChange = (_unit: BodyWeightUnit) => {};
-
       const bodyWeightProps = {
         value: 150,
         unit: "lbs" as BodyWeightUnit,
         onValueChange: mockOnValueChange,
-        onUnitChange: mockOnUnitChange,
+        onUnitChange: mockOnBodyUnitChange,
         availableUnits: ["lbs", "kg"] as BodyWeightUnit[],
       };
 
@@ -69,14 +69,11 @@ describe("WeightInput", () => {
     });
 
     it("should accept optional props", () => {
-      const mockOnValueChange = (_value: number) => {};
-      const mockOnUnitChange = (_unit: MealWeightUnit) => {};
-
       const propsWithOptionals = {
         value: 100,
         unit: "g" as MealWeightUnit,
         onValueChange: mockOnValueChange,
-        onUnitChange: mockOnUnitChange,
+        onUnitChange: mockOnMealUnitChange,
         availableUnits: ["g", "oz", "lb", "kg"] as MealWeightUnit[],
         placeholder: "Enter weight",
         className: "custom-class",

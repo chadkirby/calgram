@@ -209,7 +209,7 @@ export class FoodPredictor {
       });
     }
 
-    return foodScores.sort((a, b) => b.score - a.score).slice(0, topN);
+    return foodScores.toSorted((a, b) => b.score - a.score).slice(0, topN);
   }
 
   /**

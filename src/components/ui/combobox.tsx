@@ -33,10 +33,13 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(value);
+  const [prevValue, setPrevValue] = React.useState(value);
 
-  React.useEffect(() => {
+  // Keep the input text in sync when the controlled value changes from the parent
+  if (value !== prevValue) {
+    setPrevValue(value);
     setInputValue(value);
-  }, [value]);
+  }
 
   const handleSelect = (selectedValue: string) => {
     setInputValue(selectedValue);
@@ -82,7 +85,6 @@ export function Combobox({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          role="combobox"
           aria-expanded={open}
           className={cn(
             "w-full justify-between touch-manipulation min-h-[44px] sm:min-h-[40px]",

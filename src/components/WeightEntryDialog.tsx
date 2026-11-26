@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -33,6 +33,11 @@ const weightFormSchema = z.object({
 
 type WeightFormValues = z.infer<typeof weightFormSchema>;
 
+// Get current date in YYYY-MM-DD format for default (timezone-aware)
+function getCurrentDate() {
+  return DateTime.now().toISODate();
+}
+
 interface WeightEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -62,11 +67,6 @@ export function WeightEntryDialog({
   });
   const { updateSyncStatus } = useNetworkStatus();
 
-  // Get current date in YYYY-MM-DD format for default (timezone-aware)
-  const getCurrentDate = () => {
-    return DateTime.now().toISODate();
-  };
-
   // Get default unit from user preferences
   const getDefaultUnit = (): BodyWeightUnit => {
     return UnitPreferenceManager.getBodyWeightUnit(me?.profile);
@@ -83,8 +83,23 @@ export function WeightEntryDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Initialize form when dialog opens or entry changes
-  useEffect(() => {
+  // Initialize form when dialog opens or entry changes. This adjusts state during render
+  // whenever any of the tracked values change (null on first render so it also runs on mount).
+  const profile = me?.profile;
+  const [prevResetDeps, setPrevResetDeps] = useState<{
+    isOpen: boolean;
+    entry: typeof entry;
+    mode: typeof mode;
+    profile: typeof profile;
+  } | null>(null);
+  if (
+    prevResetDeps === null ||
+    prevResetDeps.isOpen !== isOpen ||
+    prevResetDeps.entry !== entry ||
+    prevResetDeps.mode !== mode ||
+    prevResetDeps.profile !== profile
+  ) {
+    setPrevResetDeps({ isOpen, entry, mode, profile });
     if (isOpen) {
       if (mode === "edit" && entry) {
         setFormData({
@@ -104,7 +119,7 @@ export function WeightEntryDialog({
       setErrors({});
       setSubmitSuccess(false);
     }
-  }, [isOpen, entry, mode, me?.profile]);
+  }
 
   // Real-time validation helper
   const validateField = (field: keyof WeightFormValues, value: any) => {
@@ -199,6 +214,8 @@ export function WeightEntryDialog({
     }
   };
 
+  const notesId = useId();
+
   const handleClose = () => {
     if (!isSubmitting) {
       onClose();
@@ -218,8 +235,8 @@ export function WeightEntryDialog({
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Date</label>
+          <fieldset className="space-y-2 min-w-0">
+            <legend className="text-sm font-medium">Date</legend>
             <DatePicker
               value={formData.date}
               onChange={(value) => {
@@ -229,10 +246,10 @@ export function WeightEntryDialog({
               error={!!errors.date}
             />
             {errors.date && <p className="text-sm text-destructive">{errors.date}</p>}
-          </div>
+          </fieldset>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Weight</label>
+          <fieldset className="space-y-2 min-w-0">
+            <legend className="text-sm font-medium">Weight</legend>
             <WeightInput
               value={formData.weightValue}
               unit={formData.unit}
@@ -259,11 +276,14 @@ export function WeightEntryDialog({
                 {errors.weightValue}
               </p>
             )}
-          </div>
+          </fieldset>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Notes (Optional)</label>
+            <label htmlFor={notesId} className="text-sm font-medium">
+              Notes (Optional)
+            </label>
             <Textarea
+              id={notesId}
               placeholder="Add any notes about this weight measurement..."
               value={formData.notes}
               onChange={(e) => {

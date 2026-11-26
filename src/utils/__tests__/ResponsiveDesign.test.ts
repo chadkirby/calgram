@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
+const setWindowWidth = (width: number) => {
+  Object.defineProperty(window, "innerWidth", {
+    writable: true,
+    configurable: true,
+    value: width,
+  });
+};
+
 describe("Responsive Design Tests", () => {
   let originalInnerWidth: number;
 
@@ -15,14 +23,6 @@ describe("Responsive Design Tests", () => {
       value: originalInnerWidth,
     });
   });
-
-  const setWindowWidth = (width: number) => {
-    Object.defineProperty(window, "innerWidth", {
-      writable: true,
-      configurable: true,
-      value: width,
-    });
-  };
 
   describe("Mobile breakpoints", () => {
     it("should detect mobile screen size correctly", () => {

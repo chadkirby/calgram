@@ -13,8 +13,12 @@
     "test:run": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "format-and-lint": "biome check .",
-    "format-and-lint:fix": "biome check . --write"
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "format-and-lint": "pnpm format:check && pnpm lint",
+    "format-and-lint:fix": "pnpm format && pnpm lint:fix"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.9",

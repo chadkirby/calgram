@@ -7,18 +7,32 @@ import type { WeightUnit } from "../WeightUnitSelector";
 // Mock dependencies
 vi.mock("@/utils/WeightConverter", () => ({
   WeightConverter: {
-    convert: vi.fn(),
+    convert: vi.fn<typeof WeightConverter.convert>(),
   },
 }));
 
 vi.mock("@/utils/UnitPreferenceManager", () => ({
   UnitPreferenceManager: {
-    getMealWeightUnit: vi.fn(),
-    setMealWeightUnit: vi.fn(),
-    getBodyWeightUnit: vi.fn(),
-    setBodyWeightUnit: vi.fn(),
+    getMealWeightUnit: vi.fn<typeof UnitPreferenceManager.getMealWeightUnit>(),
+    setMealWeightUnit: vi.fn<typeof UnitPreferenceManager.setMealWeightUnit>(),
+    getBodyWeightUnit: vi.fn<typeof UnitPreferenceManager.getBodyWeightUnit>(),
+    setBodyWeightUnit: vi.fn<typeof UnitPreferenceManager.setBodyWeightUnit>(),
   },
 }));
+
+// Simulate basic form validation (just check for positive values)
+const validateWeight = (weight: number, _unit: MealWeightUnit) => {
+  return weight > 0;
+};
+
+// Simulated Zod schema validation
+const validateMealWeight = (weight: number) => {
+  return weight > 0 && weight <= 5000; // Simplified validation
+};
+
+const validateBodyWeight = (weight: number) => {
+  return weight >= 50 && weight <= 1000; // Simplified validation
+};
 
 describe("WeightInput Integration", () => {
   describe("Form Integration Patterns", () => {
@@ -31,18 +45,13 @@ describe("WeightInput Integration", () => {
       };
 
       // Mock form handlers
-      const handleWeightChange = vi.fn((value: number) => {
+      const handleWeightChange = vi.fn<(value: number) => void>((value: number) => {
         mealFormState.weightInGrams = value;
       });
 
-      const handleUnitChange = vi.fn((unit: MealWeightUnit) => {
+      const handleUnitChange = vi.fn<(unit: MealWeightUnit) => void>((unit: MealWeightUnit) => {
         mealFormState.displayUnit = unit;
       });
-
-      // Simulate basic form validation (just check for positive values)
-      const validateWeight = (weight: number, _unit: MealWeightUnit) => {
-        return weight > 0;
-      };
 
       // Test integration props
       const integrationProps = {
@@ -80,11 +89,11 @@ describe("WeightInput Integration", () => {
       };
 
       // Mock form handlers
-      const handleWeightChange = vi.fn((value: number) => {
+      const handleWeightChange = vi.fn<(value: number) => void>((value: number) => {
         weightFormState.weightValue = value;
       });
 
-      const handleUnitChange = vi.fn((unit: BodyWeightUnit) => {
+      const handleUnitChange = vi.fn<(unit: BodyWeightUnit) => void>((unit: BodyWeightUnit) => {
         weightFormState.unit = unit;
       });
 
@@ -197,7 +206,7 @@ describe("WeightInput Integration", () => {
             conversionError = "";
           }
           formUnit = newUnit;
-        } catch (error) {
+        } catch {
           conversionError = "Failed to convert units";
           // Still change unit even if conversion fails
           formUnit = newUnit;
@@ -246,14 +255,6 @@ describe("WeightInput Integration", () => {
   describe("Validation System Integration", () => {
     it("should work with existing Zod validation schemas", () => {
       // Simulate Zod schema validation
-      const validateMealWeight = (weight: number) => {
-        return weight > 0 && weight <= 5000; // Simplified validation
-      };
-
-      const validateBodyWeight = (weight: number) => {
-        return weight >= 50 && weight <= 1000; // Simplified validation
-      };
-
       // Test meal weight validation
       expect(validateMealWeight(100)).toBe(true);
       expect(validateMealWeight(0)).toBe(false);

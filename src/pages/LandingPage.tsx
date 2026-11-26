@@ -9,6 +9,14 @@ import { Label } from "@/components/ui/label";
 import { JazzAccount } from "../schema";
 import { useLocation, useNavigate } from "react-router-dom";
 
+/** Persist the chosen first name (and fill in a placeholder full name) on the Jazz profile. */
+function persistSignupName(profile: { name: string; firstName: string }, firstName: string) {
+  profile.firstName = (firstName || "").trim() || "Nobody";
+  if (!profile.name || profile.name === "Anonymous user") {
+    profile.name = profile.firstName;
+  }
+}
+
 export function LandingPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,13 +35,17 @@ export function LandingPage() {
   const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
 
-  // Open dialog when URL has ?signup=1 or when user clicks Sign up
-  useEffect(() => {
+  // Open dialog when URL has ?signup=1 or when user clicks Sign up.
+  // Adjusts state during render whenever location.search changes (null on first render so it
+  // also runs on mount).
+  const [prevSearch, setPrevSearch] = useState<string | null>(null);
+  if (prevSearch !== location.search) {
+    setPrevSearch(location.search);
     const isSignup = new URLSearchParams(location.search).get("signup") === "1";
     if (isSignup) {
       setOpen(true);
     }
-  }, [location.search]);
+  }
 
   // If already authenticated, go to desiredPath immediately
   useEffect(() => {
@@ -42,13 +54,24 @@ export function LandingPage() {
     }
   }, [isAuthenticated, desiredPath, navigate]);
 
-  // Initialize local firstName once from profile when dialog opens
-  useEffect(() => {
+  // Initialize local firstName from profile when dialog opens, or when the profile's firstName
+  // changes while open. Adjusts state during render when `open` or the profile firstName change
+  // (null on first render so it also runs on mount).
+  const profileFirstName = me?.profile?.firstName;
+  const [prevFirstNameSync, setPrevFirstNameSync] = useState<{
+    open: boolean;
+    profileFirstName: string | undefined;
+  } | null>(null);
+  if (
+    prevFirstNameSync === null ||
+    prevFirstNameSync.open !== open ||
+    prevFirstNameSync.profileFirstName !== profileFirstName
+  ) {
+    setPrevFirstNameSync({ open, profileFirstName });
     if (open && me?.profile) {
       setFirstName(me.profile.firstName ?? "");
     }
-    // Only run when opening, or when profile changes while open
-  }, [open, me?.profile?.firstName]);
+  }
 
   // IMPORTANT: Do NOT trigger auth.signUp() automatically.
   // Only run the passkey flow after the user clicks Continue in the dialog.
@@ -58,10 +81,7 @@ export function LandingPage() {
     try {
       // Persist firstName before starting auth, so the profile is ready after sign-in
       if (me?.profile) {
-        me.profile.firstName = (firstName || "").trim() || "Nobody";
-        if (!me.profile.name || me.profile.name === "Anonymous user") {
-          me.profile.name = me.profile.firstName;
-        }
+        persistSignupName(me.profile, firstName);
       }
       // Now start the passkey flow with a meaningful WebAuthn user name
       const label = `Sammygram (${(firstName || "").trim() || "User"})`;

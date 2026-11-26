@@ -7,6 +7,8 @@ import {
 } from "@/schema";
 import { isMealWeightUnit, isBodyWeightUnit, type WeightUnit } from "../WeightUnitSelector";
 
+const mockOnChange = (_unit: WeightUnit) => {};
+
 describe("WeightUnitSelector", () => {
   describe("Type Definitions and Constants", () => {
     it("should use correct meal weight units from schema", () => {
@@ -41,7 +43,6 @@ describe("WeightUnitSelector", () => {
   describe("Component Props Interface", () => {
     it("should accept all required props", () => {
       // This test verifies the component interface compiles correctly
-      const mockOnChange = (_unit: WeightUnit) => {};
 
       // Test meal weight selector props
       const mealProps = {
@@ -56,8 +57,6 @@ describe("WeightUnitSelector", () => {
     });
 
     it("should accept optional props", () => {
-      const mockOnChange = (_unit: WeightUnit) => {};
-
       const propsWithOptionals = {
         value: "lbs" as BodyWeightUnit,
         onChange: mockOnChange,

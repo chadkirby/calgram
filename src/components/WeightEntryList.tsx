@@ -26,6 +26,36 @@ interface WeightEntryListProps {
   addButton?: React.ReactNode;
 }
 
+function formatDate(timestamp: string) {
+  return DateTime.fromISO(timestamp).toLocaleString(DateTime.DATE_MED);
+}
+
+function formatRelativeDate(timestamp: string) {
+  const date = DateTime.fromISO(timestamp);
+  const now = DateTime.now();
+  const diff = now.diff(date, "days").days;
+
+  if (diff < 1) return "Today";
+  if (diff < 2) return "Yesterday";
+  if (diff < 7) return `${Math.floor(diff)} days ago`;
+  return date.toLocaleString(DateTime.DATE_MED);
+}
+
+function formatWeightDisplay(entry: Loaded<typeof WeightEntry>) {
+  // Get the stored unit (default to 'lbs' for legacy entries)
+  const storedUnit = entry.unit || "lbs";
+
+  // Format the original value in its stored unit
+  const originalDisplay = WeightConverter.formatDisplay(entry.weightValue, storedUnit);
+
+  // Always show the opposite unit in parentheses
+  const oppositeUnit = storedUnit === "kg" ? "lbs" : "kg";
+  const convertedWeight = WeightConverter.convert(entry.weightValue, storedUnit, oppositeUnit);
+  const convertedDisplay = WeightConverter.formatDisplay(convertedWeight, oppositeUnit);
+
+  return `${originalDisplay} (${convertedDisplay})`;
+}
+
 export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
   const { me } = useAccount(JazzAccount, {
     resolve: {
@@ -43,16 +73,17 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
   const ENTRIES_PER_LOAD = 50;
 
   // Sort weight entries by date (newest first)
+  const weightEntries = me?.root?.weightEntries;
   const sortedEntries = useMemo(() => {
-    if (!me?.root?.weightEntries) return [];
+    if (!weightEntries) return [];
 
-    return [...me.root.weightEntries]
+    return [...weightEntries]
       .filter((entry): entry is Loaded<typeof WeightEntry> => entry != null)
-      .sort(
+      .toSorted(
         (a, b) =>
           DateTime.fromISO(b.timestamp).toMillis() - DateTime.fromISO(a.timestamp).toMillis(),
       );
-  }, [me?.root?.weightEntries]);
+  }, [weightEntries]);
 
   // Get entries to display based on current display count
   const displayedEntries = useMemo(() => {
@@ -84,36 +115,6 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
       setIsDeleting(false);
       setDeleteEntry(null);
     }
-  };
-
-  const formatDate = (timestamp: string) => {
-    return DateTime.fromISO(timestamp).toLocaleString(DateTime.DATE_MED);
-  };
-
-  const formatRelativeDate = (timestamp: string) => {
-    const date = DateTime.fromISO(timestamp);
-    const now = DateTime.now();
-    const diff = now.diff(date, "days").days;
-
-    if (diff < 1) return "Today";
-    if (diff < 2) return "Yesterday";
-    if (diff < 7) return `${Math.floor(diff)} days ago`;
-    return date.toLocaleString(DateTime.DATE_MED);
-  };
-
-  const formatWeightDisplay = (entry: Loaded<typeof WeightEntry>) => {
-    // Get the stored unit (default to 'lbs' for legacy entries)
-    const storedUnit = entry.unit || "lbs";
-
-    // Format the original value in its stored unit
-    const originalDisplay = WeightConverter.formatDisplay(entry.weightValue, storedUnit);
-
-    // Always show the opposite unit in parentheses
-    const oppositeUnit = storedUnit === "kg" ? "lbs" : "kg";
-    const convertedWeight = WeightConverter.convert(entry.weightValue, storedUnit, oppositeUnit);
-    const convertedDisplay = WeightConverter.formatDisplay(convertedWeight, oppositeUnit);
-
-    return `${originalDisplay} (${convertedDisplay})`;
   };
 
   if (sortedEntries.length === 0) {

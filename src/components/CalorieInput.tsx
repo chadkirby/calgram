@@ -10,6 +10,13 @@ const CALORIE_UNIT_CONFIGS = [
   { value: "kg" as const, label: "cal/kg", fullName: "calories per kilogram" },
 ];
 
+// Calorie conversion function
+function convertCalories(amount: number, fromUnit: CalorieUnit, toUnit: CalorieUnit): number {
+  // Convert current value from current unit to calories per gram, then to new unit
+  const caloriesPerGram = CalorieUnitConverter.toCaloriesPerGram(amount, fromUnit);
+  return CalorieUnitConverter.fromCaloriesPerGram(caloriesPerGram, toUnit);
+}
+
 interface CalorieInputProps {
   value: number;
   unit: CalorieUnit;
@@ -49,13 +56,6 @@ export function CalorieInput({
   const filteredUnits = CALORIE_UNIT_CONFIGS.filter((config) =>
     availableUnits.includes(config.value),
   );
-
-  // Calorie conversion function
-  const convertCalories = (value: number, fromUnit: CalorieUnit, toUnit: CalorieUnit): number => {
-    // Convert current value from current unit to calories per gram, then to new unit
-    const caloriesPerGram = CalorieUnitConverter.toCaloriesPerGram(value, fromUnit);
-    return CalorieUnitConverter.fromCaloriesPerGram(caloriesPerGram, toUnit);
-  };
 
   return (
     <UnitInput

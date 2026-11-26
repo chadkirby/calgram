@@ -30,7 +30,7 @@ export class TrendAnalyzer {
     }
 
     const n = data.length;
-    const smoothed: number[] = new Array(n);
+    const smoothed: number[] = Array.from({ length: n }, () => 0);
     const h = Math.max(1, Math.floor(bandwidth * n)); // Window size
 
     for (let i = 0; i < n; i++) {
@@ -125,7 +125,7 @@ export class TrendAnalyzer {
         const weightDate = DateTime.fromISO(weight.timestamp);
         return weightDate >= startDate && weightDate <= endDate;
       })
-      .sort(
+      .toSorted(
         (a, b) =>
           DateTime.fromISO(a.timestamp).toMillis() - DateTime.fromISO(b.timestamp).toMillis(),
       );
@@ -194,11 +194,11 @@ export class TrendAnalyzer {
     kernelWidth: number = 4,
   ): (number | undefined)[] {
     if (weightDataPoints.length === 0) {
-      return new Array(allTimePoints.length).fill(undefined);
+      return Array.from({ length: allTimePoints.length }, () => undefined);
     }
 
     const smoothedValues: (number | undefined)[] = [];
-    const sortedWeightData = [...weightDataPoints].sort((a, b) => a.timestamp - b.timestamp);
+    const sortedWeightData = weightDataPoints.toSorted((a, b) => a.timestamp - b.timestamp);
 
     for (const timePoint of allTimePoints) {
       let weightSum = 0;
