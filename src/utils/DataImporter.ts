@@ -7,6 +7,8 @@ import {
   FoodMetadata,
   ExportMealShape,
   ExportWeightShape,
+  ExportProfileShape,
+  type ExportProfileDTO,
   type MealEntryType,
   type WeightEntryType,
 } from "../schema";
@@ -37,6 +39,7 @@ export type CurrentExportedWeightEntry = Pick<
 export interface CurrentExportedData {
   version: string;
   exportDate: string;
+  profile?: ExportProfileDTO;
   mealEntries: CurrentExportedMealEntry[];
   weightEntries: CurrentExportedWeightEntry[];
 }
@@ -57,6 +60,7 @@ const CurrentExportedDataSchema = z
   .object({
     version: z.string(),
     exportDate: ISODateString,
+    profile: z.object(ExportProfileShape).strict().optional(),
     mealEntries: z.array(CurrentExportedMealEntrySchema),
     weightEntries: z.array(CurrentExportedWeightEntrySchema),
   })

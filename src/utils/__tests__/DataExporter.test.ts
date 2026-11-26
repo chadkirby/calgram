@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { DataImporter } from "../DataImporter";
 import { DataExporter } from "../DataExporter";
 import { type Loaded } from "jazz-tools";
 import { JazzAccount } from "@/schema";
@@ -46,7 +47,14 @@ const mockWeightEntries = [
 
 // Mock account data
 const mockAccount = {
+  profile: {
+    name: "Sam Example",
+    firstName: "Sam",
+    mealWeightUnit: "oz",
+    bodyWeightUnit: "lbs",
+  },
   root: {
+    dateOfBirth: "1990-01-01",
     mealEntries: mockMealEntries,
     weightEntries: mockWeightEntries,
   },
@@ -54,10 +62,26 @@ const mockAccount = {
 
 describe("DataExporter", () => {
   describe("exportUserData", () => {
+    it("produces a file the importer accepts (v1.1 round trip, including profile)", async () => {
+      const exported = await DataExporter.exportUserData(mockAccount);
+      const json = JSON.parse(JSON.stringify(exported));
+      const validation = DataImporter.validateImportData(json);
+      expect(validation.errors).toEqual([]);
+      expect(validation.isValid).toBe(true);
+      expect(json.profile.dateOfBirth).toBe("1990-01-01");
+    });
+
     it("should export user data in the correct format", async () => {
       const result = await DataExporter.exportUserData(mockAccount);
 
-      expect(result).toHaveProperty("version", "1.0");
+      expect(result).toHaveProperty("version", "1.1");
+      expect(result.profile).toEqual({
+        name: "Sam Example",
+        firstName: "Sam",
+        dateOfBirth: "1990-01-01",
+        mealWeightUnit: "oz",
+        bodyWeightUnit: "lbs",
+      });
       expect(result).toHaveProperty("exportDate");
       expect(result).toHaveProperty("mealEntries");
       expect(result).toHaveProperty("weightEntries");

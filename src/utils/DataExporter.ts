@@ -4,12 +4,14 @@ import {
   // Import DTO types inferred from Export* Zod shapes
   type ExportMealDTO as ExportedMealEntry,
   type ExportWeightDTO as ExportedWeightEntry,
+  type ExportProfileDTO,
 } from "../schema";
 
 
 interface ExportedData {
   version: string;
   exportDate: string;
+  profile?: ExportProfileDTO;
   mealEntries: ExportedMealEntry[];
   weightEntries: ExportedWeightEntry[];
 }
@@ -29,6 +31,7 @@ export class DataExporter {
     if (typeof account.ensureLoaded === 'function') {
       loadedAccount = await account.ensureLoaded({
         resolve: {
+          profile: true,
           root: {
             mealEntries: true,
             weightEntries: true,
@@ -82,9 +85,19 @@ export class DataExporter {
       return arr satisfies ExportedWeightEntry[];
     })();
 
+    const profile = loadedAccount.profile;
+    const profileData = {
+      name: profile?.name,
+      firstName: profile?.firstName,
+      dateOfBirth: loadedAccount.root.dateOfBirth || undefined,
+      mealWeightUnit: profile?.mealWeightUnit,
+      bodyWeightUnit: profile?.bodyWeightUnit,
+    } satisfies ExportProfileDTO;
+
     const payload = {
-      version: "1.0",
+      version: "1.1",
       exportDate: new Date().toISOString(),
+      profile: profileData,
       mealEntries,
       weightEntries,
     } satisfies ExportedData;
