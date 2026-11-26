@@ -65,6 +65,9 @@ function definedFields<T extends object>(obj: T): Partial<T> {
   ) as Partial<T>;
 }
 
+/** The text a content source key hashes. */
+export const canonicalContent = (fields: unknown[]): string => JSON.stringify(fields);
+
 /**
  * Source keys for a file's entries: the entry's source `id` when it has one,
  * otherwise a hash of its content plus its occurrence among identical entries, so two
@@ -79,7 +82,7 @@ async function planRows<T>(
     entries.map(async ({ id, ...rest }) => {
       const row = rest as T;
       if (id) return { sourceKey: id, hasSourceId: true, row };
-      const content = JSON.stringify(canonical(row));
+      const content = canonicalContent(canonical(row));
       const occurrence = seen.get(content) ?? 0;
       seen.set(content, occurrence + 1);
       return { sourceKey: await contentSourceKey(content, occurrence), hasSourceId: false, row };
@@ -87,27 +90,28 @@ async function planRows<T>(
   );
 }
 
-// Fixed field order, so key order in the file doesn't change the hash.
-const canonicalMeal = (m: MealRow): unknown[] => [
-  "meal",
-  m.timestamp,
-  m.foodName,
-  m.foodCategory,
-  m.caloriesPerGram,
-  m.caloriesPerDisplayUnit,
-  m.weightInGrams,
-  m.displayUnit,
-  m.totalCalories,
-  m.notes,
-];
+/** A row as stored or as read from a file: a missing optional field may be null. */
+type Nullable<T> = { [K in keyof T]: undefined extends T[K] ? T[K] | null : T[K] };
 
-const canonicalWeight = (w: WeightRow): unknown[] => [
-  "weight",
-  w.timestamp,
-  w.weightValue,
-  w.unit,
-  w.notes,
-];
+// Fixed field order, so key order in the file doesn't change the hash. A missing
+// optional field is null whether it was undefined (a file) or null (a stored row), so
+// a stored row and the file entry it came from give the same content.
+export const canonicalMeal = (m: Nullable<MealRow>): unknown[] =>
+  [
+    "meal",
+    m.timestamp,
+    m.foodName,
+    m.foodCategory,
+    m.caloriesPerGram,
+    m.caloriesPerDisplayUnit,
+    m.weightInGrams,
+    m.displayUnit,
+    m.totalCalories,
+    m.notes,
+  ].map((value) => value ?? null);
+
+export const canonicalWeight = (w: Nullable<WeightRow>): unknown[] =>
+  ["weight", w.timestamp, w.weightValue, w.unit, w.notes].map((value) => value ?? null);
 
 export class DataImporter {
   /**

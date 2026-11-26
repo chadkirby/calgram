@@ -123,3 +123,52 @@ test("weigh-ins can be added, edited and deleted, and the list and chart follow"
   await expect(entries).toHaveCount(0);
   await expect(page.getByText("No weight data available")).toBeVisible();
 });
+
+test("an open weigh-in form keeps what was typed when the profile changes in another tab", async ({
+  page,
+  context,
+}) => {
+  await startNewAccount(page, "Tester");
+  await page.getByRole("tab", { name: "Weight" }).click();
+  await page.getByRole("button", { name: "Add Weight" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add Weight Entry" });
+  const input = dialog.getByLabel("Weight input with unit selector");
+  await input.fill("20");
+  await dialog.getByLabel(/notes/i).fill("before breakfast");
+
+  // Same account in a second tab: rename it there.
+  const other = await context.newPage();
+  await other.goto("/daily");
+  await other.getByTitle("Application settings").filter({ visible: true }).click();
+  const settings = other.getByRole("dialog", { name: "Settings" });
+  await settings.getByLabel("First Name").fill("Renamed");
+  await settings.getByRole("button", { name: "Save Changes" }).click();
+
+  // The first tab sees the new name, and its open form is untouched.
+  await expect(page.getByText("(Renamed)")).toBeAttached();
+  await expect(input).toHaveValue(/^20(\.0)?$/);
+  await expect(dialog.getByLabel(/notes/i)).toHaveValue("before breakfast");
+});
+
+test("adding a weigh-in in a new unit keeps the success message until the form closes", async ({
+  page,
+}) => {
+  await startNewAccount(page);
+  await page.getByRole("tab", { name: "Weight" }).click();
+  await page.getByRole("button", { name: "Add Weight" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add Weight Entry" });
+  const input = dialog.getByLabel("Weight input with unit selector");
+  // Not the default (lbs), so saving also writes the profile's unit preference.
+  await chooseUnit(page, dialog.getByRole("combobox", { name: /weight unit/i }), "kg");
+  await input.fill("9");
+  await dialog.getByRole("button", { name: "Add Weight" }).click();
+
+  const success = dialog.getByText("Success!");
+  await expect(success).toBeVisible();
+  // Give the profile write time to come back through the subscription.
+  await page.waitForTimeout(150);
+  await expect(success).toBeVisible();
+  await expect(input).toHaveValue(/^9(\.0+)?$/);
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("weight-entry").first()).toContainText("9kg");
+});

@@ -28,7 +28,7 @@ export function DataCard() {
     if (!accountId) return;
     setIsExporting(true);
     try {
-      const exportData = await exportAccount(db, accountId, profile);
+      const { data: exportData, complete } = await exportAccount(db, accountId, profile);
 
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");
@@ -37,11 +37,16 @@ export function DataCard() {
       // Download the file
       DataExporter.downloadJsonFile(exportData, filename);
 
-      // Show success message
-      setImportResult({
-        success: true,
-        message: "Data exported successfully!",
-      });
+      // Show success message, or say the backup may be missing what only the server has
+      setImportResult(
+        complete
+          ? { success: true, message: "Data exported successfully!" }
+          : {
+              success: false,
+              message:
+                "Exported the data on this device, but the server couldn't be reached, so this backup may be incomplete. Export again when you're online to be sure it has everything.",
+            },
+      );
     } catch (error) {
       console.error("Export failed:", error);
       setImportResult({

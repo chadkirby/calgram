@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "jazz-tools";
 import { app, type ProfileInsert } from "../../../jazz/jazz.generated";
-import { exportAccount, importIntoAccount, planRowWrites } from "../backup";
+import { exportAccount, importIntoAccount, planRowWrites, unionById } from "../backup";
 import { rowId } from "@/utils/rowIds";
 
 const ACCOUNT = "account-a";
@@ -35,14 +35,21 @@ const file = (mealEntries: object[], weightEntries: object[] = [], profile?: obj
  * An in-memory stand-in for the Jazz 2 Db: `all` lists rows, `insert` stores the row
  * under its id, and `wait` settles with `rejectWith` when given.
  */
-function fakeDb(rejectWith?: string) {
+function fakeDb(rejectWith?: string, remote?: "same" | "reject" | "hang" | Map<unknown, object[]>) {
   const tables = new Map<unknown, Map<string, object>>([
     [app.mealEntries, new Map()],
     [app.weightEntries, new Map()],
   ]);
   const inserts: { table: unknown; id: string }[] = [];
   const db = {
-    all: async (table: unknown) => [...tables.get(table)!.values()],
+    all: async (table: unknown, options?: { tier?: string }) => {
+      if (options?.tier === "remote" && remote !== undefined && remote !== "same") {
+        if (remote === "reject") throw new Error("offline");
+        if (remote === "hang") return new Promise<never>(() => {});
+        return remote.get(table) ?? [];
+      }
+      return [...tables.get(table)!.values()];
+    },
     insert: (table: unknown, row: object, { id }: { id: string }) => {
       inserts.push({ table, id });
       // Stored the way Jazz 2 returns it: with its id, and null for a missing optional.
@@ -54,6 +61,11 @@ function fakeDb(rejectWith?: string) {
   };
   return { db: db as unknown as Db, inserts, tables };
 }
+
+/** A meal as Jazz 2 stores it: with its id, and null for a missing optional. */
+const stored = (foodName: string, id: string) => ({ ...meal(foodName), notes: null, id });
+
+const withoutIds = ({ id: _id, ...entry }: { id?: string }) => entry;
 
 const planned = (sourceKey: string) => ({ sourceKey, hasSourceId: true, row: meal(sourceKey) });
 
@@ -83,6 +95,60 @@ describe("planRowWrites", () => {
   });
 });
 
+describe("unionById", () => {
+  it("keeps every local row, local first, and adds remote rows it doesn't have", () => {
+    const local = [
+      { id: "a", v: "local edit" },
+      { id: "c", v: "pending insert" },
+    ];
+    const remote = [
+      { id: "a", v: "server" },
+      { id: "b", v: "server only" },
+    ];
+    expect(unionById(local, remote)).toEqual([
+      { id: "a", v: "local edit" },
+      { id: "c", v: "pending insert" },
+      { id: "b", v: "server only" },
+    ]);
+  });
+});
+
+describe("exportAccount", () => {
+  it("includes rows only the server has, and local edits over the server's copy", async () => {
+    const remote = new Map<unknown, object[]>([
+      [app.mealEntries, [stored("Kibble (old)", "m1"), stored("From another device", "m2")]],
+      [app.weightEntries, [{ ...weight(10), notes: null, id: "w1" }]],
+    ]);
+    const { db, tables } = fakeDb(undefined, remote);
+    tables.get(app.mealEntries)!.set("m1", stored("Kibble", "m1"));
+
+    const { data, complete } = await exportAccount(db, ACCOUNT, undefined);
+    expect(complete).toBe(true);
+    expect(data.mealEntries.map((m) => [m.id, m.foodName])).toEqual([
+      ["m1", "Kibble"],
+      ["m2", "From another device"],
+    ]);
+    expect(data.weightEntries.map((w) => w.id)).toEqual(["w1"]);
+    expect(data).not.toHaveProperty("complete");
+  });
+
+  it("exports local rows and flags the backup incomplete when the server read fails", async () => {
+    const { db, tables } = fakeDb(undefined, "reject");
+    tables.get(app.mealEntries)!.set("m1", stored("Kibble", "m1"));
+    const { data, complete } = await exportAccount(db, ACCOUNT, undefined);
+    expect(complete).toBe(false);
+    expect(data.mealEntries.map((m) => m.id)).toEqual(["m1"]);
+  });
+
+  it("stops waiting for the server after the bound and flags the backup incomplete", async () => {
+    const { db, tables } = fakeDb(undefined, "hang");
+    tables.get(app.mealEntries)!.set("m1", stored("Kibble", "m1"));
+    const { data, complete } = await exportAccount(db, ACCOUNT, undefined, { remoteWaitMs: 10 });
+    expect(complete).toBe(false);
+    expect(data.mealEntries.map((m) => m.id)).toEqual(["m1"]);
+  });
+});
+
 describe("importIntoAccount", () => {
   it("inserts each new row once, and a second import of the same file adds nothing", async () => {
     const { db, inserts } = fakeDb();
@@ -103,12 +169,64 @@ describe("importIntoAccount", () => {
   it("adds nothing when importing this account's own export", async () => {
     const { db, inserts } = fakeDb();
     await importIntoAccount(db, ACCOUNT, file([meal("Kibble"), meal("Treat")]), () => {});
-    const exported = JSON.parse(JSON.stringify(await exportAccount(db, ACCOUNT, undefined)));
+    const { data: exportData } = await exportAccount(db, ACCOUNT, undefined);
+    const exported = JSON.parse(JSON.stringify(exportData));
     expect(exported).toMatchObject({ version: "1.3", accountId: ACCOUNT });
 
     const result = await importIntoAccount(db, ACCOUNT, exported, () => {});
     expect(result).toEqual({ mealCount: 0, weightCount: 0, duplicatesSkipped: 2 });
     expect(inserts).toHaveLength(2);
+  });
+
+  describe("entries without a source id", () => {
+    it("add nothing when the same entries were imported before with Classic ids", async () => {
+      const { db, inserts } = fakeDb();
+      const classic = file(
+        [meal("Kibble", "co_zMeal1"), meal("Treat", "co_zMeal2")],
+        [weight(10, "co_zWeight1")],
+      );
+      await importIntoAccount(db, ACCOUNT, classic, () => {});
+      expect(inserts).toHaveLength(3);
+
+      const v11 = {
+        ...classic,
+        version: "1.1",
+        mealEntries: classic.mealEntries.map(withoutIds),
+        weightEntries: classic.weightEntries.map(withoutIds),
+      };
+      const result = await importIntoAccount(db, ACCOUNT, v11, () => {});
+      expect(result).toEqual({ mealCount: 0, weightCount: 0, duplicatesSkipped: 3 });
+      expect(inserts).toHaveLength(3);
+    });
+
+    it("add only the copies the account doesn't already have", async () => {
+      const { db, inserts, tables } = fakeDb();
+      // A snack logged by hand: a random row id, and null for missing optionals.
+      tables.get(app.mealEntries)!.set("manual-1", {
+        ...meal("Snack"),
+        caloriesPerDisplayUnit: null,
+        displayUnit: null,
+        notes: null,
+        id: "manual-1",
+      });
+
+      const result = await importIntoAccount(
+        db,
+        ACCOUNT,
+        file([meal("Snack"), meal("Snack")]),
+        () => {},
+      );
+      expect(result).toEqual({ mealCount: 1, weightCount: 0, duplicatesSkipped: 1 });
+      expect(inserts).toHaveLength(1);
+    });
+
+    it("still add an entry whose content differs only in its timestamp text", async () => {
+      const { db, tables } = fakeDb();
+      tables.get(app.mealEntries)!.set("manual-1", { ...meal("Snack"), id: "manual-1" });
+      const shifted = { ...meal("Snack"), timestamp: "2026-11-20T16:00:00.000Z" };
+      const result = await importIntoAccount(db, ACCOUNT, file([shifted]), () => {});
+      expect(result.mealCount).toBe(1);
+    });
   });
 
   describe("a file's source ids", () => {

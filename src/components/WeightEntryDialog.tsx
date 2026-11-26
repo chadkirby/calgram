@@ -81,22 +81,23 @@ export function WeightEntryDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Initialize form when dialog opens or entry changes. This adjusts state during render
-  // whenever any of the tracked values change (null on first render so it also runs on mount).
+  // Initialize form when dialog opens or the entry or mode changes. This adjusts state
+  // during render whenever any of the tracked values change (null on first render so it
+  // also runs on mount). Not on profile changes: the profile is only read for the default
+  // unit when the form opens, and a profile update (saving a new unit preference, or a
+  // rename in another tab) mustn't wipe what's being typed or the success message.
   const [prevResetDeps, setPrevResetDeps] = useState<{
     isOpen: boolean;
     entry: typeof entry;
     mode: typeof mode;
-    profile: typeof profile;
   } | null>(null);
   if (
     prevResetDeps === null ||
     prevResetDeps.isOpen !== isOpen ||
     prevResetDeps.entry !== entry ||
-    prevResetDeps.mode !== mode ||
-    prevResetDeps.profile !== profile
+    prevResetDeps.mode !== mode
   ) {
-    setPrevResetDeps({ isOpen, entry, mode, profile });
+    setPrevResetDeps({ isOpen, entry, mode });
     if (isOpen) {
       if (mode === "edit" && entry) {
         setFormData({

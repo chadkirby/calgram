@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,8 +35,15 @@ export function LandingPage() {
   const [firstName, setFirstName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const errorId = useId();
 
-  const handleContinue = async () => {
+  const openNameStep = () => {
+    setMessage(null);
+    setOpen(true);
+  };
+
+  const handleContinue = async (event: React.FormEvent) => {
+    event.preventDefault();
     setBusy(true);
     setMessage(null);
     try {
@@ -79,11 +86,7 @@ export function LandingPage() {
       ) : (
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-center gap-3 sm:gap-4">
-            <Button
-              className="btn-touch px-5 sm:px-6"
-              onClick={() => setOpen(true)}
-              disabled={busy}
-            >
+            <Button className="btn-touch px-5 sm:px-6" onClick={openNameStep} disabled={busy}>
               Start
             </Button>
             {status === "signed-out" && (
@@ -97,7 +100,8 @@ export function LandingPage() {
               </Button>
             )}
           </div>
-          {message && (
+          {/* While the name step is open, its error shows inside the dialog instead. */}
+          {message && !open && (
             <p role="alert" className="max-w-md text-sm text-muted-foreground">
               {message}
             </p>
@@ -154,7 +158,11 @@ export function LandingPage() {
             <DialogTitle>Create your account</DialogTitle>
             <DialogDescription>This is how you'll be greeted in the app.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <form
+            className="grid gap-4 py-2"
+            onSubmit={handleContinue}
+            aria-describedby={message ? errorId : undefined}
+          >
             <div className="grid gap-2">
               <Label htmlFor="firstName">First name</Label>
               <Input
@@ -165,15 +173,25 @@ export function LandingPage() {
                 autoFocus={false}
               />
             </div>
+            {message && (
+              <p id={errorId} role="alert" className="text-sm text-destructive">
+                {message}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={busy}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleContinue} disabled={busy}>
+              <Button type="submit" disabled={busy}>
                 Continue
               </Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

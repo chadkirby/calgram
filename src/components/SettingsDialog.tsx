@@ -22,29 +22,32 @@ export function SettingsDialog() {
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [firstName, setFirstName] = useState("");
+  // The names the form opened with. Save writes only the fields that differ from
+  // these, so a change made while Settings is open (an import, say) isn't overwritten.
+  const [opened, setOpened] = useState({ fullName: "", firstName: "" });
 
   // Initialize form values when dialog opens
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && profile) {
-      setFullName(profile.name || "");
-      setFirstName(profile.firstName || "");
+      const names = { fullName: profile.name || "", firstName: profile.firstName || "" };
+      setOpened(names);
+      setFullName(names.fullName);
+      setFirstName(names.firstName);
     }
     setOpen(newOpen);
   };
 
   const handleSave = () => {
     if (profile) {
-      saveProfile({ name: fullName.trim() || null, firstName: firstName.trim() || null });
+      const patch: { name?: string | null; firstName?: string | null } = {};
+      if (fullName !== opened.fullName) patch.name = fullName.trim() || null;
+      if (firstName !== opened.firstName) patch.firstName = firstName.trim() || null;
+      if (Object.keys(patch).length > 0) saveProfile(patch);
     }
     setOpen(false);
   };
 
   const handleCancel = () => {
-    // Reset form values to original
-    if (profile) {
-      setFullName(profile.name || "");
-      setFirstName(profile.firstName || "");
-    }
     setOpen(false);
   };
 

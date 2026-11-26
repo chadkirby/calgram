@@ -67,6 +67,8 @@ async function exportFile(page: Page) {
     settings.getByRole("button", { name: "Export Data" }).click(),
   ]);
   expect(download.suggestedFilename()).toMatch(/^calorie-tracker-export-[\dT-]+\.json$/);
+  // The server's copy was read too, so the backup isn't flagged as possibly incomplete.
+  await expect(settings.getByRole("alert")).toContainText("Data exported successfully!");
   return JSON.parse(await readFile(await download.path(), "utf8"));
 }
 
@@ -184,4 +186,38 @@ test("an invalid file shows the validation errors and writes nothing", async ({ 
   expect(exported.mealEntries).toEqual([]);
   expect(exported.weightEntries).toEqual([]);
   expect(exported.profile).toEqual({ name: "Tester", firstName: "Tester" });
+});
+
+test("saving Settings after an import keeps the imported names", async ({ page }) => {
+  await startNewAccount(page, "Tester");
+  const settings = await openDataCard(page);
+  await expect(settings.getByLabel("First Name")).toHaveValue("Tester");
+
+  await importFile(page, fixture);
+  await expect(settings.getByRole("alert")).toContainText("Imported 2 meals and 2 weights");
+  await expect(page.getByText("Welcome, Sam!")).toBeAttached();
+
+  // The form still shows the names from when it opened; nothing was edited.
+  await settings.getByRole("button", { name: "Save Changes" }).click();
+  await expect(settings).toBeHidden();
+  await expect(page.getByText("Welcome, Sam!")).toBeVisible();
+
+  const reopened = await openDataCard(page);
+  await expect(reopened.getByLabel("Full Name")).toHaveValue("Sam Example");
+  await expect(reopened.getByLabel("First Name")).toHaveValue("Sam");
+});
+
+test("Settings saves only the name the user changed", async ({ page }) => {
+  await startNewAccount(page, "Tester");
+  const settings = await openDataCard(page);
+  await importFile(page, fixture);
+  await expect(page.getByText("Welcome, Sam!")).toBeAttached();
+
+  await settings.getByLabel("Full Name").fill("Samantha Example");
+  await settings.getByRole("button", { name: "Save Changes" }).click();
+
+  const reopened = await openDataCard(page);
+  await expect(reopened.getByLabel("Full Name")).toHaveValue("Samantha Example");
+  // First Name wasn't touched, so the imported "Sam" stays.
+  await expect(reopened.getByLabel("First Name")).toHaveValue("Sam");
 });
