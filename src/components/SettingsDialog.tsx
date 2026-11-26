@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { SettingsIcon } from "lucide-react";
 import {
   Dialog,

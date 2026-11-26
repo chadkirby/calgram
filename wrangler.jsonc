@@ -7,11 +7,30 @@
   "name": "calgram",
   "main": "worker/index.ts",
   "compatibility_date": "2026-11-17",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "not_found_handling": "single-page-application",
   },
   "observability": {
     "enabled": true,
+  },
+  // Jazz 2 storage. Class and binding names are permanent once data exists.
+  "durable_objects": {
+    "bindings": [
+      { "name": "JAZZ", "class_name": "JazzCore" },
+      { "name": "JAZZ_BACKEND", "class_name": "JazzBackend" },
+    ],
+  },
+  "migrations": [{ "tag": "jazz-v1", "new_sqlite_classes": ["JazzCore", "JazzBackend"] }],
+  // Worker Previews get their own Durable Object storage. Bindings read from
+  // env must be declared here too.
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        { "name": "JAZZ", "class_name": "JazzCore" },
+        { "name": "JAZZ_BACKEND", "class_name": "JazzBackend" },
+      ],
+    },
   },
   /**
    * Smart Placement

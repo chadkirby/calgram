@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { AuthButton } from "../AuthButton";
 import { SettingsDialog } from "./SettingsDialog";
 import { JazzAccount } from "../schema";

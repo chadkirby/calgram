@@ -10,9 +10,14 @@ export default defineConfig({
     host: true, // Allow external connections
   },
   resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
+    alias: [
+      { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
+      // Drop jazz-tools' bundled Inspector UI from the Worker (see the stub).
+      {
+        find: /^\.\/inspector-ui-files\.js$/,
+        replacement: fileURLToPath(new URL("./stubs/inspector-ui-files.js", import.meta.url)),
+      },
+    ],
   },
   build: {
     rollupOptions: {

@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { JazzAccount, type WeightEntry } from "../schema";
 import { TrendAnalyzer } from "../utils/TrendAnalyzer";
 import {
@@ -21,7 +21,7 @@ import {
   ResponsiveContainer,
   ComposedChart,
 } from "recharts";
-import type { Loaded } from "jazz-tools";
+import type { Loaded } from "jazz-classic";
 
 // Animation constants
 const CHART_ANIMATION_DURATION = 200;

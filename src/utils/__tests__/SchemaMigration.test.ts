@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { MealEntry, WeightEntry, type MealEntryType, type WeightEntryType } from "../../schema";
+import type { MealEntryType, WeightEntryType } from "../../schema";
 import { DateTime } from "luxon";
-import { type Loaded } from "jazz-tools";
 
 describe("Schema Migration Tests", () => {
   describe("MealEntry Schema", () => {
@@ -178,44 +177,6 @@ describe("Schema Migration Tests", () => {
 
       expect(weightWithoutUnit.unit).toBeUndefined();
       expect(weightWithUnit.unit).toBe("kg");
-    });
-  });
-
-  describe("Legacy Data Handling", () => {
-    it("should handle legacy meal data without displayUnit gracefully", () => {
-      // Simulate how legacy data would be represented in the app
-      const legacyMeal: Loaded<typeof MealEntry> = {
-        timestamp: DateTime.now().toISO() || "",
-        foodName: "Legacy Food",
-        foodCategory: "Legacy Category",
-        caloriesPerGram: 2.0,
-        weightInGrams: 200,
-        notes: "Legacy entry",
-        totalCalories: 400,
-        displayUnit: undefined, // Legacy data won't have this field
-      } as Loaded<typeof MealEntry>;
-
-      // Should be able to access all existing fields
-      expect(legacyMeal.foodName).toBe("Legacy Food");
-      expect(legacyMeal.weightInGrams).toBe(200);
-      expect(legacyMeal.displayUnit).toBeUndefined();
-      expect(legacyMeal.caloriesPerGram).toBe(2.0);
-      expect(legacyMeal.totalCalories).toBe(400);
-    });
-
-    it("should handle legacy weight data without unit gracefully", () => {
-      // Simulate how legacy data would be represented in the app
-      const legacyWeight: Loaded<typeof WeightEntry> = {
-        timestamp: DateTime.now().toISO() || "",
-        weightValue: 175.2,
-        notes: "Legacy weight entry",
-        unit: undefined, // Legacy data won't have this field
-      } as Loaded<typeof WeightEntry>;
-
-      // Should be able to access all existing fields
-      expect(legacyWeight.weightValue).toBe(175.2);
-      expect(legacyWeight.unit).toBeUndefined();
-      expect(legacyWeight.notes).toBe("Legacy weight entry");
     });
   });
 });

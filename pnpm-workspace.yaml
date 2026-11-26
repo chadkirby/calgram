@@ -1,5 +1,16 @@
 allowBuilds:
   "@tailwindcss/oxide": true
   esbuild: true
+  # Its install script only prints a version-scheme warning.
+  protobufjs: false
   sharp: false
   workerd: true
+minimumReleaseAgeExclude:
+  - "@garden-co/jazz-napi-darwin-arm64@2.0.0-beta.5"
+  - "@garden-co/jazz-napi-darwin-x64@2.0.0-beta.5"
+  - "@garden-co/jazz-napi-linux-arm64-gnu@2.0.0-beta.5"
+  - "@garden-co/jazz-napi-linux-x64-gnu@2.0.0-beta.5"
+  - "@garden-co/jazz-napi-win32-x64-msvc@2.0.0-beta.5"
+  - jazz-napi@2.0.0-beta.5
+  - jazz-tools@2.0.0-beta.5
+  - jazz-wasm@2.0.0-beta.5

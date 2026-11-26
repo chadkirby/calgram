@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +18,22 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit, Plus } from "lucide-react";
 import { MealEntryForm } from "@/components/MealEntryForm";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+  type PieLabelRenderProps,
+} from "recharts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DailyPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
 import { JazzAccount, type MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
-import { type Loaded } from "jazz-tools";
+import { type Loaded } from "jazz-classic";
 
 // Custom tooltip for pie chart
 function CustomTooltip({ active, payload }: any) {
@@ -297,7 +305,9 @@ function DailyPageContent() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, percentage }) => {
+                          label={(props: PieLabelRenderProps & { percentage?: string }) => {
+                            const { percentage } = props;
+                            const name = props.name ?? "";
                             const isMobile = window.innerWidth < 640;
                             const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;
                             if (isMobile) return `${percentage}%`;

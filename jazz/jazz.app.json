@@ -1,0 +1,40 @@
+{
+  "$schema": "https://jazz.tools/schemas/jazz.app.v1.json",
+  "$generated": {
+    "by": "jazz-tools generate from schema.ts — edit the TypeScript, not this file",
+    "sha256": "ec4a3d01e20b9bc31620c06f2b87bcaa0465c21e6b406aaf08c6de33665d5bd1"
+  },
+  "tables": {
+    "mealEntries": {
+      "columns": {
+        "timestamp": "string",
+        "foodName": "string",
+        "foodCategory": "string",
+        "caloriesPerGram": "float",
+        "caloriesPerDisplayUnit": { "enum": ["g", "oz", "lb", "kg"], "optional": true },
+        "weightInGrams": "float",
+        "displayUnit": { "enum": ["g", "oz", "lb", "kg"], "optional": true },
+        "totalCalories": "float",
+        "notes": "string?"
+      }
+    },
+    "profile": {
+      "columns": {
+        "name": "string?",
+        "firstName": "string?",
+        "mealWeightUnit": { "enum": ["g", "oz", "lb", "kg"], "optional": true },
+        "bodyWeightUnit": { "enum": ["lbs", "kg"], "optional": true },
+        "classicAccountId": "string?",
+        "setupStatus": { "enum": ["native", "migrated"], "optional": true }
+      }
+    },
+    "weightEntries": {
+      "columns": {
+        "timestamp": "string",
+        "weightValue": "float",
+        "unit": { "enum": ["lbs", "kg"], "optional": true },
+        "notes": "string?"
+      }
+    }
+  }
+}

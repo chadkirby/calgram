@@ -12,14 +12,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { JazzAccount, type WeightEntry } from "../schema";
 import { DateTime } from "luxon";
 import { Edit, Trash2, Weight, ChevronDown } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 import { WeightConverter } from "@/utils/WeightConverter";
-import type { Loaded } from "jazz-tools";
+import type { Loaded } from "jazz-classic";
 
 interface WeightEntryListProps {
   onEdit: (entry: Loaded<typeof WeightEntry>) => void;

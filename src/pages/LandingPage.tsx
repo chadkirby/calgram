@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAccount, usePasskeyAuth } from "jazz-tools/react";
+import { useAccount, usePasskeyAuth } from "jazz-classic/react";
 import { useAuthenticated } from "@/lib/useAuthenticated";
 import { APPLICATION_NAME } from "../Main";
 import { Button } from "@/components/ui/button";

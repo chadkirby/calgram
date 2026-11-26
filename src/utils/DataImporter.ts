@@ -1,69 +1,35 @@
-import { Group, type Loaded, z } from "jazz-tools";
-import { DateTime } from "luxon";
+import { Group, type Loaded } from "jazz-classic";
+import { z } from "zod";
 import {
   MealEntry,
   WeightEntry,
-  FoodIntelligence,
   FoodMetadata,
+  ExportIsoString,
   ExportMealShape,
   ExportWeightShape,
   ExportProfileShape,
-  type ExportProfileDTO,
-  type MealEntryType,
-  type WeightEntryType,
+  type FoodIntelligence,
+  type JazzAccount,
+  type MealRow,
+  type ProfileRow,
+  type WeightRow,
 } from "../schema";
-import type { JazzAccount } from "../schema";
+import type { ExportedData } from "./DataExporter";
+import { contentSourceKey } from "./rowIds";
 
-// Export format (current only) using schema-derived types
-export type CurrentExportedMealEntry = Pick<
-  MealEntryType,
-  | "timestamp"
-  | "foodName"
-  | "foodCategory"
-  | "caloriesPerGram"
-  | "caloriesPerDisplayUnit"
-  | "weightInGrams"
-  | "displayUnit"
-  | "totalCalories"
-  | "notes"
->;
+export type { ExportedData } from "./DataExporter";
 
-export type CurrentExportedWeightEntry = Pick<
-  WeightEntryType,
-  "timestamp" | "weightValue" | "unit" | "notes"
->;
-
-export interface CurrentExportedData {
-  version: string;
-  exportDate: string;
-  profile?: ExportProfileDTO;
-  mealEntries: CurrentExportedMealEntry[];
-  weightEntries: CurrentExportedWeightEntry[];
-}
-
-// Strict Zod schemas for current export format (reject unknown keys)
-const ISODateString = z.string().refine((s) => DateTime.fromISO(s).isValid, {
-  message: "Invalid ISO date",
-});
-
-/**
- * Build import schemas using exported DTO shapes from schema.ts to avoid duplication.
- * ExportMealShape/ExportWeightShape already encode the serialized constraints.
- */
-const CurrentExportedMealEntrySchema = z.object(ExportMealShape).strict();
-const CurrentExportedWeightEntrySchema = z.object(ExportWeightShape).strict();
-
-const CurrentExportedDataSchema = z
+// Strict Zod schemas for the export format (reject unknown keys). Accepts v1.0 (no
+// profile), v1.1 (profile) and v1.2 (optional source `id` on each entry).
+const ExportedDataSchema = z
   .object({
     version: z.string(),
-    exportDate: ISODateString,
+    exportDate: ExportIsoString,
     profile: z.object(ExportProfileShape).strict().optional(),
-    mealEntries: z.array(CurrentExportedMealEntrySchema),
-    weightEntries: z.array(CurrentExportedWeightEntrySchema),
+    mealEntries: z.array(z.object(ExportMealShape).strict()),
+    weightEntries: z.array(z.object(ExportWeightShape).strict()),
   })
   .strict();
-
-export type ExportedData = CurrentExportedData;
 
 // Result interface for import operations
 interface ImportResult {
@@ -73,29 +39,118 @@ interface ImportResult {
   errors: string[];
 }
 
+/** A row to write, with the source key its row id is derived from. */
+export interface PlannedRow<T> {
+  sourceKey: string;
+  row: T;
+}
+
+export interface ImportPlan {
+  meals: PlannedRow<MealRow>[];
+  weights: PlannedRow<WeightRow>[];
+  /** Fields from the file's `profile` block (v1.1+), or undefined when it has none. */
+  profile: Partial<ProfileRow> | undefined;
+  /** Validation errors. When present, nothing is planned. */
+  errors: string[];
+}
+
+function formatIssues(error: z.ZodError): string[] {
+  // Normalize zod issues to deterministic strings our tests expect
+  return error.issues.map((i) => {
+    const path = i.path.length ? i.path.join(".") : "(root)";
+    // Ensure unknown key rejections include the canonical message
+    if (i.code === "unrecognized_keys") {
+      return `${path}: Unrecognized key(s) in object`;
+    }
+    return `${path}: ${i.message}`;
+  });
+}
+
+/** Copy only the keys whose value is defined. */
+function definedFields<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
+
+/**
+ * Source keys for a file's entries: the entry's source `id` when it has one,
+ * otherwise a hash of its content plus its occurrence among identical entries, so two
+ * identical snacks stay two rows and re-planning the same file gives the same keys.
+ */
+async function planRows<T>(
+  entries: readonly (T & { id?: string })[],
+  canonical: (row: T) => unknown[],
+): Promise<PlannedRow<T>[]> {
+  const seen = new Map<string, number>();
+  return Promise.all(
+    entries.map(async ({ id, ...rest }) => {
+      const row = rest as T;
+      if (id) return { sourceKey: id, row };
+      const content = JSON.stringify(canonical(row));
+      const occurrence = seen.get(content) ?? 0;
+      seen.set(content, occurrence + 1);
+      return { sourceKey: await contentSourceKey(content, occurrence), row };
+    }),
+  );
+}
+
+// Fixed field order, so key order in the file doesn't change the hash.
+const canonicalMeal = (m: MealRow): unknown[] => [
+  "meal",
+  m.timestamp,
+  m.foodName,
+  m.foodCategory,
+  m.caloriesPerGram,
+  m.caloriesPerDisplayUnit,
+  m.weightInGrams,
+  m.displayUnit,
+  m.totalCalories,
+  m.notes,
+];
+
+const canonicalWeight = (w: WeightRow): unknown[] => [
+  "weight",
+  w.timestamp,
+  w.weightValue,
+  w.unit,
+  w.notes,
+];
+
 export class DataImporter {
   /**
    * Validate the imported data structure strictly (current format only)
    */
   static validateImportData(jsonData: unknown): { isValid: boolean; errors: string[] } {
-    const result = CurrentExportedDataSchema.safeParse(jsonData);
+    const result = ExportedDataSchema.safeParse(jsonData);
     if (result.success) {
       return { isValid: true, errors: [] };
     }
-    // Normalize zod issues to deterministic strings our tests expect
-    const errors = result.error.issues.map((i) => {
-      const path = i.path.length ? i.path.join(".") : "(root)";
-      // Ensure unknown key rejections include the canonical message
-      if (i.code === "unrecognized_keys") {
-        return `${path}: Unrecognized key(s) in object`;
-      }
-      return `${path}: ${i.message}`;
-    });
-    return { isValid: false, errors };
+    return { isValid: false, errors: formatIssues(result.error) };
   }
 
   /**
-   * Import data from exported JSON file (current format only)
+   * Plan an import without writing anything: validate the file, then return its rows
+   * with source keys and the profile patch from its `profile` block. Timestamps are kept
+   * verbatim. Account-independent: the caller turns source keys into row ids.
+   */
+  static async planImport(jsonData: unknown): Promise<ImportPlan> {
+    const result = ExportedDataSchema.safeParse(jsonData);
+    if (!result.success) {
+      return { meals: [], weights: [], profile: undefined, errors: formatIssues(result.error) };
+    }
+    const data = result.data;
+    return {
+      meals: await planRows<MealRow>(data.mealEntries, canonicalMeal),
+      weights: await planRows<WeightRow>(data.weightEntries, canonicalWeight),
+      profile: data.profile ? definedFields(data.profile) : undefined,
+      errors: [],
+    };
+  }
+
+  /**
+   * Classic adapter: import a file into a Classic account. Rows come from `planImport`;
+   * the profile block is still ignored here, as it always was on Classic.
    */
   static async importData(
     jsonData: ExportedData,
@@ -105,8 +160,10 @@ export class DataImporter {
       throw new Error("Account root not available");
     }
 
-    // Strictly parse to ensure structure is correct and narrow the type
-    const parsed = CurrentExportedDataSchema.parse(jsonData);
+    const plan = await this.planImport(jsonData);
+    if (plan.errors.length > 0) {
+      throw new Error(`Invalid import file: ${plan.errors.join("; ")}`);
+    }
 
     // Ensure the account root is loaded first
     const loadedAccount = await account.ensureLoaded({
@@ -138,8 +195,8 @@ export class DataImporter {
     const errors: string[] = [];
 
     // Import meal entries
-    if (Array.isArray(parsed.mealEntries) && loadedAccount.root.mealEntries) {
-      for (const exportedMeal of parsed.mealEntries) {
+    if (loadedAccount.root.mealEntries) {
+      for (const { row: exportedMeal } of plan.meals) {
         try {
           const mealEntry = MealEntry.create(
             {
@@ -161,11 +218,7 @@ export class DataImporter {
 
           // Update food intelligence with imported data
           if (loadedAccount.root.foodIntelligence) {
-            // exportedMeal is validated by schema, but keep type-safety explicit
-            this.updateFoodIntelligenceNewFormat(
-              loadedAccount.root.foodIntelligence,
-              exportedMeal as CurrentExportedMealEntry,
-            );
+            this.updateFoodIntelligenceNewFormat(loadedAccount.root.foodIntelligence, exportedMeal);
           }
         } catch (error) {
           console.warn("Failed to import meal entry:", exportedMeal, error);
@@ -177,8 +230,8 @@ export class DataImporter {
     }
 
     // Import weight entries
-    if (Array.isArray(parsed.weightEntries) && loadedAccount.root.weightEntries) {
-      for (const exportedWeight of parsed.weightEntries) {
+    if (loadedAccount.root.weightEntries) {
+      for (const { row: exportedWeight } of plan.weights) {
         try {
           const weightEntry = WeightEntry.create(
             {
@@ -209,7 +262,7 @@ export class DataImporter {
    */
   private static updateFoodIntelligenceNewFormat(
     foodIntelligence: Loaded<typeof FoodIntelligence>,
-    meal: CurrentExportedMealEntry,
+    meal: MealRow,
   ) {
     try {
       // Add to recent foods if not already present

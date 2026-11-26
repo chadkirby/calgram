@@ -1,0 +1,13 @@
+{
+  "name": "jazz-vite-spike",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "previews": { "durable_objects": { "bindings": [ { "name": "JAZZ", "class_name": "JazzCore" }, { "name": "JAZZ_BACKEND", "class_name": "JazzBackend" } ] } },
+  "assets": { "not_found_handling": "single-page-application" },
+  "durable_objects": { "bindings": [
+    { "name": "JAZZ", "class_name": "JazzCore" },
+    { "name": "JAZZ_BACKEND", "class_name": "JazzBackend" }
+  ]},
+  "migrations": [{ "tag": "jazz-v1", "new_sqlite_classes": ["JazzCore", "JazzBackend"] }]
+}

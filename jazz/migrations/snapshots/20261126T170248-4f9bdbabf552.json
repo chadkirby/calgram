@@ -1,0 +1,177 @@
+{
+  "mealEntries": {
+    "columns": [
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "timestamp",
+        "nullable": false
+      },
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "foodName",
+        "nullable": false
+      },
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "foodCategory",
+        "nullable": false
+      },
+      {
+        "column_type": {
+          "type": "Double"
+        },
+        "name": "caloriesPerGram",
+        "nullable": false
+      },
+      {
+        "column_type": {
+          "type": "Enum",
+          "variants": [
+            "g",
+            "oz",
+            "lb",
+            "kg"
+          ]
+        },
+        "name": "caloriesPerDisplayUnit",
+        "nullable": true
+      },
+      {
+        "column_type": {
+          "type": "Double"
+        },
+        "name": "weightInGrams",
+        "nullable": false
+      },
+      {
+        "column_type": {
+          "type": "Enum",
+          "variants": [
+            "g",
+            "oz",
+            "lb",
+            "kg"
+          ]
+        },
+        "name": "displayUnit",
+        "nullable": true
+      },
+      {
+        "column_type": {
+          "type": "Double"
+        },
+        "name": "totalCalories",
+        "nullable": false
+      },
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "notes",
+        "nullable": true
+      }
+    ]
+  },
+  "profile": {
+    "columns": [
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "name",
+        "nullable": true
+      },
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "firstName",
+        "nullable": true
+      },
+      {
+        "column_type": {
+          "type": "Enum",
+          "variants": [
+            "g",
+            "oz",
+            "lb",
+            "kg"
+          ]
+        },
+        "name": "mealWeightUnit",
+        "nullable": true
+      },
+      {
+        "column_type": {
+          "type": "Enum",
+          "variants": [
+            "lbs",
+            "kg"
+          ]
+        },
+        "name": "bodyWeightUnit",
+        "nullable": true
+      },
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "classicAccountId",
+        "nullable": true
+      },
+      {
+        "column_type": {
+          "type": "Enum",
+          "variants": [
+            "native",
+            "migrated"
+          ]
+        },
+        "name": "setupStatus",
+        "nullable": true
+      }
+    ]
+  },
+  "weightEntries": {
+    "columns": [
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "timestamp",
+        "nullable": false
+      },
+      {
+        "column_type": {
+          "type": "Double"
+        },
+        "name": "weightValue",
+        "nullable": false
+      },
+      {
+        "column_type": {
+          "type": "Enum",
+          "variants": [
+            "lbs",
+            "kg"
+          ]
+        },
+        "name": "unit",
+        "nullable": true
+      },
+      {
+        "column_type": {
+          "type": "Text"
+        },
+        "name": "notes",
+        "nullable": true
+      }
+    ]
+  }
+}

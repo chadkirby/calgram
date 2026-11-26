@@ -1,4 +1,10 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": ["worker-configuration.d.ts", "pnpm-lock.yaml"]
+  "ignorePatterns": [
+    "worker-configuration.d.ts",
+    "pnpm-lock.yaml",
+    "spikes",
+    "jazz/jazz.*",
+    "jazz/migrations"
+  ]
 }

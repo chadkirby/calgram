@@ -1,0 +1,17 @@
+{
+  "$schema": "https://jazz.tools/schemas/jazz.app.v1.json",
+  "$generated": {
+    "by": "jazz-tools generate from schema.ts — edit the TypeScript, not this file",
+    "sha256": "12ee47cac3b260f54bd1df29befd935a6e77999c366529222c0c5213eae7c73d"
+  },
+  "tables": {
+    "weightEntries": {
+      "columns": {
+        "timestamp": "string",
+        "weightValue": "float",
+        "unit": { "enum": ["lbs", "kg"], "optional": true },
+        "notes": "string?"
+      }
+    }
+  }
+}

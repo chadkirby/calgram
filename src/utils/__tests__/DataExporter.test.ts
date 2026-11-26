@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DataImporter } from "../DataImporter";
 import { DataExporter } from "../DataExporter";
-import { type Loaded } from "jazz-tools";
+import { type Loaded } from "jazz-classic";
 import { JazzAccount } from "@/schema";
 
 // Mock data for testing
@@ -62,7 +62,7 @@ const mockAccount = {
 
 describe("DataExporter", () => {
   describe("exportUserData", () => {
-    it("produces a file the importer accepts (v1.1 round trip, including profile)", async () => {
+    it("produces a file the importer accepts (v1.2 round trip, including profile)", async () => {
       const exported = await DataExporter.exportUserData(mockAccount);
       const json = JSON.parse(JSON.stringify(exported));
       const validation = DataImporter.validateImportData(json);
@@ -74,7 +74,7 @@ describe("DataExporter", () => {
     it("should export user data in the correct format", async () => {
       const result = await DataExporter.exportUserData(mockAccount);
 
-      expect(result).toHaveProperty("version", "1.1");
+      expect(result).toHaveProperty("version", "1.2");
       expect(result.profile).toEqual({
         name: "Sam Example",
         firstName: "Sam",
@@ -108,6 +108,22 @@ describe("DataExporter", () => {
         unit: "kg",
         notes: "Morning weight",
       });
+    });
+
+    it("writes each Classic entry's CoValue id as its source id", async () => {
+      const accountWithIds = {
+        profile: mockAccount.profile,
+        root: {
+          dateOfBirth: "1990-01-01",
+          mealEntries: [{ ...mockMealEntries[0], id: "co_zMeal1" }],
+          weightEntries: [{ ...mockWeightEntries[0], id: "co_zWeight1" }],
+        },
+      } as unknown as Loaded<typeof JazzAccount>;
+
+      const result = await DataExporter.exportUserData(accountWithIds);
+
+      expect(result.mealEntries[0].id).toBe("co_zMeal1");
+      expect(result.weightEntries[0].id).toBe("co_zWeight1");
     });
 
     it("should handle empty meal and weight entries", async () => {
@@ -179,15 +195,18 @@ describe("DataExporter", () => {
       mockRemoveChild.mockClear();
 
       // Mock document and URL
-      global.document.createElement = mockCreateElement;
-      global.URL.createObjectURL = mockCreateObjectURL;
-      global.URL.revokeObjectURL = mockRevokeObjectURL;
+      globalThis.document.createElement =
+        mockCreateElement as unknown as typeof document.createElement;
+      globalThis.URL.createObjectURL = mockCreateObjectURL;
+      globalThis.URL.revokeObjectURL = mockRevokeObjectURL;
 
       // Mock document.body methods (without directly setting document.body)
-      if (global.document.body) {
-        global.document.body.appendChild = mockAppendChild;
-        global.document.body.removeChild = mockRemoveChild;
-        global.document.body.contains = vi
+      if (globalThis.document.body) {
+        globalThis.document.body.appendChild =
+          mockAppendChild as unknown as typeof document.body.appendChild;
+        globalThis.document.body.removeChild =
+          mockRemoveChild as unknown as typeof document.body.removeChild;
+        globalThis.document.body.contains = vi
           .fn<(other: Node | null) => boolean>()
           .mockReturnValue(true);
       }
@@ -210,7 +229,7 @@ describe("DataExporter", () => {
 
     it("should handle errors during file download", () => {
       // Mock error in createElement
-      global.document.createElement = vi
+      globalThis.document.createElement = vi
         .fn<(tagName: string) => HTMLElement>()
         .mockImplementation(() => {
           throw new Error("DOM error");

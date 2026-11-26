@@ -1,12 +1,12 @@
 # Jazz Classic → Jazz 2 migration
 
-Status: Worker spike done (2026-11-25). It covers build size and startup only, and no client has synced yet. Nothing deployed. App code still on Classic (`jazz-tools@0.15.13`).
+Status: spikes done (2026-11-25/26), including a real Cloudflare deploy, a Worker Preview, and a real Classic read. Nothing deployed to calgram. App code still on Classic (`jazz-tools@0.15.13`). A production v1.1 export (4,627 meals, 69 weigh-ins, full `profile`) passes `DataImporter.validateImportData`. 16 of its entries have date-only timestamps (`YYYY-MM-DD`), and the Jazz 2 import must accept those.
 
 ## Decisions
 
 - **Hosting:** Jazz 2 core runs inside the `calgram` Worker (`jazzWorker` from `jazz-tools/cloudflare`) on Workers Paid. Two SQLite Durable Objects (`JazzCore`, `JazzBackend`). R2 (`JAZZ_BLOBS`) is not needed for this app's small rows, so it is skipped.
 - **Auth:** local-first device accounts (`authenticate: acceptDeviceAccounts`), with the device key backed up to a passkey (`BrowserPasskeyBackup` from `jazz-tools/passkey-backup`).
-- **Data:** no Classic→Jazz 2 tooling exists. Users export JSON from the Classic build, then import it into the Jazz 2 build. The export format is now v1.1 and includes `profile` (name, firstName, dateOfBirth, unit preferences). Food intelligence is rebuilt from meals on import.
+- **Data:** no Classic→Jazz 2 tooling exists, so the new build reads each user's Classic account itself and copies it into Jazz 2 (see the plan). JSON export and import remain the manual backup. The export format is now v1.1 and includes `profile` (name, firstName, dateOfBirth, unit preferences). Food intelligence is rebuilt from meals on import.
 
 ## Spike findings (`jazz-tools@2.0.0-beta.5`, wrangler 4.168)
 
@@ -18,26 +18,39 @@ Status: Worker spike done (2026-11-25). It covers build size and startup only, a
 - The Cloudflare integration is marked **experimental** and may change in any release. Pin an exact version.
 - Names are permanent once data exists. Do not rename the `JazzCore`/`JazzBackend` classes, the `JAZZ`/`JAZZ_BACKEND` bindings, or the Worker.
 
+## Browser sync spike (`@cloudflare/vite-plugin` 1.70, Vite 8.3, React 19.3)
+
+This spike mirrors calgram's setup: a React app plus a Worker that runs `jazzWorker`. It was driven by Playwright, with each browser profile as its own context. Every check below passed both under `vite dev` and against the built output (`vite build && vite preview`, which runs the built Worker and client chunks locally).
+
+- **Sync:** the client uses `<JazzProvider config={{ serverUrl: "/jazz", initial: "device", client: () => import("jazz-tools/local-first"), localFirst: "now" }}>`, with `useAll(app.weightEntries)`, `useDb().insert(...)` and `useJazzSession()`. It starts as a device account at once, the backend admits it through `acceptDeviceAccounts`, and the WASM engine loads from Vite without extra config. Writes in one profile show up live in another.
+- **Permissions:** a second fresh profile gets its own account. It still sees none of the first account's rows 4 seconds after those rows reached the server. When it tries to `update` or `delete` them by id, the server rejects the write (`permission_denied`), and the owner's rows stay unchanged.
+- **Persistence and offline:** a reload keeps the same account and rows. A write made offline shows locally, and once the browser is back online it reaches the server: a fresh profile restored from the key sees it.
+- **Restore keeps ownership:**
+  - `session.exportDeviceKey()` returns a 56-character key, and `restoreDeviceAccount(key)` in a fresh profile becomes the same account, loads its rows from the server and can write them.
+  - `BrowserPasskeyBackup` stores that key as the passkey's `userHandle`, in a discoverable credential with `rpId` = hostname. It was tested with Chromium virtual authenticators: one profile backs up, the credential is copied to a second profile (standing in for passkey sync), and `restore()` there returns the same account.
+- **Worker bundle under Vite:** the inspector stub works as a Vite `resolve.alias` (`{ find: /^\.\/inspector-ui-files\.js$/, replacement: <stub> }`). Without any wrangler `alias`, the Vite-built Worker is **6.0 MB gzipped**. The client's local-first WASM is a separate lazy asset (4.1 MB gzipped).
+- **Classic and Jazz 2 in one app:**
+  - `jazz-classic@npm:jazz-tools@0.15.13` installs next to `jazz-tools@2`.
+  - Classic's internal `jazz-tools/...` imports still resolve to Classic, through package self-reference, because its `package.json` name is unchanged.
+  - Both clients load in the same page: Classic in its own lazy chunk (278 kB gzipped) while the Jazz 2 session stays ready.
+  - Not tested: reading real Classic data that way, which needs a Classic passkey on the production hostname.
+- **Dev gotcha:** after adding a dependency, Vite's optimizer can leave `504 (Outdated Optimize Dep)` responses. Restart with `vite --force`.
+
 ## Not yet verified
 
-- A browser client syncing through `/jazz` (`acceptDeviceAccounts` admission, WebSocket).
-- `$createdBy` ownership surviving `restoreDeviceAccount` on a second browser profile.
-- The inspector stub, and wasm loading, under `@cloudflare/vite-plugin` (only plain wrangler was tested).
-- Startup validation on a real upload. Dry runs and `wrangler dev` don't enforce it.
-- A real v1.1 export from the running Classic app. Only unit tests cover it so far, and the Classic importer accepts `profile` but does not apply it.
+- Passkey sync across real devices (iCloud Keychain or Google Password Manager). This should work because the key lives in `userHandle`, but only virtual authenticators were tested.
+- A real user's production migration. Classic passkeys and sessions exist only on the production hostname, so Previews can only prove the mechanics, using seeded Classic accounts.
 
-## Cutover (undecided)
+Verified on 2026-11-26 (formerly listed here):
 
-Classic data and passkeys are tied to the current hostname. Jazz 2 data is tied to the Worker name, and its passkey backup to `appHostname`. Both builds therefore want one permanent address. Options:
+- Startup validation on a real upload: a throwaway Worker deployed and started in 98 ms at 6.0 MB gzipped, and passed the sync tests, as did a Preview of it.
+- Reading a real Classic account from a Jazz 2 page, with no local cache.
+- Telling Classic and Jazz 2 passkeys apart: Classic handles are 51 bytes, Jazz 2 handles are 32 (see the plan's KTD7).
 
-- **New Worker name and URL for Jazz 2.** Classic stays untouched where it is.
-- **Take over `calgram`.** Do this only after every user has exported, and keep a redeploy of the old build as the rollback.
+## Notes
 
-## Remaining steps
+- Production's Classic client connects to Jazz Cloud v1 with the key `fallback@example.com`. No Cloudflare build sets `VITE_JAZZ_API_KEY`; the real value lives only in a local `.env.local`. The key identifies the app and doesn't gate data: an account written under one key reads fine under another (`spikes/jazz2/tests/cross-key.mjs`). Left as is on purpose.
 
-1. Ship the export change to Classic production and export the data.
-2. Decouple `src/utils/*` from `Loaded<typeof …>` so they use plain row types. Import `z` from `zod`.
-3. Port the schema: tables `mealEntries`, `weightEntries`, `foodMetadata`, plus a `profile` row that holds DOB and units. Recent foods and categories can be derived from `mealEntries`.
-4. Worker: merge `jazzWorker` into `worker/index.ts` and add the DO bindings, migrations and `nodejs_compat` to `wrangler.jsonc`. Add the inspector alias.
-5. Client: `JazzProvider` with local-first, then replace `useAccount` with `useAll`/`useOne`/`useDb`. Replace passkey auth with device account plus passkey backup.
-6. Run the importer against the Jazz 2 build, test end to end, then deploy.
+## Plan
+
+Decisions about cutover, data migration and sequencing now live in `docs/plans/2026-11-26-0812-feat-jazz2-migration-plan.md`. In short, Jazz 2 takes over calgram's address, and each user is migrated automatically on their first visit. The spike code and test scripts are in `spikes/jazz2/`.

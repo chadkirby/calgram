@@ -1,19 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { UnitPreferenceManager } from "../UnitPreferenceManager";
-import type { Loaded } from "jazz-tools";
-import type { CalorieTrackerProfile, MealWeightUnit, BodyWeightUnit } from "@/schema";
+import type { MealWeightUnit, BodyWeightUnit, ProfileRow } from "@/schema";
 
 // Mock profile for testing
 const createMockProfile = (
   mealWeightUnit?: MealWeightUnit,
   bodyWeightUnit?: BodyWeightUnit,
-): Loaded<typeof CalorieTrackerProfile> => {
+): ProfileRow => {
   return {
     name: "Test User",
     firstName: "Test",
     mealWeightUnit,
     bodyWeightUnit,
-  } as Loaded<typeof CalorieTrackerProfile>;
+  };
 };
 
 describe("UnitPreferenceManager", () => {

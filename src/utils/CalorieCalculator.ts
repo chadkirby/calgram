@@ -1,6 +1,5 @@
-import { type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
-import { MealEntry, type MealWeightUnit } from "../schema";
+import type { MealRow, MealWeightUnit } from "../schema";
 import { WeightConverter } from "./WeightConverter";
 
 /**
@@ -26,10 +25,7 @@ export class CalorieCalculator {
    * @param dateIso - Target date as ISO string for calculation
    * @returns Total calories for the specified date
    */
-  static calculateDailyTotal(
-    meals: Loaded<typeof MealEntry>[] | undefined,
-    dateIso: string,
-  ): number {
+  static calculateDailyTotal(meals: MealRow[] | undefined, dateIso: string): number {
     if (!meals || meals.length === 0) {
       return 0;
     }
@@ -51,7 +47,7 @@ export class CalorieCalculator {
    * @returns Object mapping category names to total calories
    */
   static calculateCategoryBreakdown(
-    meals: Loaded<typeof MealEntry>[] | undefined,
+    meals: MealRow[] | undefined,
     dateIso: string,
   ): Record<string, number> {
     if (!meals || meals.length === 0) {
@@ -206,7 +202,7 @@ export class CalorieCalculator {
    * @param preferredUnit - The user's preferred unit for display
    * @returns Formatted weight string with unit
    */
-  static getFormattedWeight(meal: Loaded<typeof MealEntry>, preferredUnit: MealWeightUnit): string {
+  static getFormattedWeight(meal: MealRow, preferredUnit: MealWeightUnit): string {
     // Use the meal's stored displayUnit if available, otherwise use the preferred unit
     const unitToUse = meal.displayUnit || preferredUnit;
     const displayWeight = WeightConverter.fromGrams(meal.weightInGrams, unitToUse);
@@ -219,7 +215,7 @@ export class CalorieCalculator {
    * @param displayUnit - The unit to display the weight in
    * @returns Weight value in the specified unit
    */
-  static getDisplayWeight(meal: Loaded<typeof MealEntry>, displayUnit: MealWeightUnit): number {
+  static getDisplayWeight(meal: MealRow, displayUnit: MealWeightUnit): number {
     return WeightConverter.fromGrams(meal.weightInGrams, displayUnit);
   }
 }

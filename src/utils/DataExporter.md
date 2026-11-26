@@ -15,9 +15,22 @@ The DataExporter utility provides functionality for exporting meal and weight tr
 
 ## Methods
 
+### buildExport
+
+Builds the export file (version `1.2`) from plain rows. Pure: no account access, no I/O. Fields are picked explicitly, so Classic CoValues and Jazz 2 rows can both be passed. Timestamps are copied verbatim.
+
+```typescript
+static buildExport(
+  source: { profile: ProfileRow | undefined; meals: Iterable<MealRow & { id?: string }>; weights: Iterable<WeightRow & { id?: string }> },
+  now?: Date,
+): ExportedData
+```
+
+A row's `id`, when present, is written as the entry's source `id` (new in v1.2), so a re-import can recognise entries it already has.
+
 ### exportUserData
 
-Exports user data to a structured format.
+Classic adapter: loads a Classic account and exports it with `buildExport`. Each entry's CoValue id becomes its source `id`.
 
 ```typescript
 static async exportUserData(account: Loaded<typeof JazzAccount>): Promise<ExportedData>
@@ -60,8 +73,9 @@ The main data structure for exported data.
 
 ```typescript
 interface ExportedData {
-  version: string;
+  version: string; // "1.2"
   exportDate: string;
+  profile?: ExportProfileDTO; // since 1.1
   mealEntries: ExportedMealEntry[];
   weightEntries: ExportedWeightEntry[];
 }
@@ -73,6 +87,7 @@ Structure for individual meal entries in the export.
 
 ```typescript
 interface ExportedMealEntry {
+  id?: string; // source id, since 1.2
   timestamp: string;
   foodName: string;
   foodCategory: string;
@@ -91,6 +106,7 @@ Structure for individual weight entries in the export.
 
 ```typescript
 interface ExportedWeightEntry {
+  id?: string; // source id, since 1.2
   timestamp: string;
   weightValue: number;
   unit?: string;

@@ -1,11 +1,12 @@
 import { DateTime } from "luxon";
-import { type Loaded } from "jazz-tools";
-import { FoodIntelligence, MealEntry } from "../schema";
+import type { MealRow } from "../schema";
 
-export type PredictionEntry = Pick<
-  Loaded<typeof MealEntry>,
-  "timestamp" | "foodName" | "foodCategory"
->;
+export type PredictionEntry = Pick<MealRow, "timestamp" | "foodName" | "foodCategory">;
+
+/** Last-used category per exact food name: derived suggestions or Classic's stored copy. */
+export interface CategoryLookup {
+  foodData?: Readonly<Record<string, { lastUsedCategory?: string } | null | undefined>> | null;
+}
 
 export interface FoodScore {
   foodName: string; // display-cased food name
@@ -214,10 +215,10 @@ export class FoodPredictor {
 
   /**
    * Resolve preferred category for a given predicted food name.
-   * Prefers FoodIntelligence lastUsedCategory; falls back to majority category in the group.
+   * Prefers the food's lastUsedCategory; falls back to majority category in the group.
    */
   static resolveCategoryForFood(
-    intelligence: Loaded<typeof FoodIntelligence> | undefined,
+    intelligence: CategoryLookup | undefined,
     predictedFoodDisplayName: string,
     groupedEntries: PredictionEntry[],
   ): string | null {

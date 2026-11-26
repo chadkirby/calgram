@@ -1,4 +1,4 @@
-import { useIsAuthenticated } from "jazz-tools/react";
+import { useIsAuthenticated } from "jazz-classic/react";
 
 /**
  * Centralized auth state for the UI and router.
