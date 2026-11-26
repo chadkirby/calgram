@@ -29,6 +29,7 @@ Status: Worker spike done (2026-11-25). It covers build size and startup only, a
 ## Cutover (undecided)
 
 Classic data and passkeys are tied to the current hostname. Jazz 2 data is tied to the Worker name, and its passkey backup to `appHostname`. Both builds therefore want one permanent address. Options:
+
 - **New Worker name and URL for Jazz 2.** Classic stays untouched where it is.
 - **Take over `calgram`.** Do this only after every user has exported, and keep a redeploy of the old build as the rollback.
 

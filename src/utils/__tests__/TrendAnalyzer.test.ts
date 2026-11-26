@@ -1,58 +1,50 @@
-import { describe, it, expect } from 'vitest';
-import { TrendAnalyzer, type ChartDataPoint } from '../TrendAnalyzer';
-import { type Loaded } from 'jazz-tools';
-import { DateTime } from 'luxon';
-import { MealEntry, WeightEntry, CalorieTrackerProfile } from '../../schema';
+import { describe, it, expect } from "vitest";
+import { TrendAnalyzer, type ChartDataPoint } from "../TrendAnalyzer";
+import { type Loaded } from "jazz-tools";
+import { DateTime } from "luxon";
+import { MealEntry, WeightEntry, CalorieTrackerProfile } from "../../schema";
 
 // Helper function to create mock meal entry
-const createMockMealEntry = (
-  timestamp: string,
-  foodName: string,
-  totalCalories: number
-) => {
+const createMockMealEntry = (timestamp: string, foodName: string, totalCalories: number) => {
   return {
     timestamp,
     foodName,
-    foodCategory: 'Test',
+    foodCategory: "Test",
     caloriesPerGram: 1.0,
     weightInGrams: totalCalories,
-    notes: '',
+    notes: "",
     totalCalories,
   } as Loaded<typeof MealEntry>;
 };
 
 // Helper function to create mock weight entry
-const createMockWeightEntry = (
-  timestamp: string,
-  weightValue: number,
-  unit?: 'lbs' | 'kg'
-) => {
+const createMockWeightEntry = (timestamp: string, weightValue: number, unit?: "lbs" | "kg") => {
   return {
     timestamp,
     weightValue,
-    notes: '',
+    notes: "",
     unit,
   } as Loaded<typeof WeightEntry>;
 };
 
 // Helper function to create mock profile
-const createMockProfile = (bodyWeightUnit?: 'lbs' | 'kg') => {
+const createMockProfile = (bodyWeightUnit?: "lbs" | "kg") => {
   return {
-    name: 'Test User',
-    firstName: 'Test',
+    name: "Test User",
+    firstName: "Test",
     bodyWeightUnit,
   } as Loaded<typeof CalorieTrackerProfile>;
 };
 
-describe('TrendAnalyzer', () => {
-  describe('calculateLOWESSTrend', () => {
-    it('should return original data for arrays with less than 3 points', () => {
+describe("TrendAnalyzer", () => {
+  describe("calculateLOWESSTrend", () => {
+    it("should return original data for arrays with less than 3 points", () => {
       expect(TrendAnalyzer.calculateLOWESSTrend([])).toEqual([]);
       expect(TrendAnalyzer.calculateLOWESSTrend([1])).toEqual([1]);
       expect(TrendAnalyzer.calculateLOWESSTrend([1, 2])).toEqual([1, 2]);
     });
 
-    it('should smooth data for arrays with 3 or more points', () => {
+    it("should smooth data for arrays with 3 or more points", () => {
       const data = [1, 5, 2, 8, 3, 7, 4];
       const smoothed = TrendAnalyzer.calculateLOWESSTrend(data);
 
@@ -64,7 +56,7 @@ describe('TrendAnalyzer', () => {
       expect(Math.min(...smoothed)).toBeGreaterThanOrEqual(Math.min(...data));
     });
 
-    it('should handle different bandwidth values', () => {
+    it("should handle different bandwidth values", () => {
       const data = [1, 10, 2, 9, 3, 8, 4];
 
       const smoothed1 = TrendAnalyzer.calculateLOWESSTrend(data, 0.1);
@@ -75,7 +67,7 @@ describe('TrendAnalyzer', () => {
       expect(smoothed1).not.toEqual(smoothed2);
     });
 
-    it('should handle constant data', () => {
+    it("should handle constant data", () => {
       const data = [5, 5, 5, 5, 5];
       const smoothed = TrendAnalyzer.calculateLOWESSTrend(data);
 
@@ -83,46 +75,46 @@ describe('TrendAnalyzer', () => {
     });
   });
 
-  describe('prepareDailyCalorieData', () => {
-    it('should return empty array for undefined or empty meals', () => {
+  describe("prepareDailyCalorieData", () => {
+    it("should return empty array for undefined or empty meals", () => {
       expect(TrendAnalyzer.prepareDailyCalorieData(undefined)).toEqual([]);
       expect(TrendAnalyzer.prepareDailyCalorieData([])).toEqual([]);
     });
 
-    it('should prepare daily calorie data for days with meals', () => {
-      const today = DateTime.now().startOf('day').toISO() || '';
-      const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
+    it("should prepare daily calorie data for days with meals", () => {
+      const today = DateTime.now().startOf("day").toISO() || "";
+      const yesterday = DateTime.now().startOf("day").minus({ days: 1 }).toISO() || "";
 
       const meals = [
-        createMockMealEntry(today, 'Breakfast', 300),
-        createMockMealEntry(today, 'Lunch', 500),
-        createMockMealEntry(yesterday, 'Dinner', 600),
+        createMockMealEntry(today, "Breakfast", 300),
+        createMockMealEntry(today, "Lunch", 500),
+        createMockMealEntry(yesterday, "Dinner", 600),
       ];
 
       const result = TrendAnalyzer.prepareDailyCalorieData(meals, 7);
 
       expect(result).toHaveLength(2); // Only days with meals
-      expect(result.every(point => point.date instanceof Date)).toBe(true);
-      expect(result.every(point => typeof point.calories === 'number')).toBe(true);
+      expect(result.every((point) => point.date instanceof Date)).toBe(true);
+      expect(result.every((point) => typeof point.calories === "number")).toBe(true);
 
       // Today should have 800 calories (300 + 500)
-      const todayData = result.find(point =>
-        DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(today).toISODate()
+      const todayData = result.find(
+        (point) =>
+          DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(today).toISODate(),
       );
       expect(todayData?.calories).toBe(800);
 
       // Yesterday should have 600 calories
-      const yesterdayData = result.find(point =>
-        DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(yesterday).toISODate()
+      const yesterdayData = result.find(
+        (point) =>
+          DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(yesterday).toISODate(),
       );
       expect(yesterdayData?.calories).toBe(600);
     });
 
-    it('should only include days with meals (no zero-calorie days)', () => {
-      const today = DateTime.now().startOf('day').toISO() || '';
-      const meals = [
-        createMockMealEntry(today, 'Breakfast', 300),
-      ];
+    it("should only include days with meals (no zero-calorie days)", () => {
+      const today = DateTime.now().startOf("day").toISO() || "";
+      const meals = [createMockMealEntry(today, "Breakfast", 300)];
 
       const result = TrendAnalyzer.prepareDailyCalorieData(meals, 3);
 
@@ -135,13 +127,13 @@ describe('TrendAnalyzer', () => {
       expect(result[0].calories).toBe(300);
     });
 
-    it('should filter out meals outside the date range', () => {
-      const today = DateTime.now().startOf('day').toISO() || '';
-      const oldDate = DateTime.now().startOf('day').minus({ days: 10 }).toISO() || '';
+    it("should filter out meals outside the date range", () => {
+      const today = DateTime.now().startOf("day").toISO() || "";
+      const oldDate = DateTime.now().startOf("day").minus({ days: 10 }).toISO() || "";
 
       const meals = [
-        createMockMealEntry(today, 'Today', 300),
-        createMockMealEntry(oldDate, 'Old', 500),
+        createMockMealEntry(today, "Today", 300),
+        createMockMealEntry(oldDate, "Old", 500),
       ];
 
       const result = TrendAnalyzer.prepareDailyCalorieData(meals, 3);
@@ -152,16 +144,16 @@ describe('TrendAnalyzer', () => {
     });
   });
 
-  describe('prepareWeightData', () => {
-    it('should return empty array for undefined or empty weights', () => {
+  describe("prepareWeightData", () => {
+    it("should return empty array for undefined or empty weights", () => {
       expect(TrendAnalyzer.prepareWeightData(undefined)).toEqual([]);
       expect(TrendAnalyzer.prepareWeightData([])).toEqual([]);
     });
 
-    it('should prepare weight data within the specified date range', () => {
-      const today = DateTime.now().startOf('day').toISO() || '';
-      const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
-      const oldDate = DateTime.now().startOf('day').minus({ days: 10 }).toISO() || '';
+    it("should prepare weight data within the specified date range", () => {
+      const today = DateTime.now().startOf("day").toISO() || "";
+      const yesterday = DateTime.now().startOf("day").minus({ days: 1 }).toISO() || "";
+      const oldDate = DateTime.now().startOf("day").minus({ days: 10 }).toISO() || "";
 
       const weights = [
         createMockWeightEntry(today, 70.5),
@@ -172,22 +164,19 @@ describe('TrendAnalyzer', () => {
       const result = TrendAnalyzer.prepareWeightData(weights, undefined, 7);
 
       expect(result).toHaveLength(2); // Only today and yesterday
-      expect(result.every(point => point.date instanceof Date)).toBe(true);
-      expect(result.every(point => typeof point.weight === 'number')).toBe(true);
+      expect(result.every((point) => point.date instanceof Date)).toBe(true);
+      expect(result.every((point) => typeof point.weight === "number")).toBe(true);
 
       // Should be sorted by date
       expect(result[0].date.getTime()).toBeLessThanOrEqual(result[1].date.getTime());
     });
 
-    it('should sort weight entries by date', () => {
-      const today = DateTime.now().startOf('day').toISO() || '';
-      const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
+    it("should sort weight entries by date", () => {
+      const today = DateTime.now().startOf("day").toISO() || "";
+      const yesterday = DateTime.now().startOf("day").minus({ days: 1 }).toISO() || "";
 
       // Add in reverse chronological order
-      const weights = [
-        createMockWeightEntry(today, 70.5),
-        createMockWeightEntry(yesterday, 70.2),
-      ];
+      const weights = [createMockWeightEntry(today, 70.5), createMockWeightEntry(yesterday, 70.2)];
 
       const result = TrendAnalyzer.prepareWeightData(weights, undefined, 7);
 
@@ -197,47 +186,47 @@ describe('TrendAnalyzer', () => {
     });
   });
 
-  describe('prepareCombinedData', () => {
-    it('should combine calorie and weight data', () => {
-      const today = DateTime.now().startOf('day').toISO() || '';
-      const yesterday = DateTime.now().startOf('day').minus({ days: 1 }).toISO() || '';
+  describe("prepareCombinedData", () => {
+    it("should combine calorie and weight data", () => {
+      const today = DateTime.now().startOf("day").toISO() || "";
+      const yesterday = DateTime.now().startOf("day").minus({ days: 1 }).toISO() || "";
 
       const meals = [
-        createMockMealEntry(today, 'Breakfast', 300),
-        createMockMealEntry(yesterday, 'Dinner', 600),
+        createMockMealEntry(today, "Breakfast", 300),
+        createMockMealEntry(yesterday, "Dinner", 600),
       ];
 
-      const weights = [
-        createMockWeightEntry(today, 70.5),
-      ];
+      const weights = [createMockWeightEntry(today, 70.5)];
 
       const result = TrendAnalyzer.prepareCombinedData(meals, weights, undefined, 3);
 
       expect(result).toHaveLength(2); // Only days with meals
 
       // Today should have both calories and weight
-      const todayData = result.find(point =>
-        DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(today).toISODate()
+      const todayData = result.find(
+        (point) =>
+          DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(today).toISODate(),
       );
       expect(todayData?.calories).toBe(300);
       expect(todayData?.weight).toBe(70.5);
 
       // Yesterday should have calories but no weight
-      const yesterdayData = result.find(point =>
-        DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(yesterday).toISODate()
+      const yesterdayData = result.find(
+        (point) =>
+          DateTime.fromJSDate(point.date).toISODate() === DateTime.fromISO(yesterday).toISODate(),
       );
       expect(yesterdayData?.calories).toBe(600);
       expect(yesterdayData?.weight).toBeUndefined();
     });
 
-    it('should handle empty data arrays', () => {
+    it("should handle empty data arrays", () => {
       const result = TrendAnalyzer.prepareCombinedData([], [], undefined, 7);
       expect(result).toEqual([]);
     });
   });
 
-  describe('calculateTrendLines', () => {
-    it('should calculate trend lines for chart data', () => {
+  describe("calculateTrendLines", () => {
+    it("should calculate trend lines for chart data", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 2000, weight: 70.0 },
         { date: new Date(), calories: 2200, weight: 70.2 },
@@ -250,11 +239,11 @@ describe('TrendAnalyzer', () => {
 
       expect(result.caloriesTrend).toHaveLength(5);
       expect(result.weightTrend).toHaveLength(5);
-      expect(result.caloriesTrend.every(val => typeof val === 'number')).toBe(true);
-      expect(result.weightTrend.every(val => typeof val === 'number')).toBe(true);
+      expect(result.caloriesTrend.every((val) => typeof val === "number")).toBe(true);
+      expect(result.weightTrend.every((val) => typeof val === "number")).toBe(true);
     });
 
-    it('should handle data with missing weight values', () => {
+    it("should handle data with missing weight values", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 2000, weight: 70.0 },
         { date: new Date(), calories: 2200 }, // No weight
@@ -276,7 +265,7 @@ describe('TrendAnalyzer', () => {
       expect(result.weightTrend[4]).toBeDefined(); // Has weight data
     });
 
-    it('should handle sparse weight data with temporal smoothing', () => {
+    it("should handle sparse weight data with temporal smoothing", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 2000, weight: 70.0 },
         { date: new Date(), calories: 2200 }, // No weight
@@ -298,7 +287,7 @@ describe('TrendAnalyzer', () => {
       expect(result.weightTrend[4]).toBeDefined(); // Has weight data
     });
 
-    it('should handle empty data', () => {
+    it("should handle empty data", () => {
       const result = TrendAnalyzer.calculateTrendLines([]);
 
       expect(result.caloriesTrend).toEqual([]);
@@ -306,8 +295,8 @@ describe('TrendAnalyzer', () => {
     });
   });
 
-  describe('getSummaryStats', () => {
-    it('should calculate summary statistics', () => {
+  describe("getSummaryStats", () => {
+    it("should calculate summary statistics", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 2000, weight: 70.0 },
         { date: new Date(), calories: 2200, weight: 70.2 },
@@ -326,7 +315,7 @@ describe('TrendAnalyzer', () => {
       expect(result.weightChange).toBe(0.3); // 70.3 - 70.0
     });
 
-    it('should handle data without weight values', () => {
+    it("should handle data without weight values", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 2000 },
         { date: new Date(), calories: 2200 },
@@ -343,7 +332,7 @@ describe('TrendAnalyzer', () => {
       expect(result.weightChange).toBeUndefined();
     });
 
-    it('should handle empty data', () => {
+    it("should handle empty data", () => {
       const result = TrendAnalyzer.getSummaryStats([]);
 
       expect(result.totalDays).toBe(0);
@@ -354,10 +343,8 @@ describe('TrendAnalyzer', () => {
       expect(result.weightChange).toBeUndefined();
     });
 
-    it('should handle single weight entry', () => {
-      const data: ChartDataPoint[] = [
-        { date: new Date(), calories: 2000, weight: 70.0 },
-      ];
+    it("should handle single weight entry", () => {
+      const data: ChartDataPoint[] = [{ date: new Date(), calories: 2000, weight: 70.0 }];
 
       const result = TrendAnalyzer.getSummaryStats(data);
 
@@ -366,8 +353,8 @@ describe('TrendAnalyzer', () => {
     });
   });
 
-  describe('getDateRange', () => {
-    it('should return correct date range', () => {
+  describe("getDateRange", () => {
+    it("should return correct date range", () => {
       const { startDate, endDate } = TrendAnalyzer.getDateRange(7);
 
       expect(startDate instanceof Date).toBe(true);
@@ -375,20 +362,24 @@ describe('TrendAnalyzer', () => {
       expect(startDate.getTime()).toBeLessThan(endDate.getTime());
 
       // Should be approximately 6 days difference (7 days inclusive)
-      const daysDiff = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.round(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
       expect(daysDiff).toBe(6);
     });
 
-    it('should handle single day range', () => {
+    it("should handle single day range", () => {
       const { startDate, endDate } = TrendAnalyzer.getDateRange(1);
 
       // Start and end should be the same day
-      expect(DateTime.fromJSDate(startDate).toISODate()).toBe(DateTime.fromJSDate(endDate).toISODate());
+      expect(DateTime.fromJSDate(startDate).toISODate()).toBe(
+        DateTime.fromJSDate(endDate).toISODate(),
+      );
     });
   });
 
-  describe('calculateCalorieAxisConfig', () => {
-    it('should return default config for empty data', () => {
+  describe("calculateCalorieAxisConfig", () => {
+    it("should return default config for empty data", () => {
       const result = TrendAnalyzer.calculateCalorieAxisConfig([]);
 
       expect(result.min).toBe(0);
@@ -396,7 +387,7 @@ describe('TrendAnalyzer', () => {
       expect(result.tickInterval).toBe(50);
     });
 
-    it('should calculate config with 50-unit ticks when max < 500', () => {
+    it("should calculate config with 50-unit ticks when max < 500", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 150 },
         { date: new Date(), calories: 250 },
@@ -410,7 +401,7 @@ describe('TrendAnalyzer', () => {
       expect(result.tickInterval).toBe(50);
     });
 
-    it('should calculate config with 100-unit ticks when max >= 500', () => {
+    it("should calculate config with 100-unit ticks when max >= 500", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 450 },
         { date: new Date(), calories: 650 },
@@ -424,7 +415,7 @@ describe('TrendAnalyzer', () => {
       expect(result.tickInterval).toBe(100);
     });
 
-    it('should handle edge case where max is exactly a multiple of 100', () => {
+    it("should handle edge case where max is exactly a multiple of 100", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 300 },
         { date: new Date(), calories: 500 },
@@ -437,7 +428,7 @@ describe('TrendAnalyzer', () => {
       expect(result.tickInterval).toBe(100); // 500 >= 500, so use 100-unit ticks
     });
 
-    it('should handle zero calories', () => {
+    it("should handle zero calories", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 0 },
         { date: new Date(), calories: 0 },
@@ -451,8 +442,8 @@ describe('TrendAnalyzer', () => {
     });
   });
 
-  describe('calculateWeightAxisConfig', () => {
-    it('should return default config for empty weight data', () => {
+  describe("calculateWeightAxisConfig", () => {
+    it("should return default config for empty weight data", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 200 }, // No weight
         { date: new Date(), calories: 300 }, // No weight
@@ -465,7 +456,7 @@ describe('TrendAnalyzer', () => {
       expect(result.tickInterval).toBe(2);
     });
 
-    it('should handle small dog weights (< 25lbs) with 0.5 rounding', () => {
+    it("should handle small dog weights (< 25lbs) with 0.5 rounding", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 200, weight: 14.2 },
         { date: new Date(), calories: 250, weight: 14.5 },
@@ -486,7 +477,7 @@ describe('TrendAnalyzer', () => {
       expect(Math.abs(axisCenter - dataCenter)).toBeLessThan(2);
     });
 
-    it('should handle medium weights (25-100lbs) with 1.0 rounding', () => {
+    it("should handle medium weights (25-100lbs) with 1.0 rounding", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 200, weight: 68 },
         { date: new Date(), calories: 250, weight: 70 },
@@ -504,7 +495,7 @@ describe('TrendAnalyzer', () => {
       expect(result.max % 1).toBe(0);
     });
 
-    it('should handle large weights (100-250lbs) with 5.0 rounding', () => {
+    it("should handle large weights (100-250lbs) with 5.0 rounding", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 200, weight: 180 },
         { date: new Date(), calories: 250, weight: 185 },
@@ -522,7 +513,7 @@ describe('TrendAnalyzer', () => {
       expect(result.max % 5).toBe(0);
     });
 
-    it('should handle very large weights (>250lbs) with 10.0 rounding', () => {
+    it("should handle very large weights (>250lbs) with 10.0 rounding", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 200, weight: 280 },
         { date: new Date(), calories: 250, weight: 290 },
@@ -540,7 +531,7 @@ describe('TrendAnalyzer', () => {
       expect(result.max % 10).toBe(0);
     });
 
-    it('should ensure all data points are within the axis range', () => {
+    it("should ensure all data points are within the axis range", () => {
       const data: ChartDataPoint[] = [
         { date: new Date(), calories: 200, weight: 14.1 },
         { date: new Date(), calories: 250, weight: 14.9 },
@@ -552,10 +543,8 @@ describe('TrendAnalyzer', () => {
       expect(result.max).toBeGreaterThanOrEqual(14.9);
     });
 
-    it('should handle single weight value', () => {
-      const data: ChartDataPoint[] = [
-        { date: new Date(), calories: 200, weight: 15.0 },
-      ];
+    it("should handle single weight value", () => {
+      const data: ChartDataPoint[] = [{ date: new Date(), calories: 200, weight: 15.0 }];
 
       const result = TrendAnalyzer.calculateWeightAxisConfig(data);
 
@@ -565,14 +554,14 @@ describe('TrendAnalyzer', () => {
     });
   });
 
-  describe('Unit Conversion Support', () => {
-    describe('prepareWeightData with unit conversion', () => {
-      it('should convert weight data to user preferred unit', () => {
-        const today = DateTime.now().startOf('day').toISO() || '';
-        const profile = createMockProfile('kg');
+  describe("Unit Conversion Support", () => {
+    describe("prepareWeightData with unit conversion", () => {
+      it("should convert weight data to user preferred unit", () => {
+        const today = DateTime.now().startOf("day").toISO() || "";
+        const profile = createMockProfile("kg");
 
         const weights = [
-          createMockWeightEntry(today, 150, 'lbs'), // 150 lbs = ~68.04 kg
+          createMockWeightEntry(today, 150, "lbs"), // 150 lbs = ~68.04 kg
         ];
 
         const result = TrendAnalyzer.prepareWeightData(weights, profile, 7);
@@ -581,9 +570,9 @@ describe('TrendAnalyzer', () => {
         expect(result[0].weight).toBeCloseTo(68.04, 1); // Converted to kg
       });
 
-      it('should handle legacy weight entries without unit field', () => {
-        const today = DateTime.now().startOf('day').toISO() || '';
-        const profile = createMockProfile('kg');
+      it("should handle legacy weight entries without unit field", () => {
+        const today = DateTime.now().startOf("day").toISO() || "";
+        const profile = createMockProfile("kg");
 
         const weights = [
           createMockWeightEntry(today, 150), // No unit, should default to lbs
@@ -595,13 +584,11 @@ describe('TrendAnalyzer', () => {
         expect(result[0].weight).toBeCloseTo(68.04, 1); // Converted from lbs to kg
       });
 
-      it('should not convert when stored unit matches display unit', () => {
-        const today = DateTime.now().startOf('day').toISO() || '';
-        const profile = createMockProfile('lbs');
+      it("should not convert when stored unit matches display unit", () => {
+        const today = DateTime.now().startOf("day").toISO() || "";
+        const profile = createMockProfile("lbs");
 
-        const weights = [
-          createMockWeightEntry(today, 150, 'lbs'),
-        ];
+        const weights = [createMockWeightEntry(today, 150, "lbs")];
 
         const result = TrendAnalyzer.prepareWeightData(weights, profile, 7);
 
@@ -609,11 +596,11 @@ describe('TrendAnalyzer', () => {
         expect(result[0].weight).toBe(150); // No conversion needed
       });
 
-      it('should use default unit when no profile provided', () => {
-        const today = DateTime.now().startOf('day').toISO() || '';
+      it("should use default unit when no profile provided", () => {
+        const today = DateTime.now().startOf("day").toISO() || "";
 
         const weights = [
-          createMockWeightEntry(today, 68, 'kg'), // 68 kg = ~149.91 lbs
+          createMockWeightEntry(today, 68, "kg"), // 68 kg = ~149.91 lbs
         ];
 
         const result = TrendAnalyzer.prepareWeightData(weights, undefined, 7);
@@ -623,42 +610,42 @@ describe('TrendAnalyzer', () => {
       });
     });
 
-    describe('getWeightAxisLabel', () => {
-      it('should return label with user preferred unit', () => {
-        const profile = createMockProfile('kg');
+    describe("getWeightAxisLabel", () => {
+      it("should return label with user preferred unit", () => {
+        const profile = createMockProfile("kg");
         const label = TrendAnalyzer.getWeightAxisLabel(profile);
-        expect(label).toBe('Weight (kg)');
+        expect(label).toBe("Weight (kg)");
       });
 
-      it('should return default label when no profile provided', () => {
+      it("should return default label when no profile provided", () => {
         const label = TrendAnalyzer.getWeightAxisLabel(undefined);
-        expect(label).toBe('Weight (lbs)');
+        expect(label).toBe("Weight (lbs)");
       });
     });
 
-    describe('formatWeightTooltip', () => {
-      it('should format weight with user preferred unit', () => {
-        const profile = createMockProfile('kg');
+    describe("formatWeightTooltip", () => {
+      it("should format weight with user preferred unit", () => {
+        const profile = createMockProfile("kg");
         const formatted = TrendAnalyzer.formatWeightTooltip(68.5, profile);
-        expect(formatted).toBe('68.5kg');
+        expect(formatted).toBe("68.5kg");
       });
 
-      it('should format weight with default unit when no profile provided', () => {
+      it("should format weight with default unit when no profile provided", () => {
         const formatted = TrendAnalyzer.formatWeightTooltip(150.5, undefined);
-        expect(formatted).toBe('150.5lbs');
+        expect(formatted).toBe("150.5lbs");
       });
     });
 
-    describe('getWeightDisplayUnit', () => {
-      it('should return user preferred unit', () => {
-        const profile = createMockProfile('kg');
+    describe("getWeightDisplayUnit", () => {
+      it("should return user preferred unit", () => {
+        const profile = createMockProfile("kg");
         const unit = TrendAnalyzer.getWeightDisplayUnit(profile);
-        expect(unit).toBe('kg');
+        expect(unit).toBe("kg");
       });
 
-      it('should return default unit when no profile provided', () => {
+      it("should return default unit when no profile provided", () => {
         const unit = TrendAnalyzer.getWeightDisplayUnit(undefined);
-        expect(unit).toBe('lbs');
+        expect(unit).toBe("lbs");
       });
     });
   });

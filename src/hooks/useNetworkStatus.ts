@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 export interface NetworkStatus {
   isOnline: boolean;
@@ -15,7 +15,7 @@ export function useNetworkStatus() {
 
   useEffect(() => {
     const handleOnline = () => {
-      setNetworkStatus(prev => ({
+      setNetworkStatus((prev) => ({
         ...prev,
         isOnline: true,
         isConnected: true,
@@ -24,24 +24,24 @@ export function useNetworkStatus() {
     };
 
     const handleOffline = () => {
-      setNetworkStatus(prev => ({
+      setNetworkStatus((prev) => ({
         ...prev,
         isOnline: false,
         isConnected: false,
       }));
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
   const updateSyncStatus = (error?: string) => {
-    setNetworkStatus(prev => ({
+    setNetworkStatus((prev) => ({
       ...prev,
       lastSyncAttempt: new Date(),
       syncError: error,
@@ -50,7 +50,7 @@ export function useNetworkStatus() {
   };
 
   const clearSyncError = () => {
-    setNetworkStatus(prev => ({
+    setNetworkStatus((prev) => ({
       ...prev,
       syncError: undefined,
       isConnected: prev.isOnline,

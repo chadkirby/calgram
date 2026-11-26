@@ -7,11 +7,13 @@ The SettingsDialog component is a comprehensive settings and utilities dialog th
 ## Features
 
 ### Profile Management
+
 - Users can update their full name and first name
 - Changes are automatically synchronized with the Jazz account
 - Real-time validation of input fields
 
 ### Data Import/Export
+
 - Export all meal and weight entries to a JSON file
 - Import data from JSON files (supports both legacy and new formats)
 - Visual feedback during import/export operations
@@ -44,12 +46,13 @@ The SettingsDialog is accessible via a gear icon in the Layout component header.
 import { SettingsDialog } from "@/components/SettingsDialog";
 
 // In your component
-<SettingsDialog isAuthenticated={isAuthenticated} />
+<SettingsDialog isAuthenticated={isAuthenticated} />;
 ```
 
 ## Data Import/Export Formats
 
 ### Export Format
+
 The new export format is more comprehensive and structured:
 
 ```json
@@ -81,6 +84,7 @@ The new export format is more comprehensive and structured:
 ```
 
 ### Legacy Format Support
+
 The importer continues to support the existing legacy format:
 
 ```json
@@ -120,6 +124,7 @@ The component provides comprehensive error handling for various scenarios:
 ## Accessibility
 
 The component follows accessibility best practices:
+
 - Full keyboard navigation support
 - Proper ARIA labels and descriptions
 - Appropriate focus management
@@ -128,6 +133,7 @@ The component follows accessibility best practices:
 ## Mobile Responsiveness
 
 The component is optimized for mobile devices:
+
 - Touch-friendly controls with adequate touch targets
 - Responsive layout for different screen sizes
 - Native file picker support on mobile devices

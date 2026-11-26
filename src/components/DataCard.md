@@ -7,12 +7,14 @@ The DataCard component provides import and export functionality for meal and wei
 ## Features
 
 ### Data Export
+
 - Exports all meal entries and weight entries to a JSON file
 - Generates a comprehensive export format with detailed data
 - Automatic download of the JSON file to the user's device
 - Visual feedback during the export process
 
 ### Data Import
+
 - Imports meal and weight entries from JSON files
 - Supports both legacy import format and new export format
 - Handles duplicate entries gracefully without creating duplicates
@@ -39,12 +41,13 @@ The DataCard component does not require any props and can be used as a self-cont
 import { DataCard } from "@/components/DataCard";
 
 // In your component
-<DataCard />
+<DataCard />;
 ```
 
 ## Functionality
 
 ### Export Process
+
 1. User clicks the "Export Data" button
 2. Component reads all meal and weight entries from the Jazz account
 3. Data is transformed to the new export format
@@ -52,6 +55,7 @@ import { DataCard } from "@/components/DataCard";
 5. Success message is displayed to the user
 
 ### Import Process
+
 1. User clicks the "Import Data" button
 2. Hidden file input is triggered to open the file picker
 3. User selects a JSON file
@@ -62,6 +66,7 @@ import { DataCard } from "@/components/DataCard";
 ## Data Formats
 
 ### Export Format
+
 The component exports data in a comprehensive JSON format:
 
 ```json
@@ -93,6 +98,7 @@ The component exports data in a comprehensive JSON format:
 ```
 
 ### Legacy Format Support
+
 The component continues to support the legacy import format:
 
 ```json
@@ -124,11 +130,13 @@ The component continues to support the legacy import format:
 The component provides comprehensive error handling:
 
 ### Export Errors
+
 - No data available to export
 - Jazz data access errors
 - File generation or download failures
 
 ### Import Errors
+
 - Invalid file format
 - Malformed JSON data
 - Data validation errors

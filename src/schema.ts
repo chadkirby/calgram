@@ -6,17 +6,16 @@
 import { Group, co, z, type Loaded } from "jazz-tools";
 import { DateTime } from "luxon";
 
-
 export const MealShape = {
   timestamp: z.iso.date(),
   foodName: z.string().min(1, "Food name is required"),
   foodCategory: z.string().min(1, "Food category is required"),
   caloriesPerGram: z.number().nonnegative("Calories per gram cannot be negative"),
-  caloriesPerDisplayUnit: z.enum(['g', 'oz', 'lb', 'kg']).optional(),
+  caloriesPerDisplayUnit: z.enum(["g", "oz", "lb", "kg"]).optional(),
   weightInGrams: z.number(),
   notes: z.string().optional(),
   totalCalories: z.number(),
-  displayUnit: z.enum(['g', 'oz', 'lb', 'kg']).optional(),
+  displayUnit: z.enum(["g", "oz", "lb", "kg"]).optional(),
 };
 
 /** MealEntry schema for tracking individual meal entries */
@@ -29,7 +28,7 @@ export const WeightShape = {
   timestamp: z.iso.date(),
   weightValue: z.number().positive("Weight value must be positive"),
   notes: z.string().optional(),
-  unit: z.enum(['lbs', 'kg']).optional(),
+  unit: z.enum(["lbs", "kg"]).optional(),
 };
 
 /** WeightEntry schema for tracking weight measurements */
@@ -61,9 +60,12 @@ export const ExportWeightShape = {
 export const ExportProfileShape = {
   name: z.string().optional(),
   firstName: z.string().optional(),
-  dateOfBirth: z.string().refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" }).optional(),
-  mealWeightUnit: z.enum(['g', 'oz', 'lb', 'kg']).optional(),
-  bodyWeightUnit: z.enum(['lbs', 'kg']).optional(),
+  dateOfBirth: z
+    .string()
+    .refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" })
+    .optional(),
+  mealWeightUnit: z.enum(["g", "oz", "lb", "kg"]).optional(),
+  bodyWeightUnit: z.enum(["lbs", "kg"]).optional(),
 } as const;
 
 export const ExportProfileZod = z.object(ExportProfileShape);
@@ -94,14 +96,14 @@ export const FoodIntelligence = co.map({
 
 export type FoodIntelligenceType = z.infer<typeof FoodIntelligence>;
 
-export const mealWeightUnits = ['g', 'oz', 'lb', 'kg'] as const;
-export const bodyWeightUnits = ['lbs', 'kg'] as const;
-export const calorieUnits = ['g', 'oz', 'lb', 'kg'] as const;
+export const mealWeightUnits = ["g", "oz", "lb", "kg"] as const;
+export const bodyWeightUnits = ["lbs", "kg"] as const;
+export const calorieUnits = ["g", "oz", "lb", "kg"] as const;
 
 /** Weight unit types for meal and body weight preferences */
-export type MealWeightUnit = typeof mealWeightUnits[number];
-export type BodyWeightUnit = typeof bodyWeightUnits[number];
-export type CalorieUnit = typeof calorieUnits[number];
+export type MealWeightUnit = (typeof mealWeightUnits)[number];
+export type BodyWeightUnit = (typeof bodyWeightUnits)[number];
+export type CalorieUnit = (typeof calorieUnits)[number];
 
 /** The account profile is an app-specific per-user public `CoMap`
  *  where you can store top-level objects for that user */
@@ -162,7 +164,7 @@ export const JazzAccount = co
 
       account.root = CalorieTrackerRoot.create(
         {
-          dateOfBirth: DateTime.fromJSDate(new Date("1/1/1990")).toISO() || '',
+          dateOfBirth: DateTime.fromJSDate(new Date("1/1/1990")).toISO() || "",
           mealEntries,
           weightEntries,
           foodIntelligence,
@@ -173,7 +175,7 @@ export const JazzAccount = co
       // Only add missing collections if they're actually undefined (not just not loaded)
       // We need to ensure the root is loaded to check for missing fields
       const { root } = await account.ensureLoaded({
-        resolve: { root: true }
+        resolve: { root: true },
       });
 
       const group = root._owner;

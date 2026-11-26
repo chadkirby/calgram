@@ -15,6 +15,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { JazzAccount } from "../schema";
 
+/** Writes the edited names onto the Jazz profile CoValue (Jazz syncs automatically). */
+function saveProfileNames(
+  profile: { name: string; firstName: string },
+  fullName: string,
+  firstName: string,
+) {
+  profile.name = fullName.trim() || "Anonymous user";
+  profile.firstName = firstName.trim() || "Nobody";
+}
+
 interface UserProfileDialogProps {
   isAuthenticated: boolean;
 }
@@ -40,8 +50,7 @@ export function UserProfileDialog({ isAuthenticated }: UserProfileDialogProps) {
   const handleSave = () => {
     if (me?.profile) {
       // Update the profile data - Jazz handles synchronization automatically
-      me.profile.name = fullName.trim() || "Anonymous user";
-      me.profile.firstName = firstName.trim() || "Nobody";
+      saveProfileNames(me.profile, fullName, firstName);
     }
     setOpen(false);
   };
@@ -106,9 +115,7 @@ export function UserProfileDialog({ isAuthenticated }: UserProfileDialogProps) {
           <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
-            Save Changes
-          </Button>
+          <Button onClick={handleSave}>Save Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

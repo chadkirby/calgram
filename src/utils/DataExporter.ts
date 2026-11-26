@@ -7,7 +7,6 @@ import {
   type ExportProfileDTO,
 } from "../schema";
 
-
 interface ExportedData {
   version: string;
   exportDate: string;
@@ -28,7 +27,7 @@ export class DataExporter {
     let loadedAccount = account;
 
     // Ensure the account root is loaded first, if ensureLoaded method exists
-    if (typeof account.ensureLoaded === 'function') {
+    if (typeof account.ensureLoaded === "function") {
       loadedAccount = await account.ensureLoaded({
         resolve: {
           profile: true,
@@ -121,13 +120,17 @@ export class DataExporter {
       const url = URL.createObjectURL(blob);
 
       // Check if we're in a browser environment
-      if (typeof document !== 'undefined' && document.createElement) {
+      if (typeof document !== "undefined" && document.createElement) {
         const a = document.createElement("a");
         a.href = url;
         a.download = filename;
 
         // Check if document.body exists and has the required methods
-        if (document.body && typeof document.body.appendChild === 'function' && typeof document.body.removeChild === 'function') {
+        if (
+          document.body &&
+          typeof document.body.appendChild === "function" &&
+          typeof document.body.removeChild === "function"
+        ) {
           document.body.appendChild(a);
           a.click();
 
@@ -145,7 +148,9 @@ export class DataExporter {
           }, 100);
         } else {
           // Fallback for test environments or environments without document.body
-          console.warn("Document body not available or missing required methods, skipping download");
+          console.warn(
+            "Document body not available or missing required methods, skipping download",
+          );
         }
       } else {
         // Fallback for non-browser environments (like tests)
@@ -153,7 +158,7 @@ export class DataExporter {
       }
     } catch (error) {
       console.error("Failed to trigger download:", error);
-      throw new Error("Failed to trigger download");
+      throw new Error("Failed to trigger download", { cause: error });
     }
   }
 
@@ -166,11 +171,7 @@ export class DataExporter {
       this.triggerDownload(blob, filename);
     } catch (error) {
       console.error("Failed to download JSON file:", error);
-      throw new Error("Failed to generate download file");
+      throw new Error("Failed to generate download file", { cause: error });
     }
   }
 }
-
-
-
-

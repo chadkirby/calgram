@@ -13,7 +13,7 @@ export class FoodIntelligenceManager {
    */
   static updateFoodData(
     intelligence: Loaded<typeof FoodIntelligence>,
-    meal: Loaded<typeof MealEntry>
+    meal: Loaded<typeof MealEntry>,
   ): void {
     const { foodName, foodCategory, caloriesPerGram } = meal;
 
@@ -35,25 +35,28 @@ export class FoodIntelligenceManager {
         existingMetadata.lastUsedCPG = caloriesPerGram;
         existingMetadata.lastUsedCategory = foodCategory;
         existingMetadata.usageCount = existingMetadata.usageCount + 1;
-        existingMetadata.lastUsed = DateTime.now().toISO() || '';
+        existingMetadata.lastUsed = DateTime.now().toISO() || "";
       } else {
         // Create new food metadata
         try {
-          const newMetadata = FoodMetadata.create({
-            lastUsedCPG: caloriesPerGram,
-            lastUsedCategory: foodCategory,
-            usageCount: 1,
-            lastUsed: DateTime.now().toISO() || '',
-          }, intelligence._owner);
+          const newMetadata = FoodMetadata.create(
+            {
+              lastUsedCPG: caloriesPerGram,
+              lastUsedCategory: foodCategory,
+              usageCount: 1,
+              lastUsed: DateTime.now().toISO() || "",
+            },
+            intelligence._owner,
+          );
 
           intelligence.foodData[foodName] = newMetadata;
-        } catch (error) {
+        } catch {
           // Fallback for testing - create a plain object with the same structure
           intelligence.foodData[foodName] = {
             lastUsedCPG: caloriesPerGram,
             lastUsedCategory: foodCategory,
             usageCount: 1,
-            lastUsed: DateTime.now().toISO() || '',
+            lastUsed: DateTime.now().toISO() || "",
           } as any;
         }
       }
@@ -71,7 +74,7 @@ export class FoodIntelligenceManager {
     }
 
     // Return a copy of the recent foods array (reversed to show most recent first)
-    return [...intelligence.recentFoods].reverse();
+    return [...intelligence.recentFoods].toReversed();
   }
 
   /**
@@ -85,7 +88,7 @@ export class FoodIntelligenceManager {
     }
 
     // Return a copy of the recent categories array (reversed to show most recent first)
-    return [...intelligence.recentCategories].reverse();
+    return [...intelligence.recentCategories].toReversed();
   }
 
   /**
@@ -96,7 +99,7 @@ export class FoodIntelligenceManager {
    */
   static getFoodSuggestions(
     intelligence: Loaded<typeof FoodIntelligence> | undefined,
-    foodName: string
+    foodName: string,
   ): { caloriesPerGram: number; category: string } | null {
     if (!intelligence?.foodData || !foodName.trim()) {
       return null;
@@ -119,7 +122,7 @@ export class FoodIntelligenceManager {
    * @returns Array of food names sorted by relevance
    */
   static getAllFoodsSortedByRelevance(
-    intelligence: Loaded<typeof FoodIntelligence> | undefined
+    intelligence: Loaded<typeof FoodIntelligence> | undefined,
   ): string[] {
     if (!intelligence?.foodData) {
       return [];
@@ -130,7 +133,7 @@ export class FoodIntelligenceManager {
     // Sort by usage count (descending) and then by last used date (descending)
     return foodEntries
       .filter(([, metadata]) => metadata != null)
-      .sort(([, a], [, b]) => {
+      .toSorted(([, a], [, b]) => {
         if (!a || !b) return 0;
         // First sort by usage count
         if (a.usageCount !== b.usageCount) {
@@ -150,7 +153,7 @@ export class FoodIntelligenceManager {
    */
   static searchFoods(
     intelligence: Loaded<typeof FoodIntelligence> | undefined,
-    query: string
+    query: string,
   ): string[] {
     if (!intelligence?.foodData || !query.trim()) {
       return this.getRecentFoods(intelligence);
@@ -160,9 +163,7 @@ export class FoodIntelligenceManager {
     const allFoods = this.getAllFoodsSortedByRelevance(intelligence);
 
     // Filter foods that contain the search term
-    const matches = allFoods.filter(food =>
-      food.toLowerCase().includes(searchTerm)
-    );
+    const matches = allFoods.filter((food) => food.toLowerCase().includes(searchTerm));
 
     // Limit to 12 results
     return matches.slice(0, 12);
@@ -174,11 +175,7 @@ export class FoodIntelligenceManager {
    * @param item - The item to add
    * @param maxLength - Maximum length of the list
    */
-  private static updateRecentList(
-    list: CoList<string>,
-    item: string,
-    maxLength: number
-  ): void {
+  private static updateRecentList(list: CoList<string>, item: string, maxLength: number): void {
     // Remove the item if it already exists
     const existingIndex = list.findIndex((existing) => existing === item);
     if (existingIndex !== -1) {

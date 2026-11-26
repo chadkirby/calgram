@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,8 +30,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+
     this.setState({
       error,
       errorInfo,
@@ -69,24 +69,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
-                {this.state.error?.message || 'An unexpected error occurred'}
+                {this.state.error?.message || "An unexpected error occurred"}
               </AlertDescription>
             </Alert>
-            
+
             <div className="flex gap-2">
               <Button onClick={this.handleRetry} className="flex items-center gap-2">
                 <RefreshCw className="h-4 w-4" />
                 Try Again
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => window.location.reload()}
-              >
+              <Button variant="outline" onClick={() => window.location.reload()}>
                 Reload Page
               </Button>
             </div>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {process.env.NODE_ENV === "development" && this.state.error && (
               <details className="mt-4">
                 <summary className="cursor-pointer text-sm font-medium">
                   Error Details (Development)
@@ -108,7 +105,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 // Hook for functional components to handle errors
 export function useErrorHandler() {
   return React.useCallback((error: Error, errorInfo?: React.ErrorInfo) => {
-    console.error('Error caught by useErrorHandler:', error, errorInfo);
+    console.error("Error caught by useErrorHandler:", error, errorInfo);
     // You could integrate with error reporting service here
   }, []);
 }
@@ -116,7 +113,7 @@ export function useErrorHandler() {
 // Higher-order component for wrapping components with error boundary
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
-  fallback?: React.ComponentType<{ error?: Error; retry: () => void }>
+  fallback?: React.ComponentType<{ error?: Error; retry: () => void }>,
 ) {
   const WrappedComponent = (props: P) => (
     <ErrorBoundary fallback={fallback}>

@@ -10,11 +10,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ComboboxProps {
   value?: string;
@@ -37,10 +33,13 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(value);
+  const [prevValue, setPrevValue] = React.useState(value);
 
-  React.useEffect(() => {
+  // Keep the input text in sync when the controlled value changes from the parent
+  if (value !== prevValue) {
+    setPrevValue(value);
     setInputValue(value);
-  }, [value]);
+  }
 
   const handleSelect = (selectedValue: string) => {
     setInputValue(selectedValue);
@@ -78,7 +77,7 @@ export function Combobox({
   };
 
   const filteredOptions = options.filter((option) =>
-    option.toLowerCase().includes(inputValue.toLowerCase())
+    option.toLowerCase().includes(inputValue.toLowerCase()),
   );
 
   return (
@@ -86,9 +85,11 @@ export function Combobox({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between touch-manipulation min-h-[44px] sm:min-h-[40px]", className)}
+          className={cn(
+            "w-full justify-between touch-manipulation min-h-[44px] sm:min-h-[40px]",
+            className,
+          )}
           disabled={disabled}
           onKeyDown={handleTriggerKeyDown}
           onPaste={handleTriggerPaste}
@@ -99,8 +100,8 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-full p-0 max-w-[90vw] sm:max-w-none" 
+      <PopoverContent
+        className="w-full p-0 max-w-[90vw] sm:max-w-none"
         align="start"
         sideOffset={4}
       >
@@ -125,7 +126,7 @@ export function Combobox({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4 shrink-0",
-                      value === option ? "opacity-100" : "opacity-0"
+                      value === option ? "opacity-100" : "opacity-0",
                     )}
                   />
                   <span className="truncate">{option}</span>

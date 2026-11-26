@@ -38,9 +38,9 @@ import { UnitSelector } from "@/components/UnitSelector";
 import { cn } from "@/lib/utils";
 
 interface UnitConfig<T extends string> {
-    value: T;
-    label: string;
-    fullName: string;
+  value: T;
+  label: string;
+  fullName: string;
 }
 
 interface UnitInputProps<T extends string> {
@@ -53,14 +53,21 @@ interface UnitInputProps<T extends string> {
   className?: string;
   disabled?: boolean;
   error?: boolean;
-  'aria-label'?: string;
-  'aria-describedby'?: string;
+  "aria-label"?: string;
+  "aria-describedby"?: string;
   inputMode?: "decimal" | "numeric";
   step?: string;
   min?: number;
   max?: number;
   labelSuffix?: string; // e.g., "weight unit" or "calorie unit"
   convertValue?: (value: number, fromUnit: T, toUnit: T) => number; // Optional conversion function
+}
+
+function roundForDisplay(amount: number): string {
+  if (amount < 1) return amount.toFixed(3);
+  if (amount < 10) return amount.toFixed(2);
+  if (amount < 100) return amount.toFixed(1);
+  return amount.toFixed(0);
 }
 
 export function UnitInput<T extends string>({
@@ -73,8 +80,8 @@ export function UnitInput<T extends string>({
   className,
   disabled = false,
   error = false,
-  'aria-label': ariaLabel,
-  'aria-describedby': ariaDescribedBy,
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
   inputMode = "decimal",
   step = "0.1",
   min,
@@ -83,17 +90,26 @@ export function UnitInput<T extends string>({
   convertValue,
 }: UnitInputProps<T>) {
   // Track the displayed value separately from the prop value to handle conversion smoothly
-  const [displayValue, setDisplayValue] = React.useState<string>("");
+  const [displayValue, setDisplayValue] = React.useState<string>(() =>
+    value > 0 ? roundForDisplay(value) : "",
+  );
   const [isConverting, setIsConverting] = React.useState(false);
   const [isEditing, setIsEditing] = React.useState(false);
+  const [prevSync, setPrevSync] = React.useState({ value, unit, isConverting, isEditing });
 
-  // Update display value when value or unit changes from parent
-  React.useEffect(() => {
+  // Update display value when value or unit changes from parent (or editing/converting ends)
+  if (
+    !Object.is(prevSync.value, value) ||
+    prevSync.unit !== unit ||
+    prevSync.isConverting !== isConverting ||
+    prevSync.isEditing !== isEditing
+  ) {
+    setPrevSync({ value, unit, isConverting, isEditing });
     // Only update from props when not actively editing and not converting
     if (!isConverting && !isEditing) {
       setDisplayValue(value > 0 ? roundForDisplay(value) : "");
     }
-  }, [value, unit, isConverting, isEditing]);
+  }
 
   // Handle input value changes
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,9 +165,8 @@ export function UnitInput<T extends string>({
 
       // Update display value to show converted amount, but only rounded once conversion completes
       setDisplayValue(roundForDisplay(convertedValue));
-
-    } catch (error) {
-      console.error(`Error converting ${labelSuffix}s:`, error);
+    } catch (conversionError) {
+      console.error(`Error converting ${labelSuffix}s:`, conversionError);
       // If conversion fails, just change the unit without converting the value
       onUnitChange(newUnit);
     } finally {
@@ -160,19 +175,12 @@ export function UnitInput<T extends string>({
     }
   };
 
-  function roundForDisplay(value: number): string {
-    if (value < 1) return value.toFixed(3);
-    if (value < 10) return value.toFixed(2);
-    if (value < 100) return value.toFixed(1);
-    return value.toFixed(0);
-  }
-
   // Only use explicit min/max props if provided, no arbitrary range validation
   const effectiveMin = min !== undefined ? min : 0;
   const effectiveMax = max !== undefined ? max : Number.MAX_SAFE_INTEGER;
 
   // Find current unit config for aria-label
-  const currentUnitConfig = units.find(u => u.value === unit);
+  const currentUnitConfig = units.find((u) => u.value === unit);
   const unitLabel = currentUnitConfig?.fullName || unit;
 
   // Layout notes:
@@ -190,12 +198,9 @@ export function UnitInput<T extends string>({
         // Unify focus for both child elements
         "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
         // Error/disabled styling applied here for consistency
-        error && [
-          "border-destructive",
-          "focus-within:ring-destructive/40",
-        ],
+        error && ["border-destructive", "focus-within:ring-destructive/40"],
         disabled && "opacity-60 pointer-events-none",
-        className
+        className,
       )}
       aria-invalid={error || undefined}
     >
@@ -224,7 +229,7 @@ export function UnitInput<T extends string>({
           // Sizing and shrink behavior
           "min-h-[40px] w-full min-w-0",
           // Touch ergonomics
-          "touch-manipulation"
+          "touch-manipulation",
         )}
       />
 
@@ -246,7 +251,7 @@ export function UnitInput<T extends string>({
             // Compact sizing to minimize horizontal footprint
             "h-7 min-w-[45px] max-w-[70px]",
             // The wrapper shows the ring; suppress local ring to avoid double visuals
-            "focus-visible:ring-0"
+            "focus-visible:ring-0",
           )}
         />
       </div>

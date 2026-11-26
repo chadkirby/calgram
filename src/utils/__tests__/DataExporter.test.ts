@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DataImporter } from "../DataImporter";
 import { DataExporter } from "../DataExporter";
 import { type Loaded } from "jazz-tools";
@@ -129,9 +129,9 @@ describe("DataExporter", () => {
         root: undefined,
       } as unknown as Loaded<typeof JazzAccount>;
 
-      await expect(DataExporter.exportUserData(accountWithoutRoot))
-        .rejects
-        .toThrow("Account root not available");
+      await expect(DataExporter.exportUserData(accountWithoutRoot)).rejects.toThrow(
+        "Account root not available",
+      );
     });
   });
 
@@ -153,18 +153,22 @@ describe("DataExporter", () => {
 
   describe("triggerDownload", () => {
     // Mock browser APIs
-    const mockCreateElement = vi.fn().mockImplementation(() => {
-      return {
-        href: "",
-        download: "",
-        click: vi.fn(),
-      };
-    });
+    const mockCreateElement = vi
+      .fn<(tagName: string) => { href: string; download: string; click: () => void }>()
+      .mockImplementation(() => {
+        return {
+          href: "",
+          download: "",
+          click: vi.fn<() => void>(),
+        };
+      });
 
-    const mockCreateObjectURL = vi.fn().mockReturnValue("mock-url");
-    const mockRevokeObjectURL = vi.fn();
-    const mockAppendChild = vi.fn();
-    const mockRemoveChild = vi.fn();
+    const mockCreateObjectURL = vi
+      .fn<(obj: Blob | MediaSource) => string>()
+      .mockReturnValue("mock-url");
+    const mockRevokeObjectURL = vi.fn<(url: string) => void>();
+    const mockAppendChild = vi.fn<(node: Node) => Node>();
+    const mockRemoveChild = vi.fn<(child: Node) => Node>();
 
     beforeEach(() => {
       // Reset mocks
@@ -183,7 +187,9 @@ describe("DataExporter", () => {
       if (global.document.body) {
         global.document.body.appendChild = mockAppendChild;
         global.document.body.removeChild = mockRemoveChild;
-        global.document.body.contains = vi.fn().mockReturnValue(true);
+        global.document.body.contains = vi
+          .fn<(other: Node | null) => boolean>()
+          .mockReturnValue(true);
       }
     });
 
@@ -204,9 +210,11 @@ describe("DataExporter", () => {
 
     it("should handle errors during file download", () => {
       // Mock error in createElement
-      global.document.createElement = vi.fn().mockImplementation(() => {
-        throw new Error("DOM error");
-      });
+      global.document.createElement = vi
+        .fn<(tagName: string) => HTMLElement>()
+        .mockImplementation(() => {
+          throw new Error("DOM error");
+        });
 
       const blob = new Blob(["test"], { type: "application/json" });
 
@@ -226,7 +234,9 @@ describe("DataExporter", () => {
       };
 
       // Mock the triggerDownload method to avoid DOM issues
-      const triggerDownloadSpy = vi.spyOn(DataExporter, "triggerDownload").mockImplementation(() => {});
+      const triggerDownloadSpy = vi
+        .spyOn(DataExporter, "triggerDownload")
+        .mockImplementation(() => {});
 
       DataExporter.downloadJsonFile(mockData, "test-file.json");
 
@@ -246,9 +256,11 @@ describe("DataExporter", () => {
       };
 
       // Mock error in triggerDownload
-      const triggerDownloadSpy = vi.spyOn(DataExporter, "triggerDownload").mockImplementation(() => {
-        throw new Error("Download error");
-      });
+      const triggerDownloadSpy = vi
+        .spyOn(DataExporter, "triggerDownload")
+        .mockImplementation(() => {
+          throw new Error("Download error");
+        });
 
       expect(() => {
         DataExporter.downloadJsonFile(mockData, "test-file.json");
@@ -259,5 +271,3 @@ describe("DataExporter", () => {
     });
   });
 });
-
-

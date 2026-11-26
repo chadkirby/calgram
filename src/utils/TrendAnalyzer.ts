@@ -30,7 +30,7 @@ export class TrendAnalyzer {
     }
 
     const n = data.length;
-    const smoothed: number[] = new Array(n);
+    const smoothed: number[] = Array.from({ length: n }, () => 0);
     const h = Math.max(1, Math.floor(bandwidth * n)); // Window size
 
     for (let i = 0; i < n; i++) {
@@ -64,7 +64,7 @@ export class TrendAnalyzer {
    */
   static prepareDailyCalorieData(
     meals: Loaded<typeof MealEntry>[] | undefined,
-    days: number = 30
+    days: number = 30,
   ): ChartDataPoint[] {
     if (!meals || meals.length === 0) {
       return [];
@@ -78,10 +78,10 @@ export class TrendAnalyzer {
     // Group meals by date and calculate daily totals
     const dailyTotals = new Map<string, number>();
 
-    meals.forEach(meal => {
+    meals.forEach((meal) => {
       const mealDate = DateTime.fromISO(meal.timestamp);
       if (mealDate >= startDateLuxon && mealDate <= endDateLuxon) {
-        const dateKey = mealDate.toISODate() || '';
+        const dateKey = mealDate.toISODate() || "";
         const currentTotal = dailyTotals.get(dateKey) || 0;
         dailyTotals.set(dateKey, currentTotal + meal.totalCalories);
       }
@@ -106,7 +106,7 @@ export class TrendAnalyzer {
   static prepareWeightData(
     weights: Loaded<typeof WeightEntry>[] | undefined,
     profile?: Loaded<typeof CalorieTrackerProfile>,
-    days: number = 30
+    days: number = 30,
   ): ChartDataPoint[] {
     if (!weights || weights.length === 0) {
       return [];
@@ -116,26 +116,30 @@ export class TrendAnalyzer {
     const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
 
     // Calculate the date range using Luxon
-    const endDate = DateTime.now().startOf('day');
+    const endDate = DateTime.now().startOf("day");
     const startDate = endDate.minus({ days: days - 1 });
 
     // Filter and sort weight entries within the date range
     const filteredWeights = weights
-      .filter(weight => {
+      .filter((weight) => {
         const weightDate = DateTime.fromISO(weight.timestamp);
         return weightDate >= startDate && weightDate <= endDate;
       })
-      .sort((a, b) => DateTime.fromISO(a.timestamp).toMillis() - DateTime.fromISO(b.timestamp).toMillis());
+      .toSorted(
+        (a, b) =>
+          DateTime.fromISO(a.timestamp).toMillis() - DateTime.fromISO(b.timestamp).toMillis(),
+      );
 
     // Convert to chart data points with unit conversion
-    return filteredWeights.map(weight => {
+    return filteredWeights.map((weight) => {
       // Get the stored unit (default to UnitPreferenceManager default for legacy entries)
       const storedUnit = weight.unit || UnitPreferenceManager.getDefaultBodyWeightUnit();
 
       // Convert to display unit if different
-      const convertedWeight = storedUnit === displayUnit
-        ? weight.weightValue
-        : WeightConverter.convert(weight.weightValue, storedUnit, displayUnit);
+      const convertedWeight =
+        storedUnit === displayUnit
+          ? weight.weightValue
+          : WeightConverter.convert(weight.weightValue, storedUnit, displayUnit);
 
       return {
         date: DateTime.fromISO(weight.timestamp).toJSDate(), // Convert to JS Date for chart compatibility
@@ -156,21 +160,21 @@ export class TrendAnalyzer {
     meals: Loaded<typeof MealEntry>[] | undefined,
     weights: Loaded<typeof WeightEntry>[] | undefined,
     profile?: Loaded<typeof CalorieTrackerProfile>,
-    days: number = 30
+    days: number = 30,
   ): ChartDataPoint[] {
     const calorieData = this.prepareDailyCalorieData(meals, days);
     const weightData = this.prepareWeightData(weights, profile, days);
 
     // Create a map of weight data by date for quick lookup
     const weightByDate = new Map<string, number>();
-    weightData.forEach(point => {
+    weightData.forEach((point) => {
       if (point.weight !== undefined) {
         weightByDate.set(this.formatDateKey(point.date), point.weight);
       }
     });
 
     // Combine the data
-    return calorieData.map(point => ({
+    return calorieData.map((point) => ({
       date: point.date,
       calories: point.calories,
       weight: weightByDate.get(this.formatDateKey(point.date)),
@@ -187,20 +191,20 @@ export class TrendAnalyzer {
   static calculateTemporalWeightSmooth(
     weightDataPoints: { timestamp: number; value: number }[],
     allTimePoints: number[],
-    kernelWidth: number = 4
+    kernelWidth: number = 4,
   ): (number | undefined)[] {
     if (weightDataPoints.length === 0) {
-      return new Array(allTimePoints.length).fill(undefined);
+      return Array.from({ length: allTimePoints.length }, () => undefined);
     }
 
     const smoothedValues: (number | undefined)[] = [];
-    const sortedWeightData = [...weightDataPoints].sort((a, b) => a.timestamp - b.timestamp);
+    const sortedWeightData = weightDataPoints.toSorted((a, b) => a.timestamp - b.timestamp);
 
     for (const timePoint of allTimePoints) {
       let weightSum = 0;
       let valueSum = 0;
 
-      sortedWeightData.forEach(point => {
+      sortedWeightData.forEach((point) => {
         // Calculate temporal distance in days
         const distanceMs = Math.abs(timePoint - point.timestamp);
         const distanceDays = distanceMs / (24 * 60 * 60 * 1000);
@@ -224,7 +228,8 @@ export class TrendAnalyzer {
         });
 
         // Only use nearest point if it's within reasonable distance (e.g., 30 days)
-        const nearestDistanceDays = Math.abs(nearestPoint.timestamp - timePoint) / (24 * 60 * 60 * 1000);
+        const nearestDistanceDays =
+          Math.abs(nearestPoint.timestamp - timePoint) / (24 * 60 * 60 * 1000);
         if (nearestDistanceDays <= 30) {
           smoothedValues.push(nearestPoint.value);
         } else {
@@ -244,25 +249,25 @@ export class TrendAnalyzer {
    */
   static calculateTrendLines(
     data: ChartDataPoint[],
-    bandwidth: number = 0.3
+    bandwidth: number = 0.3,
   ): { caloriesTrend: number[]; weightTrend: (number | undefined)[] } {
     // Extract calorie values (replace undefined with 0) and calculate LOWESS trend
-    const calorieValues = data.map(point => point.calories || 0);
+    const calorieValues = data.map((point) => point.calories || 0);
     const caloriesTrend = this.calculateLOWESSTrend(calorieValues, bandwidth);
 
     // Extract weight data points with timestamps
     const weightDataPoints: { timestamp: number; value: number }[] = [];
-    data.forEach(point => {
+    data.forEach((point) => {
       if (point.weight !== undefined) {
         weightDataPoints.push({
           timestamp: point.date.getTime(),
-          value: point.weight
+          value: point.weight,
         });
       }
     });
 
     // Get all timestamps for temporal smoothing
-    const allTimePoints = data.map(point => point.date.getTime());
+    const allTimePoints = data.map((point) => point.date.getTime());
 
     // Calculate temporal weight trend using exponential kernel smoothing
     const weightTrend = this.calculateTemporalWeightSmooth(weightDataPoints, allTimePoints);
@@ -292,8 +297,10 @@ export class TrendAnalyzer {
       };
     }
 
-    const calorieValues = data.map(point => point.calories || 0);
-    const weightValues = data.filter(point => point.weight !== undefined).map(point => point.weight!);
+    const calorieValues = data.map((point) => point.calories || 0);
+    const weightValues = data
+      .filter((point) => point.weight !== undefined)
+      .map((point) => point.weight!);
 
     const totalCalories = calorieValues.reduce((sum, cal) => sum + cal, 0);
     const avgCalories = totalCalories / calorieValues.length;
@@ -312,7 +319,8 @@ export class TrendAnalyzer {
       result.avgWeight = Math.round((totalWeight / weightValues.length) * 10) / 10;
 
       if (weightValues.length > 1) {
-        result.weightChange = Math.round((weightValues[weightValues.length - 1] - weightValues[0]) * 10) / 10;
+        result.weightChange =
+          Math.round((weightValues[weightValues.length - 1] - weightValues[0]) * 10) / 10;
       }
     }
 
@@ -334,7 +342,7 @@ export class TrendAnalyzer {
     }
 
     // Find the maximum calorie value
-    const maxCalories = Math.max(...data.map(point => point.calories || 0));
+    const maxCalories = Math.max(...data.map((point) => point.calories || 0));
 
     // Calculate appropriate maximum (rounded up to next multiple of 100)
     const max = Math.ceil(maxCalories / 100) * 100;
@@ -345,7 +353,7 @@ export class TrendAnalyzer {
     return {
       min: 0,
       max: Math.max(max, tickInterval), // Ensure max is at least one tick interval
-      tickInterval
+      tickInterval,
     };
   }
 
@@ -360,14 +368,16 @@ export class TrendAnalyzer {
     tickInterval: number;
   } {
     // Filter out undefined weight values
-    const weightValues = data.filter(point => point.weight !== undefined).map(point => point.weight!);
+    const weightValues = data
+      .filter((point) => point.weight !== undefined)
+      .map((point) => point.weight!);
 
     if (weightValues.length === 0) {
       // Default configuration for no weight data
       return {
         min: 0,
         max: 20,
-        tickInterval: 2
+        tickInterval: 2,
       };
     }
 
@@ -398,8 +408,8 @@ export class TrendAnalyzer {
     const dataCenter = (minWeight + maxWeight) / 2;
 
     // Calculate axis min/max to center the data
-    let axisMin = dataCenter - (axisRange / 2);
-    let axisMax = dataCenter + (axisRange / 2);
+    let axisMin = dataCenter - axisRange / 2;
+    let axisMax = dataCenter + axisRange / 2;
 
     // Round to nice values
     axisMin = Math.floor(axisMin / roundingValue) * roundingValue;
@@ -436,7 +446,7 @@ export class TrendAnalyzer {
     return {
       min: Math.max(0, axisMin), // Don't go below 0 for weights
       max: axisMax,
-      tickInterval
+      tickInterval,
     };
   }
 
@@ -446,7 +456,7 @@ export class TrendAnalyzer {
    * @returns Date string in YYYY-MM-DD format
    */
   private static formatDateKey(date: Date): string {
-    return DateTime.fromJSDate(date).toISODate() || '';
+    return DateTime.fromJSDate(date).toISODate() || "";
   }
 
   /**
@@ -465,7 +475,10 @@ export class TrendAnalyzer {
    * @param profile - User profile for unit preferences
    * @returns Formatted weight string with unit
    */
-  static formatWeightTooltip(value: number, profile?: Loaded<typeof CalorieTrackerProfile>): string {
+  static formatWeightTooltip(
+    value: number,
+    profile?: Loaded<typeof CalorieTrackerProfile>,
+  ): string {
     const displayUnit = UnitPreferenceManager.getBodyWeightUnit(profile);
     return WeightConverter.formatDisplay(value, displayUnit);
   }
@@ -486,12 +499,12 @@ export class TrendAnalyzer {
    */
   static getDateRange(days: number): { startDate: Date; endDate: Date } {
     // Use endOf('day') to include all entries for today
-    const endDate = DateTime.now().endOf('day');
+    const endDate = DateTime.now().endOf("day");
     const startDate = endDate.minus({ days: days - 1 });
 
     return {
       startDate: startDate.toJSDate(),
-      endDate: endDate.toJSDate()
+      endDate: endDate.toJSDate(),
     };
   }
 }

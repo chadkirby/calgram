@@ -24,7 +24,8 @@ export function PageErrorFallback({ error, retry, pageName = "page" }: PageError
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Unable to load {pageName}</AlertTitle>
             <AlertDescription>
-              {error?.message || `There was a problem loading the ${pageName}. This might be a temporary issue.`}
+              {error?.message ||
+                `There was a problem loading the ${pageName}. This might be a temporary issue.`}
             </AlertDescription>
           </Alert>
 
@@ -35,7 +36,7 @@ export function PageErrorFallback({ error, retry, pageName = "page" }: PageError
             </Button>
             <Button
               variant="outline"
-              onClick={() => window.location.href = '/'}
+              onClick={() => (window.location.href = "/")}
               className="flex items-center gap-2"
             >
               <Home className="h-4 w-4" />

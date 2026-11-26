@@ -1,6 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAccount } from "jazz-tools/react";
 import { JazzAccount, type MealEntry, type WeightEntry } from "../schema";
@@ -25,6 +31,100 @@ import type { Loaded } from "jazz-tools";
 const CHART_ANIMATION_DURATION = 200;
 const TOOLTIP_ANIMATION_DURATION = 150;
 
+type WeightProfile = Parameters<typeof TrendAnalyzer.formatWeightTooltip>[1];
+
+// Custom tooltip component with enhanced information
+function TrendTooltip({
+  active,
+  payload,
+  label,
+  windowWidth,
+  profile,
+}: {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  windowWidth: number;
+  profile: WeightProfile;
+}) {
+  if (active && payload && payload.length) {
+    const dataPoint = payload[0]?.payload;
+    const fullDate = dataPoint?.fullDate;
+    const isMobile = windowWidth < 640;
+
+    return (
+      <div
+        className={`bg-white p-2 sm:p-4 border border-gray-300 rounded-lg shadow-lg ${
+          isMobile ? "max-w-[280px] text-xs" : "max-w-xs text-sm"
+        }`}
+      >
+        <p className={`font-semibold text-gray-900 mb-2 ${isMobile ? "text-xs" : "text-sm"}`}>
+          {fullDate
+            ? fullDate.toLocaleDateString("en-US", {
+                weekday: isMobile ? "short" : "long",
+                year: isMobile ? "2-digit" : "numeric",
+                month: isMobile ? "short" : "long",
+                day: "numeric",
+              })
+            : label}
+        </p>
+        <div className="space-y-1">
+          {payload.map((entry: any) => {
+            if (entry.dataKey === "calories" && entry.value > 0) {
+              return (
+                <p
+                  key={entry.dataKey}
+                  className={isMobile ? "text-xs" : "text-sm"}
+                  style={{ color: entry.color }}
+                >
+                  📊 {isMobile ? "Cal:" : "Daily Calories:"}{" "}
+                  <span className="font-medium">{entry.value} cal</span>
+                </p>
+              );
+            } else if (entry.dataKey === "weight" && entry.value) {
+              const formattedWeight = TrendAnalyzer.formatWeightTooltip(entry.value, profile);
+              return (
+                <p
+                  key={entry.dataKey}
+                  className={isMobile ? "text-xs" : "text-sm"}
+                  style={{ color: entry.color }}
+                >
+                  ⚖️ Weight: <span className="font-medium">{formattedWeight}</span>
+                </p>
+              );
+            } else if (entry.dataKey === "caloriesTrend" && entry.value) {
+              return (
+                <p
+                  key={entry.dataKey}
+                  className={isMobile ? "text-xs" : "text-sm"}
+                  style={{ color: entry.color }}
+                >
+                  📈 {isMobile ? "Trend:" : "Calorie Trend:"}{" "}
+                  <span className="font-medium">{Math.round(entry.value)} cal</span>
+                </p>
+              );
+            } else if (entry.dataKey === "weightTrend" && entry.value) {
+              const formattedTrend = TrendAnalyzer.formatWeightTooltip(entry.value, profile);
+              return (
+                <p
+                  key={entry.dataKey}
+                  className={isMobile ? "text-xs" : "text-sm"}
+                  style={{ color: entry.color }}
+                >
+                  📉 {isMobile ? "W.Trend:" : "Weight Trend:"}{" "}
+                  <span className="font-medium">{formattedTrend}</span>
+                </p>
+              );
+            }
+            return null;
+          })}
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
 function TrendPageContent() {
   const { me } = useAccount(JazzAccount, {
     resolve: {
@@ -32,12 +132,14 @@ function TrendPageContent() {
       root: {
         mealEntries: { $each: true },
         weightEntries: { $each: true },
-      }
+      },
     },
   });
   const [timeRange, setTimeRange] = useState("30");
   const [isLoading, setIsLoading] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 640);
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 640,
+  );
 
   // Update window width on resize
   useEffect(() => {
@@ -45,8 +147,8 @@ function TrendPageContent() {
       setWindowWidth(window.innerWidth);
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const timeRangeOptions = [
@@ -57,68 +159,73 @@ function TrendPageContent() {
     { value: "90", label: "Last 90 days" },
   ];
 
+  const mealEntries = me?.root?.mealEntries;
+  const weightEntries = me?.root?.weightEntries;
+  const profile = me?.profile;
+
   // Prepare chart data using TrendAnalyzer with unit conversion
-  const { chartData, summaryStats, calorieAxisConfig, weightAxisConfig, hasData, weightAxisLabel } = useMemo(() => {
-    if (!me?.root?.mealEntries || !me?.root?.weightEntries) {
+  const { chartData, summaryStats, calorieAxisConfig, weightAxisConfig, hasData, weightAxisLabel } =
+    useMemo(() => {
+      if (!mealEntries || !weightEntries) {
+        return {
+          chartData: [],
+          summaryStats: null,
+          calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 },
+          weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
+          hasData: false,
+          weightAxisLabel: "Weight (lbs)",
+        };
+      }
+
+      const days = parseInt(timeRange);
+      const combinedData = TrendAnalyzer.prepareCombinedData(
+        mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
+        weightEntries.filter((weight): weight is Loaded<typeof WeightEntry> => weight != null),
+        profile,
+        days,
+      );
+
+      const axisLabel = TrendAnalyzer.getWeightAxisLabel(profile);
+
+      if (combinedData.length === 0) {
+        return {
+          chartData: [],
+          summaryStats: null,
+          calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 },
+          weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
+          hasData: false,
+          weightAxisLabel: axisLabel,
+        };
+      }
+
+      // Calculate trend lines using LOWESS
+      const trendLines = TrendAnalyzer.calculateTrendLines(combinedData);
+      const stats = TrendAnalyzer.getSummaryStats(combinedData);
+      const calorieAxis = TrendAnalyzer.calculateCalorieAxisConfig(combinedData);
+      const weightAxis = TrendAnalyzer.calculateWeightAxisConfig(combinedData);
+
+      // Format data for Recharts
+      const formattedData = combinedData.map((point, index) => ({
+        date: point.date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        fullDate: point.date,
+        calories: point.calories || 0,
+        weight: point.weight,
+        caloriesTrend: trendLines.caloriesTrend[index],
+        weightTrend: trendLines.weightTrend[index],
+      }));
+
       return {
-        chartData: [],
-        summaryStats: null,
-        calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 },
-        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
-        hasData: false,
-        weightAxisLabel: 'Weight (lbs)'
+        chartData: formattedData,
+        summaryStats: stats,
+        calorieAxisConfig: calorieAxis,
+        weightAxisConfig: weightAxis,
+        hasData: true,
+        weightAxisLabel: axisLabel,
       };
-    }
-
-    const days = parseInt(timeRange);
-    const combinedData = TrendAnalyzer.prepareCombinedData(
-      me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
-      me.root.weightEntries.filter((weight): weight is Loaded<typeof WeightEntry> => weight != null),
-      me.profile,
-      days
-    );
-
-    const weightAxisLabel = TrendAnalyzer.getWeightAxisLabel(me.profile);
-
-    if (combinedData.length === 0) {
-      return {
-        chartData: [],
-        summaryStats: null,
-        calorieAxisConfig: { min: 0, max: 500, tickInterval: 50 },
-        weightAxisConfig: { min: 0, max: 20, tickInterval: 2 },
-        hasData: false,
-        weightAxisLabel
-      };
-    }
-
-    // Calculate trend lines using LOWESS
-    const trendLines = TrendAnalyzer.calculateTrendLines(combinedData);
-    const stats = TrendAnalyzer.getSummaryStats(combinedData);
-    const calorieAxisConfig = TrendAnalyzer.calculateCalorieAxisConfig(combinedData);
-    const weightAxisConfig = TrendAnalyzer.calculateWeightAxisConfig(combinedData);
-
-    // Format data for Recharts
-    const formattedData = combinedData.map((point, index) => ({
-      date: point.date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
-      }),
-      fullDate: point.date,
-      calories: point.calories || 0,
-      weight: point.weight,
-      caloriesTrend: trendLines.caloriesTrend[index],
-      weightTrend: trendLines.weightTrend[index],
-    }));
-
-    return {
-      chartData: formattedData,
-      summaryStats: stats,
-      calorieAxisConfig,
-      weightAxisConfig,
-      hasData: true,
-      weightAxisLabel
-    };
-  }, [me?.root?.mealEntries, me?.root?.weightEntries, me?.profile, timeRange]);
+    }, [mealEntries, weightEntries, profile, timeRange]);
 
   // Handle time range change with loading state
   const handleTimeRangeChange = (value: string) => {
@@ -128,73 +235,19 @@ function TrendPageContent() {
     setTimeout(() => setIsLoading(false), CHART_ANIMATION_DURATION);
   };
 
-  // Custom tooltip component with enhanced information
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const dataPoint = payload[0]?.payload;
-      const fullDate = dataPoint?.fullDate;
-      const isMobile = windowWidth < 640;
-
-      return (
-        <div className={`bg-white p-2 sm:p-4 border border-gray-300 rounded-lg shadow-lg ${
-          isMobile ? 'max-w-[280px] text-xs' : 'max-w-xs text-sm'
-        }`}>
-          <p className={`font-semibold text-gray-900 mb-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-            {fullDate ? fullDate.toLocaleDateString('en-US', {
-              weekday: isMobile ? 'short' : 'long',
-              year: isMobile ? '2-digit' : 'numeric',
-              month: isMobile ? 'short' : 'long',
-              day: 'numeric'
-            }) : label}
-          </p>
-          <div className="space-y-1">
-            {payload.map((entry: any, index: number) => {
-              if (entry.dataKey === 'calories' && entry.value > 0) {
-                return (
-                  <p key={index} className={isMobile ? 'text-xs' : 'text-sm'} style={{ color: entry.color }}>
-                    📊 {isMobile ? 'Cal:' : 'Daily Calories:'} <span className="font-medium">{entry.value} cal</span>
-                  </p>
-                );
-              } else if (entry.dataKey === 'weight' && entry.value) {
-                const formattedWeight = TrendAnalyzer.formatWeightTooltip(entry.value, me?.profile);
-                return (
-                  <p key={index} className={isMobile ? 'text-xs' : 'text-sm'} style={{ color: entry.color }}>
-                    ⚖️ Weight: <span className="font-medium">{formattedWeight}</span>
-                  </p>
-                );
-              } else if (entry.dataKey === 'caloriesTrend' && entry.value) {
-                return (
-                  <p key={index} className={isMobile ? 'text-xs' : 'text-sm'} style={{ color: entry.color }}>
-                    📈 {isMobile ? 'Trend:' : 'Calorie Trend:'} <span className="font-medium">{Math.round(entry.value)} cal</span>
-                  </p>
-                );
-              } else if (entry.dataKey === 'weightTrend' && entry.value) {
-                const formattedTrend = TrendAnalyzer.formatWeightTooltip(entry.value, me?.profile);
-                return (
-                  <p key={index} className={isMobile ? 'text-xs' : 'text-sm'} style={{ color: entry.color }}>
-                    📉 {isMobile ? 'W.Trend:' : 'Weight Trend:'} <span className="font-medium">{formattedTrend}</span>
-                  </p>
-                );
-              }
-              return null;
-            })}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="space-y-4 sm:space-y-6">
       <ConnectionStatus />
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Calorie Trend {me?.profile?.firstName && (
+          <CardTitle className="text-lg sm:text-xl">
+            Calorie Trend{" "}
+            {me?.profile?.firstName && (
               <span className="text-sm text-muted-foreground truncate">
                 ({me.profile.firstName})
               </span>
-            )}</CardTitle>
+            )}
+          </CardTitle>
           <div className="flex flex-col gap-4 pt-2 sm:pt-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <Select value={timeRange} onValueChange={handleTimeRangeChange}>
@@ -219,12 +272,20 @@ function TrendPageContent() {
                 </Badge>
                 {summaryStats.avgWeight && (
                   <Badge variant="secondary" className="text-xs">
-                    Avg Weight: {TrendAnalyzer.formatWeightTooltip(summaryStats.avgWeight, me?.profile)}
+                    Avg Weight:{" "}
+                    {TrendAnalyzer.formatWeightTooltip(summaryStats.avgWeight, me?.profile)}
                   </Badge>
                 )}
                 {summaryStats.weightChange && (
-                  <Badge variant={summaryStats.weightChange > 0 ? "destructive" : "default"} className="text-xs">
-                    Δ: {summaryStats.weightChange > 0 ? '+' : ''}{TrendAnalyzer.formatWeightTooltip(Math.abs(summaryStats.weightChange), me?.profile)}
+                  <Badge
+                    variant={summaryStats.weightChange > 0 ? "destructive" : "default"}
+                    className="text-xs"
+                  >
+                    Δ: {summaryStats.weightChange > 0 ? "+" : ""}
+                    {TrendAnalyzer.formatWeightTooltip(
+                      Math.abs(summaryStats.weightChange),
+                      me?.profile,
+                    )}
                   </Badge>
                 )}
               </div>
@@ -236,7 +297,9 @@ function TrendPageContent() {
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-gray-900"></div>
-                <span className="ml-2 text-gray-600 text-sm sm:text-base">Loading trend data...</span>
+                <span className="ml-2 text-gray-600 text-sm sm:text-base">
+                  Loading trend data...
+                </span>
               </div>
             ) : hasData && chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -253,47 +316,103 @@ function TrendPageContent() {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: windowWidth >= 1024 ? 12 : windowWidth >= 640 ? 11 : 8 }}
-                    interval={windowWidth >= 1024 ? "preserveStartEnd" : windowWidth >= 640 ? "preserveStartEnd" : windowWidth >= 300 ? Math.ceil(chartData.length / 12) : Math.ceil(chartData.length / 4)}
+                    interval={
+                      windowWidth >= 1024
+                        ? "preserveStartEnd"
+                        : windowWidth >= 640
+                          ? "preserveStartEnd"
+                          : windowWidth >= 300
+                            ? Math.ceil(chartData.length / 12)
+                            : Math.ceil(chartData.length / 4)
+                    }
                     angle={windowWidth >= 640 ? -45 : -45}
                     textAnchor="end"
                     height={windowWidth >= 640 ? 60 : 50}
-                    axisLine={{ stroke: '#e5e7eb' }}
-                    tickLine={{ stroke: '#e5e7eb' }}
+                    axisLine={{ stroke: "#e5e7eb" }}
+                    tickLine={{ stroke: "#e5e7eb" }}
                   />
                   <YAxis
                     yAxisId="calories"
                     orientation="left"
                     tick={{ fontSize: windowWidth >= 1024 ? 12 : windowWidth >= 640 ? 11 : 8 }}
-                    label={windowWidth >= 640 ? { value: 'Calories', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } } : undefined}
+                    label={
+                      windowWidth >= 640
+                        ? {
+                            value: "Calories",
+                            angle: -90,
+                            position: "insideLeft",
+                            style: { textAnchor: "middle" },
+                          }
+                        : undefined
+                    }
                     domain={[calorieAxisConfig?.min || 0, calorieAxisConfig?.max || 500]}
-                    ticks={calorieAxisConfig ? Array.from({ length: Math.floor((calorieAxisConfig.max - calorieAxisConfig.min) / calorieAxisConfig.tickInterval) + 1 }, (_, i) => calorieAxisConfig.min + i * calorieAxisConfig.tickInterval) : undefined}
-                    axisLine={{ stroke: '#e5e7eb' }}
-                    tickLine={{ stroke: '#e5e7eb' }}
+                    ticks={
+                      calorieAxisConfig
+                        ? Array.from(
+                            {
+                              length:
+                                Math.floor(
+                                  (calorieAxisConfig.max - calorieAxisConfig.min) /
+                                    calorieAxisConfig.tickInterval,
+                                ) + 1,
+                            },
+                            (_, i) => calorieAxisConfig.min + i * calorieAxisConfig.tickInterval,
+                          )
+                        : undefined
+                    }
+                    axisLine={{ stroke: "#e5e7eb" }}
+                    tickLine={{ stroke: "#e5e7eb" }}
                     width={windowWidth >= 640 ? 60 : 35}
                   />
                   <YAxis
                     yAxisId="weight"
                     orientation="right"
                     tick={{ fontSize: windowWidth >= 1024 ? 12 : windowWidth >= 640 ? 11 : 8 }}
-                    label={windowWidth >= 640 ? { value: weightAxisLabel, angle: 90, position: 'insideRight', style: { textAnchor: 'middle' } } : undefined}
-                    domain={weightAxisConfig ? [weightAxisConfig.min, weightAxisConfig.max] : ['dataMin - 5', 'dataMax + 5']}
-                    ticks={weightAxisConfig ? Array.from({ length: Math.floor((weightAxisConfig.max - weightAxisConfig.min) / weightAxisConfig.tickInterval) + 1 }, (_, i) => weightAxisConfig.min + i * weightAxisConfig.tickInterval) : undefined}
-                    axisLine={{ stroke: '#e5e7eb' }}
-                    tickLine={{ stroke: '#e5e7eb' }}
+                    label={
+                      windowWidth >= 640
+                        ? {
+                            value: weightAxisLabel,
+                            angle: 90,
+                            position: "insideRight",
+                            style: { textAnchor: "middle" },
+                          }
+                        : undefined
+                    }
+                    domain={
+                      weightAxisConfig
+                        ? [weightAxisConfig.min, weightAxisConfig.max]
+                        : ["dataMin - 5", "dataMax + 5"]
+                    }
+                    ticks={
+                      weightAxisConfig
+                        ? Array.from(
+                            {
+                              length:
+                                Math.floor(
+                                  (weightAxisConfig.max - weightAxisConfig.min) /
+                                    weightAxisConfig.tickInterval,
+                                ) + 1,
+                            },
+                            (_, i) => weightAxisConfig.min + i * weightAxisConfig.tickInterval,
+                          )
+                        : undefined
+                    }
+                    axisLine={{ stroke: "#e5e7eb" }}
+                    tickLine={{ stroke: "#e5e7eb" }}
                     width={windowWidth >= 640 ? 60 : 35}
                   />
                   <Tooltip
-                    content={<CustomTooltip />}
-                    cursor={{ strokeDasharray: '3 3' }}
+                    content={<TrendTooltip windowWidth={windowWidth} profile={profile} />}
+                    cursor={{ strokeDasharray: "3 3" }}
                     animationDuration={TOOLTIP_ANIMATION_DURATION}
                   />
                   <Legend
                     wrapperStyle={{
-                      paddingTop: '10px',
-                      fontSize: windowWidth >= 1024 ? '14px' : windowWidth >= 640 ? '13px' : '10px'
+                      paddingTop: "10px",
+                      fontSize: windowWidth >= 1024 ? "14px" : windowWidth >= 640 ? "13px" : "10px",
                     }}
                     iconType="line"
-                    layout={windowWidth >= 640 ? 'horizontal' : 'horizontal'}
+                    layout={windowWidth >= 640 ? "horizontal" : "horizontal"}
                     align="center"
                     verticalAlign="bottom"
                     height={windowWidth >= 640 ? 40 : 30}
@@ -314,8 +433,16 @@ function TrendPageContent() {
                     dataKey="weight"
                     stroke="#3b82f6"
                     strokeWidth={windowWidth >= 1024 ? 2.5 : windowWidth >= 640 ? 2 : 1.5}
-                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: windowWidth >= 1024 ? 5 : windowWidth >= 640 ? 4 : 3 }}
-                    activeDot={{ r: windowWidth >= 1024 ? 7 : windowWidth >= 640 ? 6 : 5, stroke: '#3b82f6', strokeWidth: 2 }}
+                    dot={{
+                      fill: "#3b82f6",
+                      strokeWidth: 2,
+                      r: windowWidth >= 1024 ? 5 : windowWidth >= 640 ? 4 : 3,
+                    }}
+                    activeDot={{
+                      r: windowWidth >= 1024 ? 7 : windowWidth >= 640 ? 6 : 5,
+                      stroke: "#3b82f6",
+                      strokeWidth: 2,
+                    }}
                     name="Weight"
                     connectNulls={false}
                     animationDuration={CHART_ANIMATION_DURATION}

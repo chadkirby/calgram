@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { WifiOff, RefreshCw, AlertTriangle } from "lucide-react";
@@ -64,9 +64,7 @@ export function ConnectionStatus() {
         ) : (
           <WifiOff className="h-4 w-4" />
         )}
-        <AlertTitle>
-          {networkStatus.isOnline ? "Connection Issues" : "You're Offline"}
-        </AlertTitle>
+        <AlertTitle>{networkStatus.isOnline ? "Connection Issues" : "You're Offline"}</AlertTitle>
         <AlertDescription>
           {networkStatus.isOnline
             ? "Having trouble syncing your data. Your changes are being saved locally."

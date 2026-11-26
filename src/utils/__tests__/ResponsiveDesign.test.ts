@@ -1,6 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
-describe('Responsive Design Tests', () => {
+const setWindowWidth = (width: number) => {
+  Object.defineProperty(window, "innerWidth", {
+    writable: true,
+    configurable: true,
+    value: width,
+  });
+};
+
+describe("Responsive Design Tests", () => {
   let originalInnerWidth: number;
 
   beforeEach(() => {
@@ -9,43 +17,35 @@ describe('Responsive Design Tests', () => {
 
   afterEach(() => {
     // Restore original window width
-    Object.defineProperty(window, 'innerWidth', {
+    Object.defineProperty(window, "innerWidth", {
       writable: true,
       configurable: true,
       value: originalInnerWidth,
     });
   });
 
-  const setWindowWidth = (width: number) => {
-    Object.defineProperty(window, 'innerWidth', {
-      writable: true,
-      configurable: true,
-      value: width,
-    });
-  };
-
-  describe('Mobile breakpoints', () => {
-    it('should detect mobile screen size correctly', () => {
+  describe("Mobile breakpoints", () => {
+    it("should detect mobile screen size correctly", () => {
       setWindowWidth(375); // iPhone SE width
       expect(window.innerWidth).toBe(375);
       expect(window.innerWidth < 640).toBe(true);
     });
 
-    it('should detect tablet screen size correctly', () => {
+    it("should detect tablet screen size correctly", () => {
       setWindowWidth(768); // iPad width
       expect(window.innerWidth).toBe(768);
       expect(window.innerWidth >= 640 && window.innerWidth < 1024).toBe(true);
     });
 
-    it('should detect desktop screen size correctly', () => {
+    it("should detect desktop screen size correctly", () => {
       setWindowWidth(1280); // Desktop width
       expect(window.innerWidth).toBe(1280);
       expect(window.innerWidth >= 1024).toBe(true);
     });
   });
 
-  describe('Touch interaction helpers', () => {
-    it('should provide appropriate touch target sizes', () => {
+  describe("Touch interaction helpers", () => {
+    it("should provide appropriate touch target sizes", () => {
       // Mobile touch targets should be at least 44px
       const mobileMinTouchSize = 44;
       expect(mobileMinTouchSize).toBeGreaterThanOrEqual(44);
@@ -56,8 +56,8 @@ describe('Responsive Design Tests', () => {
     });
   });
 
-  describe('Chart responsiveness', () => {
-    it('should adjust chart margins based on screen size', () => {
+  describe("Chart responsiveness", () => {
+    it("should adjust chart margins based on screen size", () => {
       // Mobile margins
       setWindowWidth(375);
       const mobileMargins = {
@@ -83,7 +83,7 @@ describe('Responsive Design Tests', () => {
       expect(desktopMargins.left).toBe(40);
     });
 
-    it('should adjust chart element sizes based on screen size', () => {
+    it("should adjust chart element sizes based on screen size", () => {
       // Mobile chart elements
       setWindowWidth(375);
       const mobileStrokeWidth = window.innerWidth >= 640 ? 2 : 1.5;
@@ -93,15 +93,16 @@ describe('Responsive Design Tests', () => {
 
       // Desktop chart elements
       setWindowWidth(1280);
-      const desktopStrokeWidth = window.innerWidth >= 1024 ? 2.5 : window.innerWidth >= 640 ? 2 : 1.5;
+      const desktopStrokeWidth =
+        window.innerWidth >= 1024 ? 2.5 : window.innerWidth >= 640 ? 2 : 1.5;
       const desktopDotRadius = window.innerWidth >= 1024 ? 5 : window.innerWidth >= 640 ? 4 : 3;
       expect(desktopStrokeWidth).toBe(2.5);
       expect(desktopDotRadius).toBe(5);
     });
   });
 
-  describe('Text and font sizing', () => {
-    it('should provide appropriate font sizes for different screen sizes', () => {
+  describe("Text and font sizing", () => {
+    it("should provide appropriate font sizes for different screen sizes", () => {
       // Mobile font sizes
       setWindowWidth(375);
       const mobileFontSize = window.innerWidth >= 640 ? 11 : 9;
@@ -114,8 +115,8 @@ describe('Responsive Design Tests', () => {
     });
   });
 
-  describe('Layout adaptations', () => {
-    it('should adapt pie chart radius for different screen sizes', () => {
+  describe("Layout adaptations", () => {
+    it("should adapt pie chart radius for different screen sizes", () => {
       // Mobile pie chart
       setWindowWidth(375);
       const mobileRadius = window.innerWidth >= 640 ? 80 : 60;
@@ -127,16 +128,16 @@ describe('Responsive Design Tests', () => {
       expect(desktopRadius).toBe(100);
     });
 
-    it('should adapt legend layout for different screen sizes', () => {
+    it("should adapt legend layout for different screen sizes", () => {
       // Mobile legend should be vertical
       setWindowWidth(375);
-      const mobileLayout = window.innerWidth >= 640 ? 'horizontal' : 'vertical';
-      expect(mobileLayout).toBe('vertical');
+      const mobileLayout = window.innerWidth >= 640 ? "horizontal" : "vertical";
+      expect(mobileLayout).toBe("vertical");
 
       // Desktop legend should be horizontal
       setWindowWidth(1280);
-      const desktopLayout = window.innerWidth >= 640 ? 'horizontal' : 'vertical';
-      expect(desktopLayout).toBe('horizontal');
+      const desktopLayout = window.innerWidth >= 640 ? "horizontal" : "vertical";
+      expect(desktopLayout).toBe("horizontal");
     });
   });
 });

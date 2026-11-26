@@ -7,6 +7,7 @@ The DataExporter utility provides functionality for exporting meal and weight tr
 ## Features
 
 ### Data Export
+
 - Exports all meal entries and weight entries from the Jazz account
 - Transforms data to a comprehensive JSON format
 - Generates download files for user access
@@ -15,6 +16,7 @@ The DataExporter utility provides functionality for exporting meal and weight tr
 ## Methods
 
 ### exportUserData
+
 Exports user data to a structured format.
 
 ```typescript
@@ -22,15 +24,19 @@ static async exportUserData(account: Loaded<typeof JazzAccount>): Promise<Export
 ```
 
 **Parameters:**
+
 - `account`: The loaded Jazz account containing meal and weight entries
 
 **Returns:**
+
 - `Promise<ExportedData>`: A promise that resolves to the exported data
 
 **Throws:**
+
 - `Error`: If the account root is not available or fails to load
 
 ### downloadJsonFile
+
 Downloads JSON file to the user's device.
 
 ```typescript
@@ -38,15 +44,18 @@ static downloadJsonFile(data: ExportedData, filename: string): void
 ```
 
 **Parameters:**
+
 - `data`: The exported data to be downloaded
 - `filename`: The name of the file to be downloaded
 
 **Throws:**
+
 - `Error`: If the file generation or download fails
 
 ## Data Structures
 
 ### ExportedData
+
 The main data structure for exported data.
 
 ```typescript
@@ -59,6 +68,7 @@ interface ExportedData {
 ```
 
 ### ExportedMealEntry
+
 Structure for individual meal entries in the export.
 
 ```typescript
@@ -76,6 +86,7 @@ interface ExportedMealEntry {
 ```
 
 ### ExportedWeightEntry
+
 Structure for individual weight entries in the export.
 
 ```typescript
@@ -98,7 +109,7 @@ import { DataExporter } from "@/utils/DataExporter";
 const exportData = await DataExporter.exportUserData(me);
 
 // Generate filename with timestamp
-const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, '-');
+const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");
 const filename = `calorie-tracker-export-${timestamp}.json`;
 
 // Download the file
@@ -110,11 +121,13 @@ DataExporter.downloadJsonFile(exportData, filename);
 The utility provides comprehensive error handling:
 
 ### Export Errors
+
 - Account root not available
 - Failed to load account root
 - Data access errors
 
 ### Download Errors
+
 - DOM errors during file creation
 - File generation failures
 - Download process failures

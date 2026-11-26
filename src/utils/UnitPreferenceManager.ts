@@ -6,15 +6,17 @@ import type { CalorieTrackerProfile, MealWeightUnit, BodyWeightUnit } from "@/sc
  * using Jazz profile storage for real-time sync across devices
  */
 export class UnitPreferenceManager {
-  private static readonly DEFAULT_MEAL_UNIT: MealWeightUnit = 'g';
-  private static readonly DEFAULT_BODY_UNIT: BodyWeightUnit = 'lbs';
+  private static readonly DEFAULT_MEAL_UNIT: MealWeightUnit = "g";
+  private static readonly DEFAULT_BODY_UNIT: BodyWeightUnit = "lbs";
 
   /**
    * Get the user's preferred meal weight unit
    * @param profile - The loaded Jazz profile
    * @returns The preferred meal weight unit or default (grams)
    */
-  static getMealWeightUnit(profile: Loaded<typeof CalorieTrackerProfile> | undefined): MealWeightUnit {
+  static getMealWeightUnit(
+    profile: Loaded<typeof CalorieTrackerProfile> | undefined,
+  ): MealWeightUnit {
     if (!profile || !profile.mealWeightUnit) {
       return this.DEFAULT_MEAL_UNIT;
     }
@@ -28,10 +30,10 @@ export class UnitPreferenceManager {
    */
   static setMealWeightUnit(
     profile: Loaded<typeof CalorieTrackerProfile> | undefined,
-    unit: MealWeightUnit
+    unit: MealWeightUnit,
   ): void {
     if (!profile) {
-      console.warn('Cannot set meal weight unit: profile not available');
+      console.warn("Cannot set meal weight unit: profile not available");
       return;
     }
     profile.mealWeightUnit = unit;
@@ -42,7 +44,9 @@ export class UnitPreferenceManager {
    * @param profile - The loaded Jazz profile
    * @returns The preferred body weight unit or default (pounds)
    */
-  static getBodyWeightUnit(profile: Loaded<typeof CalorieTrackerProfile> | undefined): BodyWeightUnit {
+  static getBodyWeightUnit(
+    profile: Loaded<typeof CalorieTrackerProfile> | undefined,
+  ): BodyWeightUnit {
     if (!profile || !profile.bodyWeightUnit) {
       return this.DEFAULT_BODY_UNIT;
     }
@@ -56,10 +60,10 @@ export class UnitPreferenceManager {
    */
   static setBodyWeightUnit(
     profile: Loaded<typeof CalorieTrackerProfile> | undefined,
-    unit: BodyWeightUnit
+    unit: BodyWeightUnit,
   ): void {
     if (!profile) {
-      console.warn('Cannot set body weight unit: profile not available');
+      console.warn("Cannot set body weight unit: profile not available");
       return;
     }
     profile.bodyWeightUnit = unit;

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
 describe("SettingsDialog", () => {
   describe("Component Interface and Props", () => {
@@ -8,7 +8,7 @@ describe("SettingsDialog", () => {
       };
 
       expect(props.isAuthenticated).toBe(true);
-      expect(typeof props.isAuthenticated).toBe('boolean');
+      expect(typeof props.isAuthenticated).toBe("boolean");
     });
 
     it("should handle both authenticated and unauthenticated states", () => {
@@ -55,8 +55,12 @@ describe("SettingsDialog", () => {
         isAuthenticated: false,
       };
 
-      const authenticatedTitle = authenticatedProps.isAuthenticated ? "Application settings" : "Set your name";
-      const unauthenticatedTitle = unauthenticatedProps.isAuthenticated ? "Application settings" : "Set your name";
+      const authenticatedTitle = authenticatedProps.isAuthenticated
+        ? "Application settings"
+        : "Set your name";
+      const unauthenticatedTitle = unauthenticatedProps.isAuthenticated
+        ? "Application settings"
+        : "Set your name";
 
       expect(authenticatedTitle).toBe("Application settings");
       expect(unauthenticatedTitle).toBe("Set your name");

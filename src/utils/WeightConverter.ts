@@ -3,7 +3,7 @@
  * Supports grams, ounces, pounds, and kilograms with high precision
  */
 
-import type { MealWeightUnit, BodyWeightUnit } from '@/schema';
+import type { MealWeightUnit, BodyWeightUnit } from "@/schema";
 
 export type WeightUnit = MealWeightUnit | BodyWeightUnit;
 
@@ -77,19 +77,19 @@ export class WeightConverter {
     // Use appropriate decimal places based on unit and value size
     let decimals = 1;
 
-    if (unit === 'g') {
+    if (unit === "g") {
       decimals = value < 10 ? 1 : 0;
-    } else if (unit === 'oz') {
+    } else if (unit === "oz") {
       decimals = value < 1 ? 2 : 1;
-    } else if (unit === 'lb' || unit === 'lbs') {
+    } else if (unit === "lb" || unit === "lbs") {
       decimals = value < 1 ? 2 : 1;
-    } else if (unit === 'kg') {
+    } else if (unit === "kg") {
       decimals = value < 1 ? 2 : 1;
     }
 
     const formatted = value.toFixed(decimals);
     // Remove trailing zeros after decimal point only
-    const cleaned = formatted.replace(/(\.\d*)0+$/, (_, dot) => dot === '.' ? '' : dot);
+    const cleaned = formatted.replace(/(\.\d*)0+$/, (_, dot) => (dot === "." ? "" : dot));
 
     return `${cleaned}${unit}`;
   }
@@ -98,29 +98,27 @@ export class WeightConverter {
    * Get all available meal weight units
    */
   static getMealWeightUnits(): MealWeightUnit[] {
-    return ['g', 'oz', 'lb', 'kg'];
+    return ["g", "oz", "lb", "kg"];
   }
 
   /**
    * Get all available body weight units
    */
   static getBodyWeightUnits(): BodyWeightUnit[] {
-    return ['lbs', 'kg'];
+    return ["lbs", "kg"];
   }
 
   /**
    * Check if a unit is valid for meal weights
    */
   static isMealWeightUnit(unit: string): unit is MealWeightUnit {
-    return ['g', 'oz', 'lb', 'kg'].includes(unit);
+    return ["g", "oz", "lb", "kg"].includes(unit);
   }
 
   /**
    * Check if a unit is valid for body weights
    */
   static isBodyWeightUnit(unit: string): unit is BodyWeightUnit {
-    return ['lbs', 'kg'].includes(unit);
+    return ["lbs", "kg"].includes(unit);
   }
-
-
 }

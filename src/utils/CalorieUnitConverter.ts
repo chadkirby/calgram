@@ -1,14 +1,14 @@
-import type { CalorieUnit } from '../schema';
+import type { CalorieUnit } from "../schema";
 
 /**
  * Calorie density conversion factors (relative to grams)
  * These represent how many grams are in each unit
  */
 const CALORIE_CONVERSION_FACTORS = {
-  g: 1,           // Base unit
-  oz: 28.3495,    // 1 oz = 28.3495g
-  lb: 453.592,    // 1 lb = 453.592g  
-  kg: 1000,       // 1 kg = 1000g
+  g: 1, // Base unit
+  oz: 28.3495, // 1 oz = 28.3495g
+  lb: 453.592, // 1 lb = 453.592g
+  kg: 1000, // 1 kg = 1000g
 } as const;
 
 /**
@@ -24,9 +24,9 @@ export class CalorieUnitConverter {
    */
   static toCaloriesPerGram(value: number, unit: CalorieUnit): number {
     if (value < 0) {
-      throw new Error('Calorie value cannot be negative');
+      throw new Error("Calorie value cannot be negative");
     }
-    
+
     const factor = CALORIE_CONVERSION_FACTORS[unit];
     return value / factor;
   }
@@ -39,9 +39,9 @@ export class CalorieUnitConverter {
    */
   static fromCaloriesPerGram(caloriesPerGram: number, unit: CalorieUnit): number {
     if (caloriesPerGram < 0) {
-      throw new Error('Calories per gram cannot be negative');
+      throw new Error("Calories per gram cannot be negative");
     }
-    
+
     const factor = CALORIE_CONVERSION_FACTORS[unit];
     return caloriesPerGram * factor;
   }
@@ -52,10 +52,10 @@ export class CalorieUnitConverter {
    * @param unit - The display unit (defaults to 'g' if not provided)
    * @returns Formatted string with unit label
    */
-  static formatCalorieDensity(caloriesPerGram: number, unit: CalorieUnit = 'g'): string {
+  static formatCalorieDensity(caloriesPerGram: number, unit: CalorieUnit = "g"): string {
     const displayValue = this.fromCaloriesPerGram(caloriesPerGram, unit);
     const unitLabel = this.getUnitLabel(unit);
-    
+
     // Use appropriate decimal places based on the magnitude of the value
     const decimalPlaces = displayValue >= 10 ? 1 : 2;
     return `${displayValue.toFixed(decimalPlaces)} ${unitLabel}`;
