@@ -11,7 +11,6 @@ permissions:
 
 env:
   CI: true
-  VOLTA_FEATURE_PNPM: 1
 
 jobs:
   unit-tests:
@@ -20,35 +19,32 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Install Volta
-        uses: volta-cli/action@v4
+      # Node and pnpm versions come from package.json devEngines (mise.toml
+      # turns on reading them).
+      - name: Install toolchain (mise)
+        uses: jdx/mise-action@v5
+        with:
+          auto_update: true
 
-      - name: Verify toolchain (Volta)
+      - name: Verify toolchain
         run: |
-          volta --version
+          mise --version
           node -v
-          corepack enable
           pnpm -v
 
-      # Cache Strategy:
-      # 1. Try exact match using pnpm-lock.yaml hash
-      # 2. If no match, fall back to any previous cache for this OS
-      # 3. If still no match, create new cache
-      - name: Cache pnpm dependencies
-        uses: actions/cache@v3
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v6
         with:
-          # Define what paths should be cached
-          path: |
-            **/node_modules
-            ~/.pnpm-store
-          # Primary cache key - unique per pnpm-lock.yaml change
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          # Fallback key - matches any previous cache for this OS/pnpm combo
-          # Useful when dependencies partially change
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -58,7 +54,7 @@ jobs:
 
       - name: Upload coverage (if exists)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-unit
           path: |
