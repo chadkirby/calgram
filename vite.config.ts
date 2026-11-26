@@ -17,11 +17,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       external: (id) => {
-        return id.includes('__tests__')
+        return id.includes("__tests__");
       },
       onwarn(warning, warn) {
         // Suppress warnings about comments that Rollup can't interpret
-        if (warning.code === 'INVALID_ANNOTATION') {
+        if (warning.code === "INVALID_ANNOTATION") {
           return;
         }
         warn(warning);
@@ -30,7 +30,7 @@ export default defineConfig({
   },
   // @ts-ignore - vitest config
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
     setupFiles: [],
     exclude: ["tests/", "node_modules/", "dist/"],

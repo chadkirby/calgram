@@ -2,7 +2,16 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAccount } from "jazz-tools/react";
 import { JazzAccount, type WeightEntry } from "../schema";
 import { DateTime } from "luxon";
@@ -23,7 +32,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
       profile: true,
       root: {
         weightEntries: { $each: true },
-      }
+      },
     },
   });
 
@@ -39,7 +48,10 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
 
     return [...me.root.weightEntries]
       .filter((entry): entry is Loaded<typeof WeightEntry> => entry != null)
-      .sort((a, b) => DateTime.fromISO(b.timestamp).toMillis() - DateTime.fromISO(a.timestamp).toMillis());
+      .sort(
+        (a, b) =>
+          DateTime.fromISO(b.timestamp).toMillis() - DateTime.fromISO(a.timestamp).toMillis(),
+      );
   }, [me?.root?.weightEntries]);
 
   // Get entries to display based on current display count
@@ -62,8 +74,8 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
             me.root.weightEntries.splice(index, 1);
           }
         },
-        'weight-deletion',
-        updateSyncStatus
+        "weight-deletion",
+        updateSyncStatus,
       )();
     } catch (error) {
       console.error("Error deleting weight entry:", error);
@@ -81,7 +93,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
   const formatRelativeDate = (timestamp: string) => {
     const date = DateTime.fromISO(timestamp);
     const now = DateTime.now();
-    const diff = now.diff(date, 'days').days;
+    const diff = now.diff(date, "days").days;
 
     if (diff < 1) return "Today";
     if (diff < 2) return "Yesterday";
@@ -91,13 +103,13 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
 
   const formatWeightDisplay = (entry: Loaded<typeof WeightEntry>) => {
     // Get the stored unit (default to 'lbs' for legacy entries)
-    const storedUnit = entry.unit || 'lbs';
+    const storedUnit = entry.unit || "lbs";
 
     // Format the original value in its stored unit
     const originalDisplay = WeightConverter.formatDisplay(entry.weightValue, storedUnit);
 
     // Always show the opposite unit in parentheses
-    const oppositeUnit = storedUnit === 'kg' ? 'lbs' : 'kg';
+    const oppositeUnit = storedUnit === "kg" ? "lbs" : "kg";
     const convertedWeight = WeightConverter.convert(entry.weightValue, storedUnit, oppositeUnit);
     const convertedDisplay = WeightConverter.formatDisplay(convertedWeight, oppositeUnit);
 
@@ -117,7 +129,9 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
           <div className="text-center py-8">
             <Weight className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No weight entries yet</h3>
-            <p className="text-gray-500">Start tracking your weight to see your progress over time.</p>
+            <p className="text-gray-500">
+              Start tracking your weight to see your progress over time.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -155,9 +169,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
                     <Badge variant="outline" className="text-xs w-fit mt-1 mb-1">
                       {formatRelativeDate(entry.timestamp)}
                     </Badge>
-                    {entry.notes && (
-                      <p className="text-sm text-gray-600 mt-2">{entry.notes}</p>
-                    )}
+                    {entry.notes && <p className="text-sm text-gray-600 mt-2">{entry.notes}</p>}
                   </div>
                   <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
                     <Button
@@ -187,7 +199,9 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
             <div className="pt-4 flex justify-center">
               <Button
                 variant="outline"
-                onClick={() => setDisplayCount(prev => Math.min(prev + ENTRIES_PER_LOAD, sortedEntries.length))}
+                onClick={() =>
+                  setDisplayCount((prev) => Math.min(prev + ENTRIES_PER_LOAD, sortedEntries.length))
+                }
                 className="w-full sm:w-auto"
               >
                 <ChevronDown className="h-4 w-4 mr-2" />

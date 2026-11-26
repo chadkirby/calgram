@@ -20,7 +20,7 @@ async function gotoAndWaitForTabs(page: Page, path: string) {
 
   return {
     tablist: tablist,
-    tab: (name: string) => (tablist.getByRole("tab", { name })),
+    tab: (name: string) => tablist.getByRole("tab", { name }),
   };
 }
 
@@ -31,10 +31,10 @@ async function gotoAndWaitForTabs(page: Page, path: string) {
  * Assert using those stable attributes instead of panel id.
  */
 async function expectActiveTab(page: Page, tabName: string) {
-    // Assert the intended tab is selected/active
-    const tab = page.getByRole("tab", { name: tabName }).first();
-    await expect(tab).toHaveAttribute("aria-selected", "true");
-    await expect(tab).toHaveAttribute("data-state", "active");
+  // Assert the intended tab is selected/active
+  const tab = page.getByRole("tab", { name: tabName }).first();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  await expect(tab).toHaveAttribute("data-state", "active");
 }
 
 /**
@@ -80,19 +80,21 @@ test.describe("Trends Page", () => {
  * Navigation flow
  */
 test.describe("Navigation", () => {
-  test("should navigate between pages using tabs (or direct routes in e2e bypass)", async ({ page }) => {
+  test("should navigate between pages using tabs (or direct routes in e2e bypass)", async ({
+    page,
+  }) => {
     const { tab } = await gotoAndWaitForTabs(page, "/daily");
 
-      await tab("Daily").click();
-      await expect(page).toHaveURL(/\/daily\/?$/);
-      await expectActiveTab(page, "Daily");
+    await tab("Daily").click();
+    await expect(page).toHaveURL(/\/daily\/?$/);
+    await expectActiveTab(page, "Daily");
 
-      await tab("Weight").click();
-      await expect(page).toHaveURL(/\/weight\/?$/);
-      await expectActiveTab(page, "Weight");
+    await tab("Weight").click();
+    await expect(page).toHaveURL(/\/weight\/?$/);
+    await expectActiveTab(page, "Weight");
 
-      await tab("Trends").click();
-      await expect(page).toHaveURL(/\/trends\/?$/);
-      await expectActiveTab(page, "Trends");
+    await tab("Trends").click();
+    await expect(page).toHaveURL(/\/trends\/?$/);
+    await expectActiveTab(page, "Trends");
   });
 });

@@ -20,7 +20,7 @@ function WeightPageContent() {
       profile: true,
       root: {
         weightEntries: { $each: true },
-      }
+      },
     },
   });
 
@@ -78,20 +78,23 @@ function WeightPageContent() {
       await withSyncErrorHandling(
         async () => {
           // Create weight entry using Jazz schema
-          const weightEntry = WeightEntry.create({
-            timestamp: data.date,
-            weightValue: data.weightValue,
-            unit: data.unit,
-            notes: data.notes || "",
-          }, me.root._owner);
+          const weightEntry = WeightEntry.create(
+            {
+              timestamp: data.date,
+              weightValue: data.weightValue,
+              unit: data.unit,
+              notes: data.notes || "",
+            },
+            me.root._owner,
+          );
 
           // Add to weight entries
           me.root.weightEntries?.push(weightEntry);
 
           return weightEntry;
         },
-        'weight-creation',
-        updateSyncStatus
+        "weight-creation",
+        updateSyncStatus,
       )();
     } catch (error) {
       console.error("Error recording weight:", error);
@@ -108,11 +111,12 @@ function WeightPageContent() {
         <CardHeader>
           <div className="flex flex-row justify-between items-center gap-2">
             <CardTitle className="text-lg sm:text-xl lg:text-2xl">
-              Weight Tracking {me?.profile?.firstName && (
-              <span className="text-sm text-muted-foreground truncate">
-                ({me.profile.firstName})
-              </span>
-            )}
+              Weight Tracking{" "}
+              {me?.profile?.firstName && (
+                <span className="text-sm text-muted-foreground truncate">
+                  ({me.profile.firstName})
+                </span>
+              )}
             </CardTitle>
             {/* Removed Add Weight button from here */}
           </div>
@@ -130,11 +134,7 @@ function WeightPageContent() {
             <WeightEntryList
               onEdit={handleEditWeight}
               addButton={
-                <Button
-                  onClick={handleAddWeight}
-                  size="sm"
-                  className="shrink-0"
-                >
+                <Button onClick={handleAddWeight} size="sm" className="shrink-0">
                   <Plus className="mr-1 h-4 w-4" />
                   Add Weight
                 </Button>

@@ -34,7 +34,7 @@ export function DataCard() {
       const exportData = await DataExporter.exportUserData(me);
 
       // Generate filename with timestamp
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, '-');
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");
       const filename = `calorie-tracker-export-${timestamp}.json`;
 
       // Download the file
@@ -43,13 +43,13 @@ export function DataCard() {
       // Show success message
       setImportResult({
         success: true,
-        message: "Data exported successfully!"
+        message: "Data exported successfully!",
       });
     } catch (error) {
       console.error("Export failed:", error);
       setImportResult({
         success: false,
-        message: `Export failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        message: `Export failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       });
     } finally {
       setIsExporting(false);
@@ -92,13 +92,13 @@ export function DataCard() {
         mealCount: result.mealCount,
         weightCount: result.weightCount,
         duplicatesSkipped: result.duplicatesSkipped,
-        errors: result.errors.length > 0 ? result.errors : undefined
+        errors: result.errors.length > 0 ? result.errors : undefined,
       });
     } catch (error) {
       console.error("Import failed:", error);
       setImportResult({
         success: false,
-        message: `Import failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        message: `Import failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       });
     } finally {
       setIsImporting(false);
@@ -135,11 +135,7 @@ export function DataCard() {
             )}
             Import Data
           </Button>
-          <Button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="flex items-center gap-2"
-          >
+          <Button onClick={handleExport} disabled={isExporting} className="flex items-center gap-2">
             {isExporting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -169,15 +165,13 @@ export function DataCard() {
               {importResult.success && importResult.mealCount !== undefined && (
                 <span className="block mt-1 text-xs">
                   Meals: {importResult.mealCount}, Weights: {importResult.weightCount}
-                  {importResult.duplicatesSkipped && importResult.duplicatesSkipped > 0 &&
-                    `, Skipped duplicates: ${importResult.duplicatesSkipped}`
-                  }
+                  {importResult.duplicatesSkipped &&
+                    importResult.duplicatesSkipped > 0 &&
+                    `, Skipped duplicates: ${importResult.duplicatesSkipped}`}
                 </span>
               )}
               {importResult.errors && importResult.errors.length > 0 && (
-                <span className="block mt-1 text-xs">
-                  Errors: {importResult.errors.join(", ")}
-                </span>
+                <span className="block mt-1 text-xs">Errors: {importResult.errors.join(", ")}</span>
               )}
             </AlertDescription>
           </Alert>

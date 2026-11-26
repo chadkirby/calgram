@@ -1,23 +1,19 @@
-import * as React from "react"
-import { CalendarIcon } from "lucide-react"
-import { DateTime } from "luxon"
+import * as React from "react";
+import { CalendarIcon } from "lucide-react";
+import { DateTime } from "luxon";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface DatePickerProps {
-  value?: string
-  onChange?: (value: string) => void
-  placeholder?: string
-  className?: string
-  disabled?: boolean
-  error?: boolean
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  error?: boolean;
 }
 
 export function DatePicker({
@@ -28,26 +24,26 @@ export function DatePicker({
   disabled = false,
   error = false,
 }: DatePickerProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
   // Convert string date to Date object for the calendar
-  const selectedDate = value ? DateTime.fromISO(value).toJSDate() : undefined
+  const selectedDate = value ? DateTime.fromISO(value).toJSDate() : undefined;
 
   // Handle date selection from calendar
   const handleSelect = (date: Date | undefined) => {
     if (date && onChange) {
-      const isoDate = DateTime.fromJSDate(date).toISODate()
+      const isoDate = DateTime.fromJSDate(date).toISODate();
       if (isoDate) {
-        onChange(isoDate)
+        onChange(isoDate);
       }
     }
-    setOpen(false)
-  }
+    setOpen(false);
+  };
 
   // Format display date
   const displayDate = selectedDate
     ? DateTime.fromJSDate(selectedDate).toLocaleString(DateTime.DATE_MED)
-    : placeholder
+    : placeholder;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -58,7 +54,7 @@ export function DatePicker({
             "w-full justify-start text-left font-normal min-h-[40px] text-base sm:text-sm",
             !selectedDate && "text-muted-foreground",
             error && "border-destructive focus-visible:ring-destructive",
-            className
+            className,
           )}
           disabled={disabled}
         >
@@ -67,12 +63,8 @@ export function DatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleSelect}
-        />
+        <Calendar mode="single" selected={selectedDate} onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
-  )
+  );
 }

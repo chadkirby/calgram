@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DataImporter } from "../DataImporter";
 import { DataExporter } from "../DataExporter";
 import { type Loaded } from "jazz-tools";
@@ -129,9 +129,9 @@ describe("DataExporter", () => {
         root: undefined,
       } as unknown as Loaded<typeof JazzAccount>;
 
-      await expect(DataExporter.exportUserData(accountWithoutRoot))
-        .rejects
-        .toThrow("Account root not available");
+      await expect(DataExporter.exportUserData(accountWithoutRoot)).rejects.toThrow(
+        "Account root not available",
+      );
     });
   });
 
@@ -226,7 +226,9 @@ describe("DataExporter", () => {
       };
 
       // Mock the triggerDownload method to avoid DOM issues
-      const triggerDownloadSpy = vi.spyOn(DataExporter, "triggerDownload").mockImplementation(() => {});
+      const triggerDownloadSpy = vi
+        .spyOn(DataExporter, "triggerDownload")
+        .mockImplementation(() => {});
 
       DataExporter.downloadJsonFile(mockData, "test-file.json");
 
@@ -246,9 +248,11 @@ describe("DataExporter", () => {
       };
 
       // Mock error in triggerDownload
-      const triggerDownloadSpy = vi.spyOn(DataExporter, "triggerDownload").mockImplementation(() => {
-        throw new Error("Download error");
-      });
+      const triggerDownloadSpy = vi
+        .spyOn(DataExporter, "triggerDownload")
+        .mockImplementation(() => {
+          throw new Error("Download error");
+        });
 
       expect(() => {
         DataExporter.downloadJsonFile(mockData, "test-file.json");
@@ -259,5 +263,3 @@ describe("DataExporter", () => {
     });
   });
 });
-
-

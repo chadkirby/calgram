@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { DataCard } from '../DataCard';
+import { describe, it, expect } from "vitest";
+import { DataCard } from "../DataCard";
 
 describe("DataCard", () => {
   describe("Component Interface and Props", () => {
     it("should be a functional component with no required props", () => {
       // DataCard doesn't require any props
       const dataCard = DataCard;
-      expect(typeof dataCard).toBe('function');
+      expect(typeof dataCard).toBe("function");
     });
   });
 

@@ -31,7 +31,13 @@ export function Layout() {
               <span className="text-sm font-semibold truncate">Sammygram</span>
               {/* Optional logo + long name when space permits; hidden by default for compactness */}
               <div className="hidden xs:flex items-center gap-2 truncate">
-                <img src="/logo.webp" alt="" className="h-5 w-auto flex-shrink-0" height="20" width="80" />
+                <img
+                  src="/logo.webp"
+                  alt=""
+                  className="h-5 w-auto flex-shrink-0"
+                  height="20"
+                  width="80"
+                />
                 <span className="text-sm font-semibold truncate">Sammygram Calorie Tracker</span>
               </div>
             </div>
@@ -47,8 +53,16 @@ export function Layout() {
           {/* Desktop header */}
           <div className="hidden sm:flex justify-between items-center p-4 gap-4">
             <div className="flex items-center gap-3">
-              <img src="/logo.webp" alt="Sammygram Calorie Tracker" className="h-7 w-auto" height="28" width="112" />
-              <h1 className="text-lg lg:text-xl font-semibold truncate">Sammygram Calorie Tracker</h1>
+              <img
+                src="/logo.webp"
+                alt="Sammygram Calorie Tracker"
+                className="h-7 w-auto"
+                height="28"
+                width="112"
+              />
+              <h1 className="text-lg lg:text-xl font-semibold truncate">
+                Sammygram Calorie Tracker
+              </h1>
               {isAuthenticated && me?.profile?.firstName && me.profile.firstName !== "Nobody" && (
                 <span className="text-sm text-muted-foreground truncate">
                   Welcome, {me.profile.firstName}!
@@ -59,9 +73,7 @@ export function Layout() {
               {isAuthenticated ? (
                 <span className="text-sm text-muted-foreground">Logged in</span>
               ) : (
-                <span className="text-sm text-muted-foreground">
-                  Authenticate to sync data
-                </span>
+                <span className="text-sm text-muted-foreground">Authenticate to sync data</span>
               )}
               <SettingsDialog />
               <AuthButton />
@@ -73,7 +85,10 @@ export function Layout() {
       <main className="max-w-7xl mx-auto p-1 sm:p-4 lg:p-6">
         {isAuthenticated ? (
           <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList data-testid="main-tabs" className="grid w-full grid-cols-3 h-auto mb-0 sm:mb-6">
+            <TabsList
+              data-testid="main-tabs"
+              className="grid w-full grid-cols-3 h-auto mb-0 sm:mb-6"
+            >
               <TabsTrigger
                 value="daily"
                 className="text-xs sm:text-sm py-1.5 sm:py-3 px-1 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 min-h-[40px] sm:min-h-[2.5rem]"

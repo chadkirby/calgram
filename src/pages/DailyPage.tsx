@@ -15,12 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit, Plus } from "lucide-react";
 import { MealEntryForm } from "@/components/MealEntryForm";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
@@ -39,12 +34,13 @@ function DailyPageContent() {
       root: {
         mealEntries: { $each: true },
         weightEntries: { $each: true },
-        foodIntelligence: {  // Load foodIntelligence for the edit form
+        foodIntelligence: {
+          // Load foodIntelligence for the edit form
           recentFoods: { $each: true },
           recentCategories: { $each: true },
-          foodData: { $each: true }
-        }
-      }
+          foodData: { $each: true },
+        },
+      },
     },
   });
   const [selectedDate, setSelectedDate] = useState(CalorieCalculator.getTodayAtMidnight());
@@ -54,16 +50,18 @@ function DailyPageContent() {
   const [isAddMealDialogOpen, setIsAddMealDialogOpen] = useState(false);
 
   // Filter meal entries by selected date
-  const filteredMealEntries = me?.root?.mealEntries?.filter((meal): meal is Loaded<typeof MealEntry> =>
-    meal != null && CalorieCalculator.isSameDay(meal.timestamp, selectedDate)
-  ) || [];
+  const filteredMealEntries =
+    me?.root?.mealEntries?.filter(
+      (meal): meal is Loaded<typeof MealEntry> =>
+        meal != null && CalorieCalculator.isSameDay(meal.timestamp, selectedDate),
+    ) || [];
 
   // Calculate daily totals for the selected date
   const dailyCalories = me?.root?.mealEntries
     ? CalorieCalculator.calculateDailyTotal(
-      me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
-      selectedDate
-    )
+        me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
+        selectedDate,
+      )
     : 0;
 
   // Count meals for the selected date
@@ -89,7 +87,7 @@ function DailyPageContent() {
 
   // Handle closing date picker on blur, enter, or escape
   const handleDatePickerKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' || event.key === 'Escape') {
+    if (event.key === "Enter" || event.key === "Escape") {
       setShowDatePicker(false);
     }
   };
@@ -104,30 +102,30 @@ function DailyPageContent() {
   // Calculate category breakdown for pie chart
   const categoryBreakdown = me?.root?.mealEntries
     ? CalorieCalculator.calculateCategoryBreakdown(
-      me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
-      selectedDate
-    )
+        me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
+        selectedDate,
+      )
     : {};
 
   // Prepare pie chart data
   const pieChartData = Object.entries(categoryBreakdown).map(([category, calories]) => ({
     name: category,
     value: calories,
-    percentage: dailyCalories > 0 ? ((calories / dailyCalories) * 100).toFixed(1) : '0'
+    percentage: dailyCalories > 0 ? ((calories / dailyCalories) * 100).toFixed(1) : "0",
   }));
 
   // Color palette for pie chart
   const COLORS = [
-    '#8884d8', // Purple
-    '#82ca9d', // Green
-    '#ffc658', // Yellow
-    '#ff7c7c', // Red
-    '#8dd1e1', // Light Blue
-    '#d084d0', // Pink
-    '#ffb347', // Orange
-    '#87ceeb', // Sky Blue
-    '#dda0dd', // Plum
-    '#98fb98', // Pale Green
+    "#8884d8", // Purple
+    "#82ca9d", // Green
+    "#ffc658", // Yellow
+    "#ff7c7c", // Red
+    "#8dd1e1", // Light Blue
+    "#d084d0", // Pink
+    "#ffb347", // Orange
+    "#87ceeb", // Sky Blue
+    "#dda0dd", // Plum
+    "#98fb98", // Pale Green
   ];
 
   // Custom tooltip for pie chart
@@ -196,11 +194,14 @@ function DailyPageContent() {
       <ConnectionStatus />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg lg:text-xl">Daily Calories {me?.profile?.firstName && (
+          <CardTitle className="text-base sm:text-lg lg:text-xl">
+            Daily Calories{" "}
+            {me?.profile?.firstName && (
               <span className="text-sm text-muted-foreground truncate">
                 ({me.profile.firstName})
               </span>
-            )}</CardTitle>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {/* Compact Date Navigation */}
@@ -229,7 +230,9 @@ function DailyPageContent() {
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-1">
-                  <h3 className={`text-sm sm:text-base font-semibold truncate ${isToday ? 'sm:border-none border border-primary/30 rounded px-2 py-0.5' : ''}`}>
+                  <h3
+                    className={`text-sm sm:text-base font-semibold truncate ${isToday ? "sm:border-none border border-primary/30 rounded px-2 py-0.5" : ""}`}
+                  >
                     {CalorieCalculator.formatDateForDisplay(selectedDate)}
                   </h3>
                   <Button
@@ -241,7 +244,9 @@ function DailyPageContent() {
                     <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   {isToday && (
-                    <Badge variant="secondary" className="text-xs ml-1 hidden sm:inline-flex">Today</Badge>
+                    <Badge variant="secondary" className="text-xs ml-1 hidden sm:inline-flex">
+                      Today
+                    </Badge>
                   )}
                 </div>
               )}
@@ -263,7 +268,9 @@ function DailyPageContent() {
               <CardHeader className="text-center">
                 <div className="flex justify-center gap-6 sm:gap-8">
                   <div>
-                    <div className="text-lg sm:text-xl font-bold text-primary">{dailyCalories.toFixed(1)}</div>
+                    <div className="text-lg sm:text-xl font-bold text-primary">
+                      {dailyCalories.toFixed(1)}
+                    </div>
                     <p className="text-xs text-muted-foreground">Total Calories</p>
                   </div>
                   <div>
@@ -286,10 +293,13 @@ function DailyPageContent() {
                             const isMobile = window.innerWidth < 640;
                             const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;
                             if (isMobile) return `${percentage}%`;
-                            if (isTablet) return `${name.length > 8 ? name.substring(0, 8) + '...' : name} (${percentage}%)`;
+                            if (isTablet)
+                              return `${name.length > 8 ? name.substring(0, 8) + "..." : name} (${percentage}%)`;
                             return `${name} (${percentage}%)`;
                           }}
-                          outerRadius={window.innerWidth >= 1024 ? 120 : window.innerWidth >= 640 ? 100 : 80}
+                          outerRadius={
+                            window.innerWidth >= 1024 ? 120 : window.innerWidth >= 640 ? 100 : 80
+                          }
                           innerRadius={window.innerWidth >= 640 ? 25 : 20}
                           fill="#8884d8"
                           dataKey="value"
@@ -304,10 +314,15 @@ function DailyPageContent() {
                         <Tooltip content={<CustomTooltip />} />
                         <Legend
                           wrapperStyle={{
-                            fontSize: window.innerWidth >= 1024 ? '14px' : window.innerWidth >= 640 ? '13px' : '11px',
-                            paddingTop: '10px'
+                            fontSize:
+                              window.innerWidth >= 1024
+                                ? "14px"
+                                : window.innerWidth >= 640
+                                  ? "13px"
+                                  : "11px",
+                            paddingTop: "10px",
                           }}
-                          layout={window.innerWidth >= 640 ? 'horizontal' : 'vertical'}
+                          layout={window.innerWidth >= 640 ? "horizontal" : "vertical"}
                           align="center"
                           verticalAlign="bottom"
                           iconSize={window.innerWidth >= 640 ? 14 : 12}
@@ -319,7 +334,9 @@ function DailyPageContent() {
                   <div className="h-36 sm:h-48 lg:h-64 flex items-center justify-center text-muted-foreground w-full">
                     <div className="text-center p-4">
                       <p className="text-sm sm:text-base">No meals logged for this date</p>
-                      <p className="text-xs sm:text-sm mt-1">Add some meals to see the category breakdown</p>
+                      <p className="text-xs sm:text-sm mt-1">
+                        Add some meals to see the category breakdown
+                      </p>
                     </div>
                   </div>
                 )}
@@ -331,11 +348,7 @@ function DailyPageContent() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base sm:text-lg">Meal Entries</CardTitle>
-                  <Button
-                    onClick={handleAddMeal}
-                    size="sm"
-                    className="touch-manipulation"
-                  >
+                  <Button onClick={handleAddMeal} size="sm" className="touch-manipulation">
                     <Plus className="h-4 w-4 mr-1" />
                     Add Meal
                   </Button>
@@ -356,12 +369,14 @@ function DailyPageContent() {
 
                         {/* Main content - flows like a paragraph */}
                         <div className="flex-1 min-w-0 flex items-center flex-wrap gap-x-3 gap-y-1">
-                          <div className="text-xs sm:text-sm text-muted-foreground">{meal.foodCategory}</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">
+                            {meal.foodCategory}
+                          </div>
                           <div className="font-medium text-xs sm:text-sm">{meal.foodName}</div>
                           <div className="text-xs sm:text-sm">
                             {CalorieCalculator.getFormattedWeight(
                               meal,
-                              UnitPreferenceManager.getMealWeightUnit(me?.profile)
+                              UnitPreferenceManager.getMealWeightUnit(me?.profile),
                             )}
                           </div>
                           <div className="text-xs sm:text-sm font-medium">
@@ -396,14 +411,18 @@ function DailyPageContent() {
                             </AlertDialogTrigger>
                             <AlertDialogContent className="max-w-[90vw] sm:max-w-lg mx-4">
                               <AlertDialogHeader>
-                                <AlertDialogTitle className="text-base sm:text-lg">Delete Meal Entry</AlertDialogTitle>
+                                <AlertDialogTitle className="text-base sm:text-lg">
+                                  Delete Meal Entry
+                                </AlertDialogTitle>
                                 <AlertDialogDescription className="text-sm sm:text-base">
-                                  Are you sure you want to delete this meal entry for "{meal.foodName}"?
-                                  This action cannot be undone.
+                                  Are you sure you want to delete this meal entry for "
+                                  {meal.foodName}"? This action cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-                                <AlertDialogCancel className="w-full sm:w-auto touch-manipulation">Cancel</AlertDialogCancel>
+                                <AlertDialogCancel className="w-full sm:w-auto touch-manipulation">
+                                  Cancel
+                                </AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDeleteMeal(meal.id)}
                                   className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90 touch-manipulation"
@@ -420,9 +439,13 @@ function DailyPageContent() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <div className="p-4">
-                      <p className="text-sm sm:text-base">No meals logged for {CalorieCalculator.formatDateForDisplay(selectedDate)}</p>
+                      <p className="text-sm sm:text-base">
+                        No meals logged for {CalorieCalculator.formatDateForDisplay(selectedDate)}
+                      </p>
                       <p className="text-xs sm:text-sm mt-1">
-                        {isToday ? "Start logging meals to see them here" : "No meals were logged on this date"}
+                        {isToday
+                          ? "Start logging meals to see them here"
+                          : "No meals were logged on this date"}
                       </p>
                     </div>
                   </div>

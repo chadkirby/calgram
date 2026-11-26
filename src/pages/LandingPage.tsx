@@ -86,19 +86,15 @@ export function LandingPage() {
         Calorie tracking for real life (and real pups)
       </h1>
       <p className="max-w-2xl text-sm sm:text-base text-muted-foreground">
-        Built for anyone with a kitchen scale who wants simple, accurate calorie tracking and
-        a clear picture of weight over time. Weigh food, log calories, and keep your subject on track.
+        Built for anyone with a kitchen scale who wants simple, accurate calorie tracking and a
+        clear picture of weight over time. Weigh food, log calories, and keep your subject on track.
       </p>
 
       <div className="flex items-center gap-3 sm:gap-4">
         <Button className="btn-touch px-5 sm:px-6" onClick={openSignup}>
           Sign up
         </Button>
-        <Button
-          className="btn-touch px-5 sm:px-6"
-          variant="outline"
-          onClick={() => auth.logIn()}
-        >
+        <Button className="btn-touch px-5 sm:px-6" variant="outline" onClick={() => auth.logIn()}>
           Log in
         </Button>
       </div>
@@ -127,7 +123,7 @@ export function LandingPage() {
       <div className="max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-2 sm:mt-4 text-left">
         <FeatureCard
           title="Flexible categories"
-          text='Use categories that make sense for you—like “dry dog food”, “wet dog food”, “people food”, and “treats”. The breakdown makes over‑treating obvious (and fixable).'
+          text="Use categories that make sense for you—like “dry dog food”, “wet dog food”, “people food”, and “treats”. The breakdown makes over‑treating obvious (and fixable)."
         />
         <FeatureCard
           title="Small changes, big wins"
@@ -137,7 +133,11 @@ export function LandingPage() {
 
       <div className="max-w-3xl pt-2 sm:pt-4 text-xs sm:text-sm text-muted-foreground">
         <p className="mt-2">
-          Want the backstory? <a href="/about" className="underline hover:no-underline">Read Sammy’s story</a>.
+          Want the backstory?{" "}
+          <a href="/about" className="underline hover:no-underline">
+            Read Sammy’s story
+          </a>
+          .
         </p>
       </div>
 
@@ -150,13 +150,13 @@ export function LandingPage() {
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="firstName">First name</Label>
-                  <Input
-                    id="firstName"
-                    placeholder="Jane"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    autoFocus={false}
-                  />
+              <Input
+                id="firstName"
+                placeholder="Jane"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                autoFocus={false}
+              />
               <p className="text-xs text-muted-foreground">
                 We’ll label your passkey as Sammygram ({firstName || "User"}).
               </p>
@@ -165,9 +165,7 @@ export function LandingPage() {
               <Button variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button onClick={handleContinue}>
-                Continue
-              </Button>
+              <Button onClick={handleContinue}>Continue</Button>
             </div>
           </div>
         </DialogContent>

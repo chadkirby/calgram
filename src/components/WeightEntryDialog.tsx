@@ -47,7 +47,14 @@ interface WeightEntryDialogProps {
   mode: "add" | "edit";
 }
 
-export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, mode }: WeightEntryDialogProps) {
+export function WeightEntryDialog({
+  isOpen,
+  onClose,
+  onSuccess,
+  onSave,
+  entry,
+  mode,
+}: WeightEntryDialogProps) {
   const { me } = useAccount(JazzAccount, {
     resolve: {
       profile: true,
@@ -105,7 +112,7 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
       const fieldSchema = weightFormSchema.shape[field];
       fieldSchema.parse(value);
       // Clear error if validation passes
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[field];
         return newErrors;
@@ -113,7 +120,7 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
     } catch (error) {
       if (error instanceof z.ZodError) {
         const errorMessage = error.issues[0]?.message || "Invalid value";
-        setErrors(prev => ({ ...prev, [field]: errorMessage }));
+        setErrors((prev) => ({ ...prev, [field]: errorMessage }));
       }
     }
   };
@@ -152,8 +159,8 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
             entry.unit = validatedData.unit;
             entry.notes = validatedData.notes || "";
           },
-          'weight-update',
-          updateSyncStatus
+          "weight-update",
+          updateSyncStatus,
         )();
       } else {
         // Create new entry
@@ -179,14 +186,13 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
         onClose();
         onSuccess();
       }, 1000);
-
     } catch (error) {
       console.error("Error saving weight:", error);
       SyncErrorHandler.handleSyncError(error, updateSyncStatus);
 
       // Set a user-friendly error message
       setErrors({
-        weightValue: "Failed to save weight. Please check your connection and try again."
+        weightValue: "Failed to save weight. Please check your connection and try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -203,9 +209,7 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "add" ? "Add Weight Entry" : "Edit Weight Entry"}
-          </DialogTitle>
+          <DialogTitle>{mode === "add" ? "Add Weight Entry" : "Edit Weight Entry"}</DialogTitle>
           <DialogDescription>
             {mode === "add"
               ? "Record a new weight measurement for the selected date."
@@ -219,14 +223,12 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
             <DatePicker
               value={formData.date}
               onChange={(value) => {
-                setFormData(prev => ({ ...prev, date: value }));
-                validateField('date', value);
+                setFormData((prev) => ({ ...prev, date: value }));
+                validateField("date", value);
               }}
               error={!!errors.date}
             />
-            {errors.date && (
-              <p className="text-sm text-destructive">{errors.date}</p>
-            )}
+            {errors.date && <p className="text-sm text-destructive">{errors.date}</p>}
           </div>
 
           <div className="space-y-2">
@@ -235,13 +237,13 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
               value={formData.weightValue}
               unit={formData.unit}
               onValueChange={(value) => {
-                setFormData(prev => ({ ...prev, weightValue: value }));
-                validateField('weightValue', value);
+                setFormData((prev) => ({ ...prev, weightValue: value }));
+                validateField("weightValue", value);
               }}
               onUnitChange={(unit) => {
                 const bodyUnit = unit as BodyWeightUnit;
-                setFormData(prev => ({ ...prev, unit: bodyUnit }));
-                validateField('unit', bodyUnit);
+                setFormData((prev) => ({ ...prev, unit: bodyUnit }));
+                validateField("unit", bodyUnit);
               }}
               availableUnits={[...bodyWeightUnits]}
               placeholder={getPlaceholderForUnit(formData.unit)}
@@ -253,7 +255,9 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
               aria-describedby={errors.weightValue ? "weight-error" : undefined}
             />
             {errors.weightValue && (
-              <p id="weight-error" className="text-sm text-destructive">{errors.weightValue}</p>
+              <p id="weight-error" className="text-sm text-destructive">
+                {errors.weightValue}
+              </p>
             )}
           </div>
 
@@ -264,15 +268,13 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
               value={formData.notes}
               onChange={(e) => {
                 const value = e.target.value.trim();
-                setFormData(prev => ({ ...prev, notes: value }));
-                validateField('notes', value);
+                setFormData((prev) => ({ ...prev, notes: value }));
+                validateField("notes", value);
               }}
               className={`${errors.notes ? "border-destructive focus-visible:ring-destructive" : ""} touch-manipulation min-h-[88px] sm:min-h-[80px]`}
               rows={3}
             />
-            {errors.notes && (
-              <p className="text-sm text-destructive">{errors.notes}</p>
-            )}
+            {errors.notes && <p className="text-sm text-destructive">{errors.notes}</p>}
           </div>
 
           {submitSuccess && (
@@ -286,25 +288,19 @@ export function WeightEntryDialog({ isOpen, onClose, onSuccess, onSave, entry, m
           )}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
                 </>
+              ) : mode === "add" ? (
+                "Add Weight"
               ) : (
-                mode === "add" ? "Add Weight" : "Update Weight"
+                "Update Weight"
               )}
             </Button>
           </DialogFooter>

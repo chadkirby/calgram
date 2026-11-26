@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 import { DataImporter, type ExportedData } from "../DataImporter";
 
 describe("DataImporter (current format only, strict)", () => {
@@ -27,7 +27,7 @@ describe("DataImporter (current format only, strict)", () => {
 
       const result = DataImporter.validateImportData(withUnknown);
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(e => e.includes("Unrecognized key(s) in object"))).toBe(true);
+      expect(result.errors.some((e) => e.includes("Unrecognized key(s) in object"))).toBe(true);
     });
 
     it("should reject unknown keys in mealEntries items (strict)", () => {
@@ -50,7 +50,11 @@ describe("DataImporter (current format only, strict)", () => {
 
       const result = DataImporter.validateImportData(withUnknownMeal);
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(e => e.includes("mealEntries") && e.includes("Unrecognized key(s) in object"))).toBe(true);
+      expect(
+        result.errors.some(
+          (e) => e.includes("mealEntries") && e.includes("Unrecognized key(s) in object"),
+        ),
+      ).toBe(true);
     });
 
     it("should reject invalid ISO date", () => {
@@ -63,7 +67,9 @@ describe("DataImporter (current format only, strict)", () => {
 
       const result = DataImporter.validateImportData(invalidDate);
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(e => e.includes("exportDate") && e.includes("Invalid ISO date"))).toBe(true);
+      expect(
+        result.errors.some((e) => e.includes("exportDate") && e.includes("Invalid ISO date")),
+      ).toBe(true);
     });
 
     it("should reject non-object data", () => {

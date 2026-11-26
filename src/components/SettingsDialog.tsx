@@ -65,9 +65,7 @@ export function SettingsDialog() {
       <DialogContent className="sm:max-w-[425px] max-h-[90vh] flex flex-col" autoFocus={false}>
         <DialogHeader className="shrink-0">
           <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            Manage your profile and application settings.
-          </DialogDescription>
+          <DialogDescription>Manage your profile and application settings.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 flex-1 overflow-y-auto">
           {/* Profile Card */}
@@ -107,9 +105,7 @@ export function SettingsDialog() {
                 <Button variant="outline" onClick={handleCancel}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave}>
-                  Save Changes
-                </Button>
+                <Button onClick={handleSave}>Save Changes</Button>
               </div>
             </CardContent>
           </Card>

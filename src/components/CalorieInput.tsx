@@ -4,10 +4,10 @@ import { CalorieUnitConverter } from "@/utils/CalorieUnitConverter";
 
 // Unit display configuration for calorie units
 const CALORIE_UNIT_CONFIGS = [
-  { value: 'g' as const, label: 'cal/g', fullName: 'calories per gram' },
-  { value: 'oz' as const, label: 'cal/oz', fullName: 'calories per ounce' },
-  { value: 'lb' as const, label: 'cal/lb', fullName: 'calories per pound' },
-  { value: 'kg' as const, label: 'cal/kg', fullName: 'calories per kilogram' },
+  { value: "g" as const, label: "cal/g", fullName: "calories per gram" },
+  { value: "oz" as const, label: "cal/oz", fullName: "calories per ounce" },
+  { value: "lb" as const, label: "cal/lb", fullName: "calories per pound" },
+  { value: "kg" as const, label: "cal/kg", fullName: "calories per kilogram" },
 ];
 
 interface CalorieInputProps {
@@ -20,8 +20,8 @@ interface CalorieInputProps {
   className?: string;
   disabled?: boolean;
   error?: boolean;
-  'aria-label'?: string;
-  'aria-describedby'?: string;
+  "aria-label"?: string;
+  "aria-describedby"?: string;
   inputMode?: "decimal" | "numeric";
   step?: string;
   min?: number;
@@ -38,16 +38,16 @@ export function CalorieInput({
   className,
   disabled = false,
   error = false,
-  'aria-label': ariaLabel,
-  'aria-describedby': ariaDescribedBy,
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
   inputMode = "decimal",
   step = "0.01",
   min,
   max,
 }: CalorieInputProps) {
   // Filter unit configs to only include available units
-  const filteredUnits = CALORIE_UNIT_CONFIGS.filter(config => 
-    availableUnits.includes(config.value)
+  const filteredUnits = CALORIE_UNIT_CONFIGS.filter((config) =>
+    availableUnits.includes(config.value),
   );
 
   // Calorie conversion function
@@ -83,13 +83,13 @@ export function CalorieInput({
 // Helper function to get appropriate step value for a unit
 export function getStepForCalorieUnit(unit: CalorieUnit): string {
   switch (unit) {
-    case 'g':
+    case "g":
       return "0.01";
-    case 'oz':
+    case "oz":
       return "0.1";
-    case 'lb':
+    case "lb":
       return "1";
-    case 'kg':
+    case "kg":
       return "10";
     default:
       return "0.01";
@@ -99,13 +99,13 @@ export function getStepForCalorieUnit(unit: CalorieUnit): string {
 // Helper function to get appropriate placeholder for a unit
 export function getPlaceholderForCalorieUnit(unit: CalorieUnit): string {
   switch (unit) {
-    case 'g':
+    case "g":
       return "0.00";
-    case 'oz':
+    case "oz":
       return "0.0";
-    case 'lb':
+    case "lb":
       return "0";
-    case 'kg':
+    case "kg":
       return "0";
     default:
       return "0.00";

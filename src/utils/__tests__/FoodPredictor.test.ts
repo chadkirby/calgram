@@ -1,202 +1,208 @@
 import { DateTime } from "luxon";
-import { describe, test, expect } from 'vitest';
-import { FoodPredictor, getTimeOfDay, calculateDayRecencyScore, calculateTimeOfDayScore, type PredictionEntry } from "../FoodPredictor";
+import { describe, test, expect } from "vitest";
+import {
+  FoodPredictor,
+  getTimeOfDay,
+  calculateDayRecencyScore,
+  calculateTimeOfDayScore,
+  type PredictionEntry,
+} from "../FoodPredictor";
 
 function buildEntriesFromSample(): PredictionEntry[] {
   const raw: PredictionEntry[] = [
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-07-28T10:41:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "stick",
-    timestamp: "2025-07-28T10:40:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "Biscuits",
-    timestamp: "2025-07-28T11:20:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "Dinner",
-    timestamp: "2025-07-28T18:21:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-07-28T18:34:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "stick",
-    timestamp: "2025-07-28T19:18:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-07-29T10:54:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-07-29T13:12:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-07-29T18:25:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "stick",
-    timestamp: "2025-07-29T20:01:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "pup cup",
-    timestamp: "2025-07-29T21:01:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-07-30T13:36:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-07-30T18:13:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-07-30T18:28:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "stick",
-    timestamp: "2025-07-30T20:02:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "pup cup",
-    timestamp: "2025-07-30T21:04:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-07-30T23:29:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-07-31T11:43:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-07-31T13:07:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-07-31T18:15:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "Fromm pork and applesauce",
-    timestamp: "2025-07-31T18:32:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "stick",
-    timestamp: "2025-07-31T20:01:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "pup cup",
-    timestamp: "2025-07-31T21:03:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-07-31T21:54:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "Biscuits",
-    timestamp: "2025-08-01T09:38:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "Fromm pork and applesauce",
-    timestamp: "2025-08-01T09:50:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "Yak cheese",
-    timestamp: "2025-08-01T12:56:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-08-01T13:06:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-08-01T18:14:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-08-01T18:27:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "stick",
-    timestamp: "2025-08-01T20:02:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "pup cup",
-    timestamp: "2025-08-01T21:03:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "Fromm pork and applesauce",
-    timestamp: "2025-08-02T11:12:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "Fromm pork and applesauce",
-    timestamp: "2025-08-02T16:35:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-08-02T18:22:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "People food",
-    timestamp: "2025-08-02T18:31:00.000-07:00",
-    foodCategory: "people food",
-  },
-  {
-    foodName: "stick",
-    timestamp: "2025-08-02T20:01:00.000-07:00",
-    foodCategory: "treats",
-  },
-  {
-    foodName: "purina kibble",
-    timestamp: "2025-08-02T21:05:00.000-07:00",
-    foodCategory: "dry dog food",
-  },
-];
-// Adapt sample objects that use "category" -> "foodCategory" for the PredictionEntry type
-return raw;
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-07-28T10:41:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "stick",
+      timestamp: "2025-07-28T10:40:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "Biscuits",
+      timestamp: "2025-07-28T11:20:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "Dinner",
+      timestamp: "2025-07-28T18:21:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-07-28T18:34:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "stick",
+      timestamp: "2025-07-28T19:18:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-07-29T10:54:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-07-29T13:12:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-07-29T18:25:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "stick",
+      timestamp: "2025-07-29T20:01:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "pup cup",
+      timestamp: "2025-07-29T21:01:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-07-30T13:36:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-07-30T18:13:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-07-30T18:28:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "stick",
+      timestamp: "2025-07-30T20:02:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "pup cup",
+      timestamp: "2025-07-30T21:04:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-07-30T23:29:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-07-31T11:43:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-07-31T13:07:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-07-31T18:15:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "Fromm pork and applesauce",
+      timestamp: "2025-07-31T18:32:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "stick",
+      timestamp: "2025-07-31T20:01:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "pup cup",
+      timestamp: "2025-07-31T21:03:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-07-31T21:54:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "Biscuits",
+      timestamp: "2025-08-01T09:38:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "Fromm pork and applesauce",
+      timestamp: "2025-08-01T09:50:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "Yak cheese",
+      timestamp: "2025-08-01T12:56:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-08-01T13:06:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-08-01T18:14:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-08-01T18:27:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "stick",
+      timestamp: "2025-08-01T20:02:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "pup cup",
+      timestamp: "2025-08-01T21:03:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "Fromm pork and applesauce",
+      timestamp: "2025-08-02T11:12:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "Fromm pork and applesauce",
+      timestamp: "2025-08-02T16:35:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-08-02T18:22:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "People food",
+      timestamp: "2025-08-02T18:31:00.000-07:00",
+      foodCategory: "people food",
+    },
+    {
+      foodName: "stick",
+      timestamp: "2025-08-02T20:01:00.000-07:00",
+      foodCategory: "treats",
+    },
+    {
+      foodName: "purina kibble",
+      timestamp: "2025-08-02T21:05:00.000-07:00",
+      foodCategory: "dry dog food",
+    },
+  ];
+  // Adapt sample objects that use "category" -> "foodCategory" for the PredictionEntry type
+  return raw;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -272,8 +278,13 @@ describe("FoodPredictor with sample data", () => {
     // Build a very small intelligence-like object. CoMap typing not required for runtime.
     const intelligence: any = {
       foodData: {
-        "food": { lastUsedCPG: 2, lastUsedCategory: "pref", usageCount: 3, lastUsed: DateTime.now().toISO()! }
-      }
+        food: {
+          lastUsedCPG: 2,
+          lastUsedCategory: "pref",
+          usageCount: 3,
+          lastUsed: DateTime.now().toISO()!,
+        },
+      },
     };
 
     const group: PredictionEntry[] = [
@@ -295,24 +306,25 @@ describe("FoodPredictor with sample data", () => {
     const oneDayOnly = FoodPredictor.getTopFoodPredictions(entries, now, 1, 50);
 
     // Expect there are NO entries from 2025-07-31 or earlier included (e.g., 'pup cup' at 2025-07-31T21:03 should be excluded)
-    const containsJuly31 = oneDayOnly.some(s =>
-      s.entries.some(e => e.timestamp.startsWith("2025-07-31"))
+    const containsJuly31 = oneDayOnly.some((s) =>
+      s.entries.some((e) => e.timestamp.startsWith("2025-07-31")),
     );
     expect(containsJuly31).toBe(false);
 
     // Expect to include entries from late 2025-08-02 and 2025-08-03 morning (e.g., Fromm 2025-08-02T16:35 and purina 2025-08-02T21:05)
-    const hasAug02Late = oneDayOnly.some(s =>
-      s.entries.some(e => e.timestamp.startsWith("2025-08-02T16:")) ||
-      s.entries.some(e => e.timestamp.startsWith("2025-08-02T21:"))
+    const hasAug02Late = oneDayOnly.some(
+      (s) =>
+        s.entries.some((e) => e.timestamp.startsWith("2025-08-02T16:")) ||
+        s.entries.some((e) => e.timestamp.startsWith("2025-08-02T21:")),
     );
     expect(hasAug02Late).toBe(true);
 
     // Sanity: in this narrow window, there should be no 'pup cup' yet (the next occurs 2025-08-01 and earlier),
     // while 'Fromm pork and applesauce' or 'purina kibble' should appear due to 8/2 entries.
-    expect(oneDayOnly.find(f => f.foodName.toLowerCase() === "pup cup")).toBeFalsy();
+    expect(oneDayOnly.find((f) => f.foodName.toLowerCase() === "pup cup")).toBeFalsy();
     expect(
-      oneDayOnly.find(f => f.foodName.toLowerCase() === "fromm pork and applesauce")
-      || oneDayOnly.find(f => f.foodName.toLowerCase() === "purina kibble")
+      oneDayOnly.find((f) => f.foodName.toLowerCase() === "fromm pork and applesauce") ||
+        oneDayOnly.find((f) => f.foodName.toLowerCase() === "purina kibble"),
     ).toBeTruthy();
   });
 
@@ -354,7 +366,7 @@ describe("FoodPredictor with sample data", () => {
     //
     // We assert a small representative set across the 9–21 hours to validate TOD shaping.
     const expectations: Record<number, string> = {
-      9:  "purina kibble",
+      9: "purina kibble",
       10: "purina kibble",
       11: "fromm pork and applesauce",
       12: "yak cheese",
@@ -366,7 +378,7 @@ describe("FoodPredictor with sample data", () => {
       18: "people food",
       19: "stick",
       20: "stick",
-      21: "pup cup"
+      21: "pup cup",
     };
 
     for (let hour = 9; hour <= 21; hour++) {
@@ -379,7 +391,14 @@ describe("FoodPredictor with sample data", () => {
       if (expected) {
         expect(predicted, `Unexpected prediction for ${hour}:00`).toBe(expected);
       } else {
-        expect(["people food","purina kibble","stick","pup cup","fromm pork and applesauce","yak cheese"]).toContain(predicted);
+        expect([
+          "people food",
+          "purina kibble",
+          "stick",
+          "pup cup",
+          "fromm pork and applesauce",
+          "yak cheese",
+        ]).toContain(predicted);
       }
     }
   });

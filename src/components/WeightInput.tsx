@@ -4,11 +4,11 @@ import { WeightConverter } from "@/utils/WeightConverter";
 
 // Unit display configuration for weight units
 const WEIGHT_UNIT_CONFIGS = [
-  { value: 'g' as const, label: 'g', fullName: 'grams' },
-  { value: 'oz' as const, label: 'oz', fullName: 'ounces' },
-  { value: 'lb' as const, label: 'lb', fullName: 'pounds' },
-  { value: 'lbs' as const, label: 'lbs', fullName: 'pounds' },
-  { value: 'kg' as const, label: 'kg', fullName: 'kilograms' },
+  { value: "g" as const, label: "g", fullName: "grams" },
+  { value: "oz" as const, label: "oz", fullName: "ounces" },
+  { value: "lb" as const, label: "lb", fullName: "pounds" },
+  { value: "lbs" as const, label: "lbs", fullName: "pounds" },
+  { value: "kg" as const, label: "kg", fullName: "kilograms" },
 ];
 
 interface WeightInputProps {
@@ -21,8 +21,8 @@ interface WeightInputProps {
   className?: string;
   disabled?: boolean;
   error?: boolean;
-  'aria-label'?: string;
-  'aria-describedby'?: string;
+  "aria-label"?: string;
+  "aria-describedby"?: string;
   inputMode?: "decimal" | "numeric";
   step?: string;
   min?: number;
@@ -39,16 +39,16 @@ export function WeightInput({
   className,
   disabled = false,
   error = false,
-  'aria-label': ariaLabel,
-  'aria-describedby': ariaDescribedBy,
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
   inputMode = "decimal",
   step = "0.1",
   min,
   max,
 }: WeightInputProps) {
   // Filter unit configs to only include available units
-  const filteredUnits = WEIGHT_UNIT_CONFIGS.filter(config => 
-    availableUnits.includes(config.value)
+  const filteredUnits = WEIGHT_UNIT_CONFIGS.filter((config) =>
+    availableUnits.includes(config.value),
   );
 
   // Weight conversion function
@@ -82,14 +82,14 @@ export function WeightInput({
 // Helper function to get appropriate step value for a unit
 export function getStepForUnit(unit: WeightUnit): string {
   switch (unit) {
-    case 'g':
+    case "g":
       return "0.1";
-    case 'oz':
+    case "oz":
       return "0.01";
-    case 'lb':
-    case 'lbs':
+    case "lb":
+    case "lbs":
       return "0.1";
-    case 'kg':
+    case "kg":
       return "0.01";
     default:
       return "0.1";
@@ -99,15 +99,15 @@ export function getStepForUnit(unit: WeightUnit): string {
 // Helper function to get appropriate placeholder for a unit
 export function getPlaceholderForUnit(unit: WeightUnit): string {
   switch (unit) {
-    case 'g':
+    case "g":
       return "0.0g";
-    case 'oz':
+    case "oz":
       return "0.00oz";
-    case 'lb':
+    case "lb":
       return "0.0lb";
-    case 'lbs':
+    case "lbs":
       return "0.0lbs";
-    case 'kg':
+    case "kg":
       return "0.00kg";
     default:
       return "0.0";

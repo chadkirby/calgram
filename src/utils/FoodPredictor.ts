@@ -2,7 +2,10 @@ import { DateTime } from "luxon";
 import { type Loaded } from "jazz-tools";
 import { FoodIntelligence, MealEntry } from "../schema";
 
-export type PredictionEntry = Pick<Loaded<typeof MealEntry>, 'timestamp' | 'foodName' | 'foodCategory'>;
+export type PredictionEntry = Pick<
+  Loaded<typeof MealEntry>,
+  "timestamp" | "foodName" | "foodCategory"
+>;
 
 export interface FoodScore {
   foodName: string; // display-cased food name
@@ -45,7 +48,10 @@ export function getTimeOfDay(date: Date | DateTime): number {
  * Score ranges from ~1.0 (today) downwards with decay
  * Uses Luxon for date math.
  */
-export function calculateDayRecencyScore(entryDate: Date | DateTime, currentDate: Date | DateTime): number {
+export function calculateDayRecencyScore(
+  entryDate: Date | DateTime,
+  currentDate: Date | DateTime,
+): number {
   const entry = entryDate instanceof DateTime ? entryDate : DateTime.fromJSDate(entryDate);
   const current = currentDate instanceof DateTime ? currentDate : DateTime.fromJSDate(currentDate);
   const daysDiff = current.diff(entry, "days").days;
@@ -57,7 +63,10 @@ export function calculateDayRecencyScore(entryDate: Date | DateTime, currentDate
  * Score ranges from 1.0 (same time) to ~0.1 (12 hours away)
  * Uses Luxon for time-of-day extraction.
  */
-export function calculateTimeOfDayScore(entryDate: Date | DateTime, currentTimeOfDay: number): number {
+export function calculateTimeOfDayScore(
+  entryDate: Date | DateTime,
+  currentTimeOfDay: number,
+): number {
   const entryTimeOfDay = getTimeOfDay(entryDate);
 
   // Calculate time difference in minutes (handling day wrap-around)
@@ -118,7 +127,7 @@ export class FoodPredictor {
   static predictMostLikelyFood(
     entries: PredictionEntry[],
     currentTime: Date = new Date(),
-    daysToConsider: number = 7
+    daysToConsider: number = 7,
   ): string | null {
     const scores = this.getTopFoodPredictions(entries, currentTime, daysToConsider, 1);
     return scores.length > 0 ? scores[0].foodName : null;
@@ -131,12 +140,12 @@ export class FoodPredictor {
     entries: PredictionEntry[],
     currentTime: Date = new Date(),
     daysToConsider: number = 7,
-    topN: number = 3
+    topN: number = 3,
   ): FoodScore[] {
     if (!entries || entries.length === 0) return [];
 
     const currentDT = DateTime.fromJSDate(currentTime);
-    const startOfCurrentDay = currentDT.startOf('day');
+    const startOfCurrentDay = currentDT.startOf("day");
     const cutoff = currentDT.minus({ days: daysToConsider });
 
     // Filter to recent entries
@@ -165,7 +174,7 @@ export class FoodPredictor {
       // food name from recent entries because we don't want to predict
       // the same food item that was just eaten
       const todayFoodName = normalizeFoodName(lastEntryFromToday.foodName);
-      recentEntries = recentEntries.filter(e => normalizeFoodName(e.foodName) !== todayFoodName);
+      recentEntries = recentEntries.filter((e) => normalizeFoodName(e.foodName) !== todayFoodName);
     }
 
     // Group by normalized food name
@@ -210,7 +219,7 @@ export class FoodPredictor {
   static resolveCategoryForFood(
     intelligence: Loaded<typeof FoodIntelligence> | undefined,
     predictedFoodDisplayName: string,
-    groupedEntries: PredictionEntry[]
+    groupedEntries: PredictionEntry[],
   ): string | null {
     if (intelligence?.foodData) {
       const md = intelligence.foodData[predictedFoodDisplayName];

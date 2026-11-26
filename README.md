@@ -5,6 +5,7 @@ A minimal starter template for building apps with **[Jazz](https://jazz.tools)**
 ## Creating an app
 
 Create a new Jazz app.
+
 ```bash
 npx create-jazz-app@latest
 ```
@@ -37,7 +38,6 @@ and seeing how easy it is to structure your data, and perform basic operations.
 ## Questions / problems / feedback
 
 If you have feedback, let us know on [Discord](https://discord.gg/utDMjHYg42) or open an issue or PR to fix something that seems wrong.
-
 
 ## Configuration: sync server
 

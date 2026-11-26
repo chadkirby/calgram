@@ -7,17 +7,20 @@ The DataImporter utility provides functionality for importing meal and weight tr
 ## Features
 
 ### Data Import
+
 - Imports meal entries and weight entries from JSON files
 - Supports both legacy and new export formats
 - Handles duplicate entries gracefully without creating duplicates
 - Provides detailed import results and error reporting
 
 ### Format Detection
+
 - Automatically detects the format of imported data
 - Supports legacy format with `meal_entries` and `weight_entries` arrays
 - Supports new format with `mealEntries` and `weightEntries` arrays
 
 ### Data Validation
+
 - Validates the structure of imported data
 - Provides detailed error messages for invalid data
 - Handles malformed JSON gracefully
@@ -25,6 +28,7 @@ The DataImporter utility provides functionality for importing meal and weight tr
 ## Methods
 
 ### importData
+
 Imports data from exported JSON file (supports both legacy and new formats).
 
 ```typescript
@@ -32,16 +36,20 @@ static async importData(jsonData: ExportedData, account: Loaded<typeof JazzAccou
 ```
 
 **Parameters:**
+
 - `jsonData`: The parsed JSON data to import
 - `account`: The loaded Jazz account to import data into
 
 **Returns:**
+
 - `Promise<ImportResult>`: A promise that resolves to the import results
 
 **Throws:**
+
 - `Error`: If the account root is not available or fails to load
 
 ### detectDataFormat
+
 Detects the format of the imported data.
 
 ```typescript
@@ -49,12 +57,15 @@ static detectDataFormat(jsonData: any): 'legacy' | 'current' | 'unknown'
 ```
 
 **Parameters:**
+
 - `jsonData`: The parsed JSON data to analyze
 
 **Returns:**
+
 - `'legacy' | 'current' | 'unknown'`: The detected format
 
 ### validateImportData
+
 Validates the imported data structure.
 
 ```typescript
@@ -62,12 +73,15 @@ static validateImportData(jsonData: any): { isValid: boolean; errors: string[] }
 ```
 
 **Parameters:**
+
 - `jsonData`: The parsed JSON data to validate
 
 **Returns:**
+
 - `{ isValid: boolean; errors: string[] }`: Validation result with errors if any
 
 ### parseJsonFile
+
 Parses and validates JSON file content.
 
 ```typescript
@@ -75,17 +89,21 @@ static parseJsonFile(fileContent: string): ExportedData
 ```
 
 **Parameters:**
+
 - `fileContent`: The raw file content as string
 
 **Returns:**
+
 - `ExportedData`: The parsed JSON data
 
 **Throws:**
+
 - `Error`: If the JSON parsing fails
 
 ## Data Structures
 
 ### ImportResult
+
 Structure for import operation results.
 
 ```typescript
@@ -98,6 +116,7 @@ interface ImportResult {
 ```
 
 ### ExportedData (Union Type)
+
 Union type for both legacy and new export formats.
 
 ```typescript
@@ -105,6 +124,7 @@ type ExportedData = LegacyExportedData | NewExportedData;
 ```
 
 ### LegacyExportedData
+
 Structure for legacy export format.
 
 ```typescript
@@ -115,6 +135,7 @@ interface LegacyExportedData {
 ```
 
 ### NewExportedData
+
 Structure for new export format.
 
 ```typescript
@@ -154,6 +175,7 @@ const result = await DataImporter.importData(jsonData, me);
 The utility provides comprehensive error handling:
 
 ### Import Errors
+
 - Invalid file format
 - Malformed JSON data
 - Data validation errors
@@ -161,6 +183,7 @@ The utility provides comprehensive error handling:
 - Network errors
 
 ### Validation Errors
+
 - Missing required fields
 - Invalid data types
 - Incorrect array structures

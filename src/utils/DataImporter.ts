@@ -30,10 +30,7 @@ export type CurrentExportedMealEntry = Pick<
 
 export type CurrentExportedWeightEntry = Pick<
   WeightEntryType,
-  | "timestamp"
-  | "weightValue"
-  | "unit"
-  | "notes"
+  "timestamp" | "weightValue" | "unit" | "notes"
 >;
 
 export interface CurrentExportedData {
@@ -100,7 +97,10 @@ export class DataImporter {
   /**
    * Import data from exported JSON file (current format only)
    */
-  static async importData(jsonData: ExportedData, account: Loaded<typeof JazzAccount>): Promise<ImportResult> {
+  static async importData(
+    jsonData: ExportedData,
+    account: Loaded<typeof JazzAccount>,
+  ): Promise<ImportResult> {
     if (!account.root) {
       throw new Error("Account root not available");
     }
@@ -153,7 +153,7 @@ export class DataImporter {
               notes: exportedMeal.notes,
               totalCalories: exportedMeal.totalCalories,
             },
-            group
+            group,
           );
 
           loadedAccount.root.mealEntries.push(mealEntry);
@@ -164,12 +164,14 @@ export class DataImporter {
             // exportedMeal is validated by schema, but keep type-safety explicit
             this.updateFoodIntelligenceNewFormat(
               loadedAccount.root.foodIntelligence,
-              exportedMeal as CurrentExportedMealEntry
+              exportedMeal as CurrentExportedMealEntry,
             );
           }
         } catch (error) {
           console.warn("Failed to import meal entry:", exportedMeal, error);
-          errors.push(`Failed to import meal entry: ${error instanceof Error ? error.message : "Unknown error"}`);
+          errors.push(
+            `Failed to import meal entry: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
         }
       }
     }
@@ -185,14 +187,16 @@ export class DataImporter {
               unit: exportedWeight.unit,
               notes: exportedWeight.notes,
             },
-            group
+            group,
           );
 
           loadedAccount.root.weightEntries.push(weightEntry);
           weightCount++;
         } catch (error) {
           console.warn("Failed to import weight entry:", exportedWeight, error);
-          errors.push(`Failed to import weight entry: ${error instanceof Error ? error.message : "Unknown error"}`);
+          errors.push(
+            `Failed to import weight entry: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
         }
       }
     }
@@ -205,7 +209,7 @@ export class DataImporter {
    */
   private static updateFoodIntelligenceNewFormat(
     foodIntelligence: Loaded<typeof FoodIntelligence>,
-    meal: CurrentExportedMealEntry
+    meal: CurrentExportedMealEntry,
   ) {
     try {
       // Add to recent foods if not already present
@@ -214,7 +218,10 @@ export class DataImporter {
       }
 
       // Add to recent categories if not already present
-      if (foodIntelligence.recentCategories && !foodIntelligence.recentCategories.includes(meal.foodCategory)) {
+      if (
+        foodIntelligence.recentCategories &&
+        !foodIntelligence.recentCategories.includes(meal.foodCategory)
+      ) {
         foodIntelligence.recentCategories.push(meal.foodCategory);
       }
 
@@ -237,7 +244,7 @@ export class DataImporter {
               usageCount: 1,
               lastUsed: meal.timestamp,
             },
-            group
+            group,
           );
 
           foodIntelligence.foodData[meal.foodName] = metadata;
@@ -262,7 +269,9 @@ export class DataImporter {
 
       return data as ExportedData;
     } catch (error) {
-      throw new Error(`Failed to parse JSON file: ${error instanceof Error ? error.message : "Unknown error"}`);
+      throw new Error(
+        `Failed to parse JSON file: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 }

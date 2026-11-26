@@ -38,9 +38,9 @@ import { UnitSelector } from "@/components/UnitSelector";
 import { cn } from "@/lib/utils";
 
 interface UnitConfig<T extends string> {
-    value: T;
-    label: string;
-    fullName: string;
+  value: T;
+  label: string;
+  fullName: string;
 }
 
 interface UnitInputProps<T extends string> {
@@ -53,8 +53,8 @@ interface UnitInputProps<T extends string> {
   className?: string;
   disabled?: boolean;
   error?: boolean;
-  'aria-label'?: string;
-  'aria-describedby'?: string;
+  "aria-label"?: string;
+  "aria-describedby"?: string;
   inputMode?: "decimal" | "numeric";
   step?: string;
   min?: number;
@@ -73,8 +73,8 @@ export function UnitInput<T extends string>({
   className,
   disabled = false,
   error = false,
-  'aria-label': ariaLabel,
-  'aria-describedby': ariaDescribedBy,
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
   inputMode = "decimal",
   step = "0.1",
   min,
@@ -149,7 +149,6 @@ export function UnitInput<T extends string>({
 
       // Update display value to show converted amount, but only rounded once conversion completes
       setDisplayValue(roundForDisplay(convertedValue));
-
     } catch (error) {
       console.error(`Error converting ${labelSuffix}s:`, error);
       // If conversion fails, just change the unit without converting the value
@@ -172,7 +171,7 @@ export function UnitInput<T extends string>({
   const effectiveMax = max !== undefined ? max : Number.MAX_SAFE_INTEGER;
 
   // Find current unit config for aria-label
-  const currentUnitConfig = units.find(u => u.value === unit);
+  const currentUnitConfig = units.find((u) => u.value === unit);
   const unitLabel = currentUnitConfig?.fullName || unit;
 
   // Layout notes:
@@ -190,12 +189,9 @@ export function UnitInput<T extends string>({
         // Unify focus for both child elements
         "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
         // Error/disabled styling applied here for consistency
-        error && [
-          "border-destructive",
-          "focus-within:ring-destructive/40",
-        ],
+        error && ["border-destructive", "focus-within:ring-destructive/40"],
         disabled && "opacity-60 pointer-events-none",
-        className
+        className,
       )}
       aria-invalid={error || undefined}
     >
@@ -224,7 +220,7 @@ export function UnitInput<T extends string>({
           // Sizing and shrink behavior
           "min-h-[40px] w-full min-w-0",
           // Touch ergonomics
-          "touch-manipulation"
+          "touch-manipulation",
         )}
       />
 
@@ -246,7 +242,7 @@ export function UnitInput<T extends string>({
             // Compact sizing to minimize horizontal footprint
             "h-7 min-w-[45px] max-w-[70px]",
             // The wrapper shows the ring; suppress local ring to avoid double visuals
-            "focus-visible:ring-0"
+            "focus-visible:ring-0",
           )}
         />
       </div>

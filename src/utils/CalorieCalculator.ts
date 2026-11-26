@@ -17,7 +17,7 @@ export class CalorieCalculator {
     if (weightInGrams < 0 || caloriesPerGram < 0) {
       throw new Error("Weight and calories per gram must be non-negative");
     }
-    return Math.round((weightInGrams * caloriesPerGram) * 100) / 100; // Round to 2 decimal places
+    return Math.round(weightInGrams * caloriesPerGram * 100) / 100; // Round to 2 decimal places
   }
 
   /**
@@ -28,7 +28,7 @@ export class CalorieCalculator {
    */
   static calculateDailyTotal(
     meals: Loaded<typeof MealEntry>[] | undefined,
-    dateIso: string
+    dateIso: string,
   ): number {
     if (!meals || meals.length === 0) {
       return 0;
@@ -37,7 +37,7 @@ export class CalorieCalculator {
     const targetDateStr = this.getDateOnlyFromIso(dateIso);
 
     return meals
-      .filter(meal => {
+      .filter((meal) => {
         const mealDateStr = this.getDateOnlyFromIso(meal.timestamp);
         return mealDateStr === targetDateStr;
       })
@@ -52,7 +52,7 @@ export class CalorieCalculator {
    */
   static calculateCategoryBreakdown(
     meals: Loaded<typeof MealEntry>[] | undefined,
-    dateIso: string
+    dateIso: string,
   ): Record<string, number> {
     if (!meals || meals.length === 0) {
       return {};
@@ -62,11 +62,11 @@ export class CalorieCalculator {
     const breakdown: Record<string, number> = {};
 
     meals
-      .filter(meal => {
+      .filter((meal) => {
         const mealDateStr = this.getDateOnlyFromIso(meal.timestamp);
         return mealDateStr === targetDateStr;
       })
-      .forEach(meal => {
+      .forEach((meal) => {
         const category = meal.foodCategory;
         breakdown[category] = (breakdown[category] || 0) + meal.totalCalories;
       });
@@ -93,16 +93,16 @@ export class CalorieCalculator {
   private static getDateOnlyFromIso(isoString: string): string {
     // Normal path: explicit offset; preserve its local zone for calendar-day calculations
     if (/[+-]\d{2}:\d{2}$/.test(isoString)) {
-      return DateTime.fromISO(isoString, { setZone: true }).toISODate() || '';
+      return DateTime.fromISO(isoString, { setZone: true }).toISODate() || "";
     }
 
     // Defensive legacy path: explicit UTC (Z)
-    if (isoString.endsWith('Z')) {
-      return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
+    if (isoString.endsWith("Z")) {
+      return DateTime.fromISO(isoString, { zone: "utc" }).toISODate() || "";
     }
 
     // Defensive legacy path: naive input => normalize as UTC
-    return DateTime.fromISO(isoString, { zone: 'utc' }).toISODate() || '';
+    return DateTime.fromISO(isoString, { zone: "utc" }).toISODate() || "";
   }
 
   /**
@@ -110,7 +110,7 @@ export class CalorieCalculator {
    * @returns ISO string set to today at 00:00:00
    */
   static getTodayAtMidnight(): string {
-    return DateTime.now().startOf('day').toISO() || '';
+    return DateTime.now().startOf("day").toISO() || "";
   }
 
   /**
@@ -140,13 +140,13 @@ export class CalorieCalculator {
    */
   static addDays(isoString: string, days: number): string {
     const hasOffset = /[+-]\d{2}:\d{2}$/.test(isoString);
-    const isUtc = isoString.endsWith('Z');
+    const isUtc = isoString.endsWith("Z");
     const base = isUtc
-      ? DateTime.fromISO(isoString, { zone: 'utc' })
+      ? DateTime.fromISO(isoString, { zone: "utc" })
       : hasOffset
         ? DateTime.fromISO(isoString, { setZone: true }) // normal case
-        : DateTime.fromISO(isoString, { zone: 'utc' }); // defensive legacy normalization
-    return base.plus({ days }).toISO() || '';
+        : DateTime.fromISO(isoString, { zone: "utc" }); // defensive legacy normalization
+    return base.plus({ days }).toISO() || "";
   }
 
   /**
@@ -156,10 +156,10 @@ export class CalorieCalculator {
    */
   static formatDateForDisplay(isoString: string): string {
     return DateTime.fromISO(isoString).toLocaleString({
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   }
 
@@ -169,7 +169,7 @@ export class CalorieCalculator {
    * @returns Date string in YYYY-MM-DD format
    */
   static formatDateForInput(isoString: string): string {
-    return DateTime.fromISO(isoString).toISODate() || '';
+    return DateTime.fromISO(isoString).toISODate() || "";
   }
 
   /**
@@ -197,10 +197,8 @@ export class CalorieCalculator {
    * @returns ISO string at start of day
    */
   static createIsoFromDateInput(dateInputValue: string): string {
-    return DateTime.fromISO(dateInputValue, { setZone: true }).startOf('day').toISO() || '';
+    return DateTime.fromISO(dateInputValue, { setZone: true }).startOf("day").toISO() || "";
   }
-
-
 
   /**
    * Get formatted weight for display in user's preferred unit
