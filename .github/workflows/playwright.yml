@@ -3,8 +3,8 @@ name: E2E - Playwright
 on:
   push:
     branches: [main]
+  # Every PR, including stacked PRs that target another branch.
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
