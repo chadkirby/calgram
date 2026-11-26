@@ -1,89 +1,42 @@
-import { test, expect, Page } from "@playwright/test";
-
-/**
- * Helpers
- */
-async function gotoAndWaitForTabs(page: Page, path: string) {
-  // With router bypass, protected routes won't redirect. However, Layout still renders Tabs
-  // only when Jazz reports authenticated. We can't fake Jazz in-browser, so for E2E
-  // we navigate to an authed shell route that renders Tabs unconditionally for tests.
-  //
-  // Convention: expose a test-only route /__e2e__ that mounts the same app shell (Layout + Tabs)
-  // without requiring real auth. Since we are not modifying app code now, fall back to checking
-  // for Tabs after hitting the requested path and, if absent, navigate to /daily?e2e=1 where
-  // the router bypass should allow rendering of the authed children and the Layout will still
-  // render the outlet. We then assert panels without relying on the Tabs bar for navigation.
-  await page.goto(path);
-
-  // Try to find the Tabs list; if not present, proceed without tabs by validating active panel only.
-  const tablist = page.getByTestId("main-tabs");
-
-  return {
-    tablist: tablist,
-    tab: (name: string) => tablist.getByRole("tab", { name }),
-  };
-}
+import { test, expect, type Page } from "@playwright/test";
+import { startNewAccount } from "./support/app";
 
 /**
  * In this app, Radix Tabs set:
  * - Active tab: [role="tab"][data-state="active"][aria-selected="true"]
- * - Active panel: [data-state="active"] (no reliable id linkage from aria-controls)
  * Assert using those stable attributes instead of panel id.
  */
 async function expectActiveTab(page: Page, tabName: string) {
-  // Assert the intended tab is selected/active
   const tab = page.getByRole("tab", { name: tabName }).first();
   await expect(tab).toHaveAttribute("aria-selected", "true");
   await expect(tab).toHaveAttribute("data-state", "active");
 }
 
-/**
- * Page suites
- */
-test.describe("Daily Page", () => {
-  test("should display daily page", async ({ page }) => {
-    await gotoAndWaitForTabs(page, "/daily");
-    await expectActiveTab(page, "Daily");
-  });
+test.describe("Pages", () => {
+  for (const [path, tab] of [
+    ["/daily", "Daily"],
+    ["/weight", "Weight"],
+    ["/trends", "Trends"],
+  ] as const) {
+    test(`${path} shows the ${tab} tab once signed in`, async ({ page }) => {
+      await startNewAccount(page);
+      await page.goto(path);
+      await expectActiveTab(page, tab);
+    });
+  }
 
-  test("should have meal tracking functionality", async ({ page }) => {
-    await gotoAndWaitForTabs(page, "/daily");
-    await expectActiveTab(page, "Daily");
-  });
-});
-
-test.describe("Weight Page", () => {
-  test("should display weight page", async ({ page }) => {
-    await gotoAndWaitForTabs(page, "/weight");
-    await expectActiveTab(page, "Weight");
-  });
-
-  test("should have weight tracking functionality", async ({ page }) => {
-    await gotoAndWaitForTabs(page, "/weight");
-    await expectActiveTab(page, "Weight");
+  test("signed out, an app page sends you to the welcome screen", async ({ page }) => {
+    await page.goto("/trends");
+    await expect(page).toHaveURL(/\/\?redirect=%2Ftrends$/);
+    await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
+    await expect(page.getByTestId("main-tabs")).toHaveCount(0);
   });
 });
 
-test.describe("Trends Page", () => {
-  test("should display trends page", async ({ page }) => {
-    await gotoAndWaitForTabs(page, "/trends");
-    await expectActiveTab(page, "Trends");
-  });
-
-  test("should have trends functionality", async ({ page }) => {
-    await gotoAndWaitForTabs(page, "/trends");
-    await expectActiveTab(page, "Trends");
-  });
-});
-
-/**
- * Navigation flow
- */
 test.describe("Navigation", () => {
-  test("should navigate between pages using tabs (or direct routes in e2e bypass)", async ({
-    page,
-  }) => {
-    const { tab } = await gotoAndWaitForTabs(page, "/daily");
+  test("should navigate between pages using tabs", async ({ page }) => {
+    await startNewAccount(page);
+    const tab = (name: string) => page.getByTestId("main-tabs").getByRole("tab", { name });
 
     await tab("Daily").click();
     await expect(page).toHaveURL(/\/daily\/?$/);

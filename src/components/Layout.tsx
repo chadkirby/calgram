@@ -1,16 +1,13 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useAccount } from "jazz-classic/react";
 import { AuthButton } from "../AuthButton";
 import { SettingsDialog } from "./SettingsDialog";
-import { JazzAccount } from "../schema";
+import { PasskeyOffer } from "./PasskeyOffer";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuthenticated } from "@/lib/useAuthenticated";
+import { useAccount } from "@/lib/account";
 
 export function Layout() {
-  const { me } = useAccount(JazzAccount, {
-    resolve: { profile: true, root: true },
-  });
-  const isAuthenticated = useAuthenticated();
+  const { status, profile } = useAccount();
+  const isAuthenticated = status === "ready";
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -45,7 +42,7 @@ export function Layout() {
               {isAuthenticated && (
                 <div className="w-2 h-2 bg-green-500 rounded-full" title="Logged in" />
               )}
-              <SettingsDialog />
+              {isAuthenticated && <SettingsDialog />}
               <AuthButton />
             </div>
           </div>
@@ -63,9 +60,9 @@ export function Layout() {
               <h1 className="text-lg lg:text-xl font-semibold truncate">
                 Sammygram Calorie Tracker
               </h1>
-              {isAuthenticated && me?.profile?.firstName && me.profile.firstName !== "Nobody" && (
+              {isAuthenticated && profile?.firstName && profile.firstName !== "Nobody" && (
                 <span className="text-sm text-muted-foreground truncate">
-                  Welcome, {me.profile.firstName}!
+                  Welcome, {profile.firstName}!
                 </span>
               )}
             </div>
@@ -75,7 +72,7 @@ export function Layout() {
               ) : (
                 <span className="text-sm text-muted-foreground">Authenticate to sync data</span>
               )}
-              <SettingsDialog />
+              {isAuthenticated && <SettingsDialog />}
               <AuthButton />
             </div>
           </div>
@@ -115,6 +112,7 @@ export function Layout() {
               </TabsTrigger>
             </TabsList>
 
+            <PasskeyOffer />
             <div className="mt-1 sm:mt-4">
               <Outlet />
             </div>

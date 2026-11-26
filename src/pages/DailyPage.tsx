@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { useAccount } from "jazz-classic/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDb } from "jazz-tools/react";
+import { DateTime } from "luxon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,10 +31,21 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DailyPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
-import { JazzAccount, type MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
-import { type Loaded } from "jazz-classic";
+import { app } from "../../jazz/jazz.generated";
+import { useAccount } from "@/lib/account";
+import { useMeals, type Meal } from "@/lib/data";
+
+/**
+ * Meals in time order (KTD10): by the instant each verbatim timestamp parses to.
+ * Ties fall back to the row id: creation order for rows logged here, arbitrary but
+ * stable for copied rows, whose ids are hashes (KTD5).
+ */
+function byTime(a: Meal, b: Meal) {
+  const diff = DateTime.fromISO(a.timestamp).toMillis() - DateTime.fromISO(b.timestamp).toMillis();
+  return diff || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
 
 // Custom tooltip for pie chart
 function CustomTooltip({ active, payload }: any) {
@@ -52,24 +64,12 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 function DailyPageContent() {
-  const { me } = useAccount(JazzAccount, {
-    resolve: {
-      profile: true,
-      root: {
-        mealEntries: { $each: true },
-        weightEntries: { $each: true },
-        foodIntelligence: {
-          // Load foodIntelligence for the edit form
-          recentFoods: { $each: true },
-          recentCategories: { $each: true },
-          foodData: { $each: true },
-        },
-      },
-    },
-  });
+  const db = useDb();
+  const { profile } = useAccount();
+  const meals = useMeals();
   const [selectedDate, setSelectedDate] = useState(CalorieCalculator.getTodayAtMidnight());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [editingMeal, setEditingMeal] = useState<Loaded<typeof MealEntry> | null>(null);
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddMealDialogOpen, setIsAddMealDialogOpen] = useState(false);
   const datePickerInputRef = useRef<HTMLInputElement>(null);
@@ -81,20 +81,17 @@ function DailyPageContent() {
     }
   }, [showDatePicker]);
 
-  // Filter meal entries by selected date
-  const filteredMealEntries =
-    me?.root?.mealEntries?.filter(
-      (meal): meal is Loaded<typeof MealEntry> =>
-        meal != null && CalorieCalculator.isSameDay(meal.timestamp, selectedDate),
-    ) || [];
+  // Meal entries for the selected date, in time order
+  const filteredMealEntries = useMemo(
+    () =>
+      (meals ?? [])
+        .filter((meal) => CalorieCalculator.isSameDay(meal.timestamp, selectedDate))
+        .toSorted(byTime),
+    [meals, selectedDate],
+  );
 
   // Calculate daily totals for the selected date
-  const dailyCalories = me?.root?.mealEntries
-    ? CalorieCalculator.calculateDailyTotal(
-        me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
-        selectedDate,
-      )
-    : 0;
+  const dailyCalories = CalorieCalculator.calculateDailyTotal(meals, selectedDate);
 
   // Count meals for the selected date
   const mealCount = filteredMealEntries.length;
@@ -132,12 +129,7 @@ function DailyPageContent() {
   const isToday = CalorieCalculator.isSameDay(selectedDate, CalorieCalculator.getTodayAtMidnight());
 
   // Calculate category breakdown for pie chart
-  const categoryBreakdown = me?.root?.mealEntries
-    ? CalorieCalculator.calculateCategoryBreakdown(
-        me.root.mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
-        selectedDate,
-      )
-    : {};
+  const categoryBreakdown = CalorieCalculator.calculateCategoryBreakdown(meals, selectedDate);
 
   // Prepare pie chart data
   const pieChartData = Object.entries(categoryBreakdown).map(([category, calories]) => ({
@@ -162,23 +154,16 @@ function DailyPageContent() {
 
   // Handle meal deletion
   const handleDeleteMeal = (mealId: string) => {
-    if (!me?.root?.mealEntries) return;
-
-    // Find the index of the meal to delete
-    const mealIndex = me.root.mealEntries.findIndex((meal) => meal != null && meal.id === mealId);
-    if (mealIndex !== -1) {
-      // Remove the meal from the list
-      me.root.mealEntries.splice(mealIndex, 1);
-    }
+    db.delete(app.mealEntries, mealId);
   };
 
   // Handle meal editing
-  const handleEditMeal = (meal: Loaded<typeof MealEntry>) => {
+  const handleEditMeal = (meal: Meal) => {
     setEditingMeal(meal);
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSuccess = (updatedMeal: Loaded<typeof MealEntry>) => {
+  const handleEditSuccess = (updatedMeal: Meal) => {
     // Meal was successfully updated
     console.log("Meal updated successfully:", updatedMeal);
     setIsEditDialogOpen(false);
@@ -195,7 +180,7 @@ function DailyPageContent() {
     setIsAddMealDialogOpen(true);
   };
 
-  const handleAddMealSuccess = (newMeal: Loaded<typeof MealEntry>) => {
+  const handleAddMealSuccess = (newMeal: Meal) => {
     // Meal was successfully created
     console.log("Meal created successfully:", newMeal);
     setIsAddMealDialogOpen(false);
@@ -212,10 +197,8 @@ function DailyPageContent() {
         <CardHeader>
           <CardTitle className="text-base sm:text-lg lg:text-xl">
             Daily Calories{" "}
-            {me?.profile?.firstName && (
-              <span className="text-sm text-muted-foreground truncate">
-                ({me.profile.firstName})
-              </span>
+            {profile?.firstName && (
+              <span className="text-sm text-muted-foreground truncate">({profile.firstName})</span>
             )}
           </CardTitle>
         </CardHeader>
@@ -284,7 +267,10 @@ function DailyPageContent() {
               <CardHeader className="text-center">
                 <div className="flex justify-center gap-6 sm:gap-8">
                   <div>
-                    <div className="text-lg sm:text-xl font-bold text-primary">
+                    <div
+                      className="text-lg sm:text-xl font-bold text-primary"
+                      data-testid="daily-total"
+                    >
                       {dailyCalories.toFixed(1)}
                     </div>
                     <p className="text-xs text-muted-foreground">Total Calories</p>
@@ -378,6 +364,7 @@ function DailyPageContent() {
                     {filteredMealEntries.map((meal) => (
                       <div
                         key={meal.id}
+                        data-testid="meal-entry"
                         className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/30 transition-colors touch-manipulation"
                       >
                         {/* Left side - Time (fixed width) */}
@@ -390,11 +377,13 @@ function DailyPageContent() {
                           <div className="text-xs sm:text-sm text-muted-foreground">
                             {meal.foodCategory}
                           </div>
-                          <div className="font-medium text-xs sm:text-sm">{meal.foodName}</div>
+                          <div className="font-medium text-xs sm:text-sm" data-testid="meal-food">
+                            {meal.foodName}
+                          </div>
                           <div className="text-xs sm:text-sm">
                             {CalorieCalculator.getFormattedWeight(
                               meal,
-                              UnitPreferenceManager.getMealWeightUnit(me?.profile),
+                              UnitPreferenceManager.getMealWeightUnit(profile),
                             )}
                           </div>
                           <div className="text-xs sm:text-sm font-medium">
@@ -480,13 +469,12 @@ function DailyPageContent() {
           <DialogHeader>
             <DialogTitle>Edit Meal Entry</DialogTitle>
           </DialogHeader>
-          {editingMeal && me && (
+          {editingMeal && (
             <MealEntryForm
               mode="edit"
               initialData={editingMeal}
               onSuccess={handleEditSuccess}
               onCancel={handleEditCancel}
-              me={me}
               showImport={false}
             />
           )}
@@ -499,16 +487,13 @@ function DailyPageContent() {
           <DialogHeader>
             <DialogTitle>Add New Meal Entry</DialogTitle>
           </DialogHeader>
-          {me && (
-            <MealEntryForm
-              mode="create"
-              onSuccess={handleAddMealSuccess}
-              onCancel={handleAddMealCancel}
-              me={me}
-              showImport={false}
-              defaultDate={CalorieCalculator.formatDateForInput(selectedDate)}
-            />
-          )}
+          <MealEntryForm
+            mode="create"
+            onSuccess={handleAddMealSuccess}
+            onCancel={handleAddMealCancel}
+            showImport={false}
+            defaultDate={CalorieCalculator.formatDateForInput(selectedDate)}
+          />
         </DialogContent>
       </Dialog>
     </div>

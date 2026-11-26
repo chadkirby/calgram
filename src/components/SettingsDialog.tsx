@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAccount } from "jazz-classic/react";
 import { SettingsIcon } from "lucide-react";
 import {
   Dialog,
@@ -14,22 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataCard } from "@/components/DataCard";
-import { JazzAccount } from "../schema";
-
-/** Writes the edited names onto the Jazz profile CoValue (Jazz syncs automatically). */
-function saveProfileNames(
-  profile: { name: string; firstName: string },
-  fullName: string,
-  firstName: string,
-) {
-  profile.name = fullName.trim() || "Anonymous user";
-  profile.firstName = firstName.trim() || "Nobody";
-}
+import { useAccount, useSavePasskey } from "@/lib/account";
 
 export function SettingsDialog() {
-  const { me } = useAccount(JazzAccount, {
-    resolve: { profile: true },
-  });
+  const { profile, saveProfile } = useAccount();
+  const { save: savePasskey, state: passkeyState } = useSavePasskey();
 
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -37,26 +25,25 @@ export function SettingsDialog() {
 
   // Initialize form values when dialog opens
   const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen && me?.profile) {
-      setFullName(me.profile.name || "");
-      setFirstName(me.profile.firstName || "");
+    if (newOpen && profile) {
+      setFullName(profile.name || "");
+      setFirstName(profile.firstName || "");
     }
     setOpen(newOpen);
   };
 
   const handleSave = () => {
-    if (me?.profile) {
-      // Update the profile data - Jazz handles synchronization automatically
-      saveProfileNames(me.profile, fullName, firstName);
+    if (profile) {
+      saveProfile({ name: fullName.trim() || null, firstName: firstName.trim() || null });
     }
     setOpen(false);
   };
 
   const handleCancel = () => {
     // Reset form values to original
-    if (me?.profile) {
-      setFullName(me.profile.name || "");
-      setFirstName(me.profile.firstName || "");
+    if (profile) {
+      setFullName(profile.name || "");
+      setFirstName(profile.firstName || "");
     }
     setOpen(false);
   };
@@ -116,6 +103,27 @@ export function SettingsDialog() {
                 </Button>
                 <Button onClick={handleSave}>Save Changes</Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Passkey Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Passkey</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Save a passkey to get back into your account on another device or after logging out.
+              </p>
+              <Button variant="outline" onClick={savePasskey} disabled={passkeyState === "saving"}>
+                Save a passkey
+              </Button>
+              {passkeyState === "saved" && <p className="text-sm">Passkey saved.</p>}
+              {passkeyState === "error" && (
+                <p role="alert" className="text-sm text-destructive">
+                  Couldn't save a passkey. Please try again.
+                </p>
+              )}
             </CardContent>
           </Card>
 

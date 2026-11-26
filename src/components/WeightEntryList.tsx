@@ -12,17 +12,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useAccount } from "jazz-classic/react";
-import { JazzAccount, type WeightEntry } from "../schema";
+import { useDb } from "jazz-tools/react";
+import { app } from "../../jazz/jazz.generated";
+import { useWeights, type Weight as WeightEntry } from "@/lib/data";
 import { DateTime } from "luxon";
 import { Edit, Trash2, Weight, ChevronDown } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 import { WeightConverter } from "@/utils/WeightConverter";
-import type { Loaded } from "jazz-classic";
 
 interface WeightEntryListProps {
-  onEdit: (entry: Loaded<typeof WeightEntry>) => void;
+  onEdit: (entry: WeightEntry) => void;
   addButton?: React.ReactNode;
 }
 
@@ -41,7 +41,7 @@ function formatRelativeDate(timestamp: string) {
   return date.toLocaleString(DateTime.DATE_MED);
 }
 
-function formatWeightDisplay(entry: Loaded<typeof WeightEntry>) {
+function formatWeightDisplay(entry: WeightEntry) {
   // Get the stored unit (default to 'lbs' for legacy entries)
   const storedUnit = entry.unit || "lbs";
 
@@ -57,32 +57,22 @@ function formatWeightDisplay(entry: Loaded<typeof WeightEntry>) {
 }
 
 export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
-  const { me } = useAccount(JazzAccount, {
-    resolve: {
-      profile: true,
-      root: {
-        weightEntries: { $each: true },
-      },
-    },
-  });
+  const db = useDb();
+  const weightEntries = useWeights();
 
   const { updateSyncStatus } = useNetworkStatus();
-  const [deleteEntry, setDeleteEntry] = useState<Loaded<typeof WeightEntry> | null>(null);
+  const [deleteEntry, setDeleteEntry] = useState<WeightEntry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [displayCount, setDisplayCount] = useState(10);
   const ENTRIES_PER_LOAD = 50;
 
   // Sort weight entries by date (newest first)
-  const weightEntries = me?.root?.weightEntries;
   const sortedEntries = useMemo(() => {
     if (!weightEntries) return [];
 
-    return [...weightEntries]
-      .filter((entry): entry is Loaded<typeof WeightEntry> => entry != null)
-      .toSorted(
-        (a, b) =>
-          DateTime.fromISO(b.timestamp).toMillis() - DateTime.fromISO(a.timestamp).toMillis(),
-      );
+    return weightEntries.toSorted(
+      (a, b) => DateTime.fromISO(b.timestamp).toMillis() - DateTime.fromISO(a.timestamp).toMillis(),
+    );
   }, [weightEntries]);
 
   // Get entries to display based on current display count
@@ -94,17 +84,12 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
   const remainingEntries = sortedEntries.length - displayCount;
 
   const handleDelete = async () => {
-    if (!deleteEntry || !me?.root?.weightEntries) return;
+    if (!deleteEntry) return;
 
     setIsDeleting(true);
     try {
       await withSyncErrorHandling(
-        async () => {
-          const index = me.root.weightEntries.indexOf(deleteEntry);
-          if (index > -1) {
-            me.root.weightEntries.splice(index, 1);
-          }
-        },
+        async () => db.delete(app.weightEntries, deleteEntry.id),
         "weight-deletion",
         updateSyncStatus,
       )();
@@ -153,6 +138,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
             {displayedEntries.map((entry) => (
               <div
                 key={entry.id}
+                data-testid="weight-entry"
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center space-x-2 sm:space-x-4 w-full">

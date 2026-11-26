@@ -2,16 +2,16 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAccount } from "jazz-classic/react";
+import type { Loaded } from "jazz-classic";
 import { DataExporter } from "@/utils/DataExporter";
 import { DataImporter } from "@/utils/DataImporter";
-import { JazzAccount } from "@/schema";
+import type { JazzAccount } from "@/schema";
 import { Upload, Download, Loader2, Check, AlertCircle } from "lucide-react";
 
 export function DataCard() {
-  const { me } = useAccount(JazzAccount, {
-    resolve: { root: { mealEntries: true, weightEntries: true } },
-  });
+  // Stub until U7 moves export and import to Jazz 2: there is no Classic account to
+  // read any more, so both buttons do nothing.
+  const me = undefined as Loaded<typeof JazzAccount> | undefined;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
