@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { FoodIntelligenceManager } from "../FoodIntelligenceManager";
-import { type CoList, type Loaded } from "jazz-tools";
+import { type CoList, type Loaded } from "jazz-classic";
 import { DateTime } from "luxon";
 import { FoodIntelligence, FoodMetadata, MealEntry } from "../../schema";
 

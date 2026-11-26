@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkError
 import { JazzAccount, type MealEntry } from "../schema";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
-import { type Loaded } from "jazz-tools";
+import { type Loaded } from "jazz-classic";
 
 // Custom tooltip for pie chart
 function CustomTooltip({ active, payload }: any) {

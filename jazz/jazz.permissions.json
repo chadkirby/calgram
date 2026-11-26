@@ -1,0 +1,27 @@
+{
+  "$schema": "https://jazz.tools/schemas/jazz.permissions.v1.json",
+  "$generated": {
+    "by": "jazz-tools generate from schema.ts — edit the TypeScript, not this file",
+    "sha256": "997a5efacb800f181c7b5f84796c4505ebe84f087f5b6b142d728be21e8ed487"
+  },
+  "tables": {
+    "mealEntries": {
+      "read": "$createdBy = session.user",
+      "insert": "true",
+      "update": "$createdBy = session.user",
+      "delete": "$createdBy = session.user"
+    },
+    "profile": {
+      "read": "$createdBy = session.user",
+      "insert": "true",
+      "update": "$createdBy = session.user",
+      "delete": "$createdBy = session.user"
+    },
+    "weightEntries": {
+      "read": "$createdBy = session.user",
+      "insert": "true",
+      "update": "$createdBy = session.user",
+      "delete": "$createdBy = session.user"
+    }
+  }
+}

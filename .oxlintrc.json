@@ -10,7 +10,7 @@
     "builtin": true,
     "browser": true
   },
-  "ignorePatterns": ["dist", "worker-configuration.d.ts", "spikes"],
+  "ignorePatterns": ["dist", "worker-configuration.d.ts", "spikes", "jazz/jazz.generated.ts"],
   "rules": {
     "react/react-in-jsx-scope": "off",
     "typescript/no-extraneous-class": "off",

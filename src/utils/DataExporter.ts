@@ -1,4 +1,4 @@
-import { type Loaded } from "jazz-tools";
+import { type Loaded } from "jazz-classic";
 import type {
   JazzAccount,
   MealRow,

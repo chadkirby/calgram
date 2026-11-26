@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { JazzAccount, WeightEntry, type BodyWeightUnit } from "../schema";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WeightPageErrorFallback } from "@/components/PageErrorFallback";
@@ -12,7 +12,7 @@ import { WeightEntryDialog } from "@/components/WeightEntryDialog";
 import { Plus } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
-import type { Loaded } from "jazz-tools";
+import type { Loaded } from "jazz-classic";
 
 function WeightPageContent() {
   const { me } = useAccount(JazzAccount, {

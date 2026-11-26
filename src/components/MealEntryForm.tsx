@@ -19,7 +19,7 @@ import { Check } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
 import { DateTime } from "luxon";
-import { type Loaded } from "jazz-tools";
+import { type Loaded } from "jazz-classic";
 import { FoodPredictor } from "../utils/FoodPredictor";
 
 // Enhanced Zod schema for comprehensive form validation

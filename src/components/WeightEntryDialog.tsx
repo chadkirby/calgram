@@ -16,11 +16,11 @@ import { DateTime } from "luxon";
 import { WeightEntry, type BodyWeightUnit, bodyWeightUnits } from "../schema";
 import { WeightInput, getStepForUnit, getPlaceholderForUnit } from "@/components/WeightInput";
 import { UnitPreferenceManager } from "@/utils/UnitPreferenceManager";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { JazzAccount } from "../schema";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
-import type { Loaded } from "jazz-tools";
+import type { Loaded } from "jazz-classic";
 import { DatePicker } from "@/components/ui/date-picker";
 
 // Zod schema for weight form validation

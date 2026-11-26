@@ -55,6 +55,10 @@ jobs:
       - name: Lint (oxlint)
         run: pnpm lint
 
+      # The generated Jazz files must match jazz/schema.ts.
+      - name: Check Jazz generated files
+        run: pnpm jazz:generate --check
+
       - name: Run unit tests
         run: pnpm test
 

@@ -3,7 +3,7 @@
  * https://jazz.tools/docs/react/schemas/covalues
  */
 
-import { Group, co, z, type Loaded } from "jazz-tools";
+import { Group, co, z, type Loaded } from "jazz-classic";
 import { DateTime } from "luxon";
 import { z as zod } from "zod";
 

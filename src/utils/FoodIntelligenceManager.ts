@@ -1,4 +1,4 @@
-import { type CoList, type Loaded } from "jazz-tools";
+import { type CoList, type Loaded } from "jazz-classic";
 import { DateTime } from "luxon";
 import { FoodIntelligence, FoodMetadata, MealEntry } from "../schema";
 

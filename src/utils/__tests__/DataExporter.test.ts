@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DataImporter } from "../DataImporter";
 import { DataExporter } from "../DataExporter";
-import { type Loaded } from "jazz-tools";
+import { type Loaded } from "jazz-classic";
 import { JazzAccount } from "@/schema";
 
 // Mock data for testing

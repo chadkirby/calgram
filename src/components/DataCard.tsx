@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAccount } from "jazz-tools/react";
+import { useAccount } from "jazz-classic/react";
 import { DataExporter } from "@/utils/DataExporter";
 import { DataImporter } from "@/utils/DataImporter";
 import { JazzAccount } from "@/schema";

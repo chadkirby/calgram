@@ -1,4 +1,4 @@
-import { Group, type Loaded } from "jazz-tools";
+import { Group, type Loaded } from "jazz-classic";
 import { DateTime } from "luxon";
 import { z } from "zod";
 import {
