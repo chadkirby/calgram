@@ -1,0 +1,10 @@
+import { chromium } from "@playwright/test";
+const b = await chromium.launch();
+const open = async () => { const p = await (await b.newContext()).newPage(); await p.goto("http://localhost:5287/"); await p.getByTestId("user").waitFor({ timeout: 30000 }); return p; };
+const A = await open();
+const meals = [{ timestamp: "2026-11-26T08:00:00.000-08:00", foodName: "Oats", totalCalories: 300 }];
+const c = await A.evaluate(async (m) => (await window.__classicLab()).createClassic("calgram-crosskey-a@example.com", m), meals);
+const B = await open();
+const r = await B.evaluate(async ([a, s]) => { const x = await (await window.__classicLab()).readClassic("fallback@example.com", a, s); return { meals: x.meals?.length, food: x.meals?.[0]?.foodName }; }, [c.accountID, c.seed]);
+console.log("written with key A, read with fallback@example.com:", JSON.stringify(r));
+await b.close();
