@@ -1,15 +1,9 @@
-import { Group, type Loaded } from "jazz-classic";
 import { z } from "zod";
 import {
-  MealEntry,
-  WeightEntry,
-  FoodMetadata,
   ExportIsoString,
   ExportMealShape,
   ExportWeightShape,
   ExportProfileShape,
-  type FoodIntelligence,
-  type JazzAccount,
   type MealRow,
   type ProfileRow,
   type WeightRow,
@@ -30,14 +24,6 @@ const ExportedDataSchema = z
     weightEntries: z.array(z.object(ExportWeightShape).strict()),
   })
   .strict();
-
-// Result interface for import operations
-interface ImportResult {
-  mealCount: number;
-  weightCount: number;
-  duplicatesSkipped: number;
-  errors: string[];
-}
 
 /** A row to write, with the source key its row id is derived from. */
 export interface PlannedRow<T> {
@@ -146,166 +132,6 @@ export class DataImporter {
       profile: data.profile ? definedFields(data.profile) : undefined,
       errors: [],
     };
-  }
-
-  /**
-   * Classic adapter: import a file into a Classic account. Rows come from `planImport`;
-   * the profile block is still ignored here, as it always was on Classic.
-   */
-  static async importData(
-    jsonData: ExportedData,
-    account: Loaded<typeof JazzAccount>,
-  ): Promise<ImportResult> {
-    if (!account.root) {
-      throw new Error("Account root not available");
-    }
-
-    const plan = await this.planImport(jsonData);
-    if (plan.errors.length > 0) {
-      throw new Error(`Invalid import file: ${plan.errors.join("; ")}`);
-    }
-
-    // Ensure the account root is loaded first
-    const loadedAccount = await account.ensureLoaded({
-      resolve: {
-        root: {
-          mealEntries: true,
-          weightEntries: true,
-          foodIntelligence: {
-            recentFoods: true,
-            recentCategories: true,
-            foodData: true,
-          },
-        },
-      },
-    });
-
-    if (!loadedAccount.root) {
-      throw new Error("Failed to load account root");
-    }
-
-    if (!loadedAccount.root.mealEntries || !loadedAccount.root.weightEntries) {
-      throw new Error("Account root does not have mealEntries or weightEntries");
-    }
-
-    const group = Group.create();
-    let mealCount = 0;
-    let weightCount = 0;
-    let duplicatesSkipped = 0;
-    const errors: string[] = [];
-
-    // Import meal entries
-    if (loadedAccount.root.mealEntries) {
-      for (const { row: exportedMeal } of plan.meals) {
-        try {
-          const mealEntry = MealEntry.create(
-            {
-              timestamp: exportedMeal.timestamp,
-              foodName: exportedMeal.foodName,
-              foodCategory: exportedMeal.foodCategory,
-              caloriesPerGram: exportedMeal.caloriesPerGram,
-              caloriesPerDisplayUnit: exportedMeal.caloriesPerDisplayUnit,
-              weightInGrams: exportedMeal.weightInGrams,
-              displayUnit: exportedMeal.displayUnit,
-              notes: exportedMeal.notes,
-              totalCalories: exportedMeal.totalCalories,
-            },
-            group,
-          );
-
-          loadedAccount.root.mealEntries.push(mealEntry);
-          mealCount++;
-
-          // Update food intelligence with imported data
-          if (loadedAccount.root.foodIntelligence) {
-            this.updateFoodIntelligenceNewFormat(loadedAccount.root.foodIntelligence, exportedMeal);
-          }
-        } catch (error) {
-          console.warn("Failed to import meal entry:", exportedMeal, error);
-          errors.push(
-            `Failed to import meal entry: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
-        }
-      }
-    }
-
-    // Import weight entries
-    if (loadedAccount.root.weightEntries) {
-      for (const { row: exportedWeight } of plan.weights) {
-        try {
-          const weightEntry = WeightEntry.create(
-            {
-              timestamp: exportedWeight.timestamp,
-              weightValue: exportedWeight.weightValue,
-              unit: exportedWeight.unit,
-              notes: exportedWeight.notes,
-            },
-            group,
-          );
-
-          loadedAccount.root.weightEntries.push(weightEntry);
-          weightCount++;
-        } catch (error) {
-          console.warn("Failed to import weight entry:", exportedWeight, error);
-          errors.push(
-            `Failed to import weight entry: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
-        }
-      }
-    }
-
-    return { mealCount, weightCount, duplicatesSkipped, errors };
-  }
-
-  /**
-   * Update food intelligence with imported meal data (current format)
-   */
-  private static updateFoodIntelligenceNewFormat(
-    foodIntelligence: Loaded<typeof FoodIntelligence>,
-    meal: MealRow,
-  ) {
-    try {
-      // Add to recent foods if not already present
-      if (foodIntelligence.recentFoods && !foodIntelligence.recentFoods.includes(meal.foodName)) {
-        foodIntelligence.recentFoods.push(meal.foodName);
-      }
-
-      // Add to recent categories if not already present
-      if (
-        foodIntelligence.recentCategories &&
-        !foodIntelligence.recentCategories.includes(meal.foodCategory)
-      ) {
-        foodIntelligence.recentCategories.push(meal.foodCategory);
-      }
-
-      // Update or create food metadata
-      if (foodIntelligence.foodData) {
-        const existingMetadata = foodIntelligence.foodData[meal.foodName];
-        if (existingMetadata) {
-          // Update existing metadata
-          existingMetadata.lastUsedCPG = meal.caloriesPerGram;
-          existingMetadata.lastUsedCategory = meal.foodCategory;
-          existingMetadata.usageCount = existingMetadata.usageCount + 1;
-          existingMetadata.lastUsed = meal.timestamp;
-        } else {
-          // Create new metadata
-          const group = Group.create();
-          const metadata = FoodMetadata.create(
-            {
-              lastUsedCPG: meal.caloriesPerGram,
-              lastUsedCategory: meal.foodCategory,
-              usageCount: 1,
-              lastUsed: meal.timestamp,
-            },
-            group,
-          );
-
-          foodIntelligence.foodData[meal.foodName] = metadata;
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to update food intelligence for:", meal.foodName, error);
-    }
   }
 
   /**

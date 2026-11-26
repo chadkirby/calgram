@@ -1,6 +1,4 @@
-import { type Loaded } from "jazz-classic";
 import type {
-  JazzAccount,
   MealRow,
   ProfileRow,
   WeightRow,
@@ -30,12 +28,10 @@ export interface ExportSource {
   weights: Iterable<SourceRow<WeightRow> & { id?: string }>;
 }
 
-const present = <T>(item: T | null | undefined): item is T => item != null;
-
 export class DataExporter {
   /**
    * Build the export file from plain rows. Pure: fields are picked explicitly, so a
-   * Classic CoValue or a Jazz 2 row can be passed as is. Timestamps are copied verbatim.
+   * Jazz 2 row can be passed as is. Timestamps are copied verbatim.
    */
   static buildExport({ profile, meals, weights }: ExportSource, now = new Date()): ExportedData {
     const mealEntries = Array.from(
@@ -84,51 +80,6 @@ export class DataExporter {
       mealEntries,
       weightEntries,
     };
-  }
-
-  /**
-   * Classic adapter: load a Classic account and export it with `buildExport`. Each
-   * entry's CoValue id becomes its source id, so a Jazz 2 import of the file won't
-   * duplicate rows. The Classic importer ignores ids, as it always has.
-   */
-  static async exportUserData(account: Loaded<typeof JazzAccount>): Promise<ExportedData> {
-    if (!account.root) {
-      throw new Error("Account root not available");
-    }
-
-    let loadedAccount = account;
-
-    // Ensure the account root is loaded first, if ensureLoaded method exists
-    if (typeof account.ensureLoaded === "function") {
-      loadedAccount = await account.ensureLoaded({
-        resolve: {
-          profile: true,
-          root: {
-            mealEntries: true,
-            weightEntries: true,
-          },
-        },
-      });
-    }
-
-    const root = loadedAccount.root;
-    if (!root) {
-      throw new Error("Failed to load account root");
-    }
-
-    const profile = loadedAccount.profile;
-
-    return this.buildExport({
-      profile: {
-        name: profile?.name,
-        firstName: profile?.firstName,
-        dateOfBirth: root.dateOfBirth,
-        mealWeightUnit: profile?.mealWeightUnit,
-        bodyWeightUnit: profile?.bodyWeightUnit,
-      },
-      meals: [...(root.mealEntries ?? [])].filter(present),
-      weights: [...(root.weightEntries ?? [])].filter(present),
-    });
   }
 
   /**

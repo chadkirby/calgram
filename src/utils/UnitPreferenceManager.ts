@@ -1,6 +1,6 @@
 import type { MealWeightUnit, BodyWeightUnit, ProfileRow } from "@/schema";
 
-/** The profile fields this class reads and writes. A Classic profile satisfies it. */
+/** The profile fields this class reads and writes. */
 type UnitProfile = Pick<ProfileRow, "mealWeightUnit" | "bodyWeightUnit">;
 
 /**

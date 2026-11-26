@@ -2,16 +2,16 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { Loaded } from "jazz-classic";
+import { useDb } from "jazz-tools/react";
 import { DataExporter } from "@/utils/DataExporter";
 import { DataImporter } from "@/utils/DataImporter";
-import type { JazzAccount } from "@/schema";
+import { useAccount } from "@/lib/account";
+import { exportAccount, importIntoAccount } from "@/lib/backup";
 import { Upload, Download, Loader2, Check, AlertCircle } from "lucide-react";
 
 export function DataCard() {
-  // Stub until U7 moves export and import to Jazz 2: there is no Classic account to
-  // read any more, so both buttons do nothing.
-  const me = undefined as Loaded<typeof JazzAccount> | undefined;
+  const db = useDb();
+  const { accountId, profile, saveProfile } = useAccount();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -22,16 +22,12 @@ export function DataCard() {
     mealCount?: number;
     weightCount?: number;
     duplicatesSkipped?: number;
-    errors?: string[];
   } | null>(null);
 
   const handleExport = async () => {
-    if (!me) return;
-
     setIsExporting(true);
     try {
-      // Export user data
-      const exportData = await DataExporter.exportUserData(me);
+      const exportData = await exportAccount(db, profile);
 
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");
@@ -62,7 +58,7 @@ export function DataCard() {
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !me) {
+    if (!file || !accountId) {
       return;
     }
 
@@ -73,26 +69,14 @@ export function DataCard() {
       // Read file content
       const fileContent = await file.text();
 
-      // Parse JSON data
+      // Parse, validate, then insert the rows this account doesn't have yet
       const jsonData = DataImporter.parseJsonFile(fileContent);
+      const result = await importIntoAccount(db, accountId, jsonData, saveProfile);
 
-      // Validate data structure
-      const validation = DataImporter.validateImportData(jsonData);
-      if (!validation.isValid) {
-        throw new Error(`Invalid data format: ${validation.errors.join(", ")}`);
-      }
-
-      // Import data
-      const result = await DataImporter.importData(jsonData, me);
-
-      // Show success message with import details
       setImportResult({
         success: true,
         message: `Imported ${result.mealCount} meals and ${result.weightCount} weights`,
-        mealCount: result.mealCount,
-        weightCount: result.weightCount,
-        duplicatesSkipped: result.duplicatesSkipped,
-        errors: result.errors.length > 0 ? result.errors : undefined,
+        ...result,
       });
     } catch (error) {
       console.error("Import failed:", error);
@@ -165,13 +149,9 @@ export function DataCard() {
               {importResult.success && importResult.mealCount !== undefined && (
                 <span className="block mt-1 text-xs">
                   Meals: {importResult.mealCount}, Weights: {importResult.weightCount}
-                  {importResult.duplicatesSkipped &&
-                    importResult.duplicatesSkipped > 0 &&
-                    `, Skipped duplicates: ${importResult.duplicatesSkipped}`}
+                  {!!importResult.duplicatesSkipped &&
+                    `, Skipped (already present): ${importResult.duplicatesSkipped}`}
                 </span>
-              )}
-              {importResult.errors && importResult.errors.length > 0 && (
-                <span className="block mt-1 text-xs">Errors: {importResult.errors.join(", ")}</span>
               )}
             </AlertDescription>
           </Alert>

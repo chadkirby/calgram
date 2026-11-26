@@ -3,7 +3,7 @@ import type { MealRow } from "../schema";
 
 export type PredictionEntry = Pick<MealRow, "timestamp" | "foodName" | "foodCategory">;
 
-/** Last-used category per exact food name: derived suggestions or Classic's stored copy. */
+/** Last-used category per exact food name, from the derived food suggestions. */
 export interface CategoryLookup {
   foodData?: Readonly<Record<string, { lastUsedCategory?: string } | null | undefined>> | null;
 }
