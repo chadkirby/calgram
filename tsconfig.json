@@ -15,7 +15,6 @@
 		"types": [
 			"./worker-configuration.d.ts"
 		],
-		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"]
 		}
