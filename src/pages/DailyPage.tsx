@@ -297,7 +297,10 @@ function DailyPageContent() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, percentage }) => {
+                          label={(props) => {
+                            // Recharts passes each data entry's own fields through.
+                            const { percentage } = props as typeof props & { percentage: string };
+                            const name = props.name ?? "";
                             const isMobile = window.innerWidth < 640;
                             const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;
                             if (isMobile) return `${percentage}%`;
