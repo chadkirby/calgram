@@ -95,4 +95,23 @@ describe("deriveFoodIntelligence", () => {
       foodData: {},
     });
   });
+
+  it("on equal timestamps, the meal later in the input counts as newer", () => {
+    const result = deriveFoodIntelligence([
+      meal("Soup", "2025-07-27T12:00:00.000-07:00", { caloriesPerGram: 0.3 }),
+      meal("Soup", "2025-07-27T12:00:00.000-07:00", { caloriesPerGram: 0.8 }),
+    ]);
+    expect(result.foodData.Soup.lastUsedCPG).toBe(0.8);
+  });
+
+  it("handles food names that are also object prototype keys", () => {
+    const result = deriveFoodIntelligence([
+      meal("constructor", "2025-07-27T12:00:00.000-07:00"),
+      meal("__proto__", "2025-07-27T13:00:00.000-07:00"),
+    ]);
+    expect(Object.hasOwn(result.foodData, "constructor")).toBe(true);
+    expect(new Map(Object.entries(result.foodData)).get("constructor")?.usageCount).toBe(1);
+    expect(Object.hasOwn(result.foodData, "__proto__")).toBe(true);
+    expect(result.recentFoods).toEqual(["__proto__", "constructor"]);
+  });
 });

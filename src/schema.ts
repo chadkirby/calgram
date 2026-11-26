@@ -33,7 +33,7 @@ export const MealEntry = co.map(MealShape);
 
 export type MealEntryType = z.infer<typeof MealEntry>;
 
-/** Expose reusable Weight shape similar to MealShape to enable DRY validation reuse */
+/** Classic WeightEntry fields. */
 export const WeightShape = {
   timestamp: z.iso.date(),
   weightValue: z.number().positive("Weight value must be positive"),

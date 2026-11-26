@@ -85,7 +85,8 @@ export class DataExporter {
 
   /**
    * Classic adapter: load a Classic account and export it with `buildExport`. Each
-   * entry's CoValue id becomes its source id, so the file re-imports without duplicates.
+   * entry's CoValue id becomes its source id, so a Jazz 2 import of the file won't
+   * duplicate rows. The Classic importer ignores ids, as it always has.
    */
   static async exportUserData(account: Loaded<typeof JazzAccount>): Promise<ExportedData> {
     if (!account.root) {
