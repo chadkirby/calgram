@@ -21,12 +21,12 @@ Builds the export file (version `1.3`) from plain rows. Pure: no account access,
 
 ```typescript
 static buildExport(
-  source: { accountId?: string; profile: ProfileRow | undefined; meals: Iterable<MealRow & { id?: string }>; weights: Iterable<WeightRow & { id?: string }> },
+  source: { accountId?: string; profile: ProfileRow | undefined; meals: Iterable<MealRow & { id: string }>; weights: Iterable<WeightRow & { id: string }> },
   now?: Date,
 ): ExportedData
 ```
 
-A row's `id`, when present, is written as the entry's source `id` (new in v1.2), so a re-import can recognise entries it already has. `accountId`, when given, is written at the top level (new in v1.3): the Jazz 2 account the file came from.
+Each row's `id` is written as the entry's source `id`, so a re-import can recognise entries it already has; import rejects entries without one. `accountId`, when given, is written at the top level: the Jazz 2 account the file came from.
 
 ### downloadJsonFile
 
@@ -55,8 +55,8 @@ The main data structure for exported data.
 interface ExportedData {
   version: string; // "1.3"
   exportDate: string;
-  accountId?: string; // exporting Jazz 2 account, since 1.3
-  profile?: ExportProfileDTO; // since 1.1
+  accountId?: string; // exporting Jazz 2 account (v1.3; v1.2 Classic exports have none)
+  profile?: ExportProfileDTO;
   mealEntries: ExportedMealEntry[];
   weightEntries: ExportedWeightEntry[];
 }
@@ -68,7 +68,7 @@ Structure for individual meal entries in the export.
 
 ```typescript
 interface ExportedMealEntry {
-  id?: string; // source id, since 1.2
+  id: string; // source id: Classic CoValue id (v1.2) or Jazz 2 row id (v1.3)
   timestamp: string;
   foodName: string;
   foodCategory: string;
@@ -87,7 +87,7 @@ Structure for individual weight entries in the export.
 
 ```typescript
 interface ExportedWeightEntry {
-  id?: string; // source id, since 1.2
+  id: string; // source id: Classic CoValue id (v1.2) or Jazz 2 row id (v1.3)
   timestamp: string;
   weightValue: number;
   unit?: string;
@@ -103,7 +103,8 @@ The DataCard component exports the signed-in account through `exportAccount` in 
 import { DataExporter } from "@/utils/DataExporter";
 import { exportAccount } from "@/lib/backup";
 
-const exportData = await exportAccount(db, profile);
+const { data: exportData, complete } = await exportAccount(db, accountId, profile);
+// complete is false when the server's copy couldn't be read in time.
 
 // Generate filename with timestamp
 const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");

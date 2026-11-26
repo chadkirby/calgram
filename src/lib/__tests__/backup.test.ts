@@ -6,8 +6,8 @@ import { rowId } from "@/utils/rowIds";
 
 const ACCOUNT = "account-a";
 
-const meal = (foodName: string, id?: string) => ({
-  ...(id ? { id } : {}),
+const meal = (foodName: string, id = `co_z${foodName}`) => ({
+  id,
   timestamp: "2026-11-20T08:00:00.000-08:00",
   foodName,
   foodCategory: "Dry food",
@@ -16,8 +16,8 @@ const meal = (foodName: string, id?: string) => ({
   totalCalories: 350,
 });
 
-const weight = (weightValue: number, id?: string) => ({
-  ...(id ? { id } : {}),
+const weight = (weightValue: number, id = `co_zWeight${weightValue}`) => ({
+  id,
   timestamp: "2026-11-20T07:00:00.000-08:00",
   weightValue,
   unit: "lbs" as const,
@@ -65,26 +65,20 @@ function fakeDb(rejectWith?: string, remote?: "same" | "reject" | "hang" | Map<u
 /** A meal as Jazz 2 stores it: with its id, and null for a missing optional. */
 const stored = (foodName: string, id: string) => ({ ...meal(foodName), notes: null, id });
 
-const withoutIds = ({ id: _id, ...entry }: { id?: string }) => entry;
+const withoutId = ({ id: _id, ...entry }: { id: string }) => entry;
 
-const planned = (sourceKey: string) => ({ sourceKey, hasSourceId: true, row: meal(sourceKey) });
+const planned = (sourceId: string) => ({ sourceId, row: meal(sourceId) });
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("planRowWrites", () => {
-  it("writes an entry whose source id appears twice in the file once", async () => {
-    const result = await planRowWrites(ACCOUNT, [planned("src-1"), planned("src-1")], new Set());
-    expect(result.inserts).toHaveLength(1);
-    expect(result.duplicates).toBe(1);
-  });
-
   it("skips an entry whose source id is already one of this account's row ids", async () => {
     const result = await planRowWrites(ACCOUNT, [planned("row-1")], new Set(["row-1"]));
     expect(result.inserts).toEqual([]);
     expect(result.alreadyPresent).toBe(1);
   });
 
-  it("inserts under rowId(account, sourceKey), and skips when that row exists", async () => {
+  it("inserts under rowId(account, sourceId), and skips when that row exists", async () => {
     const id = await rowId(ACCOUNT, "co_zMeal1");
     const fresh = await planRowWrites(ACCOUNT, [planned("co_zMeal1")], new Set());
     expect(fresh.inserts.map((w) => w.id)).toEqual([id]);
@@ -153,17 +147,17 @@ describe("importIntoAccount", () => {
   it("inserts each new row once, and a second import of the same file adds nothing", async () => {
     const { db, inserts } = fakeDb();
     const data = file(
-      [meal("Kibble", "co_zMeal1"), meal("Kibble", "co_zMeal1"), meal("Treat"), meal("Treat")],
-      [weight(10, "co_zWeight1"), weight(10.2)],
+      [meal("Kibble", "co_zMeal1"), meal("Treat", "co_zMeal2")],
+      [weight(10, "co_zWeight1"), weight(10.2, "co_zWeight2")],
     );
 
     const first = await importIntoAccount(db, ACCOUNT, data, () => {});
-    expect(first).toEqual({ mealCount: 3, weightCount: 2, duplicatesSkipped: 1 });
+    expect(first).toEqual({ mealCount: 2, weightCount: 2, duplicatesSkipped: 0 });
     expect(inserts[0]).toEqual({ table: app.mealEntries, id: await rowId(ACCOUNT, "co_zMeal1") });
 
     const second = await importIntoAccount(db, ACCOUNT, data, () => {});
-    expect(second).toEqual({ mealCount: 0, weightCount: 0, duplicatesSkipped: 6 });
-    expect(inserts).toHaveLength(5);
+    expect(second).toEqual({ mealCount: 0, weightCount: 0, duplicatesSkipped: 4 });
+    expect(inserts).toHaveLength(4);
   });
 
   it("adds nothing when importing this account's own export", async () => {
@@ -178,65 +172,11 @@ describe("importIntoAccount", () => {
     expect(inserts).toHaveLength(2);
   });
 
-  describe("entries without a source id", () => {
-    it("add nothing when the same entries were imported before with Classic ids", async () => {
-      const { db, inserts } = fakeDb();
-      const classic = file(
-        [meal("Kibble", "co_zMeal1"), meal("Treat", "co_zMeal2")],
-        [weight(10, "co_zWeight1")],
-      );
-      await importIntoAccount(db, ACCOUNT, classic, () => {});
-      expect(inserts).toHaveLength(3);
-
-      const v11 = {
-        ...classic,
-        version: "1.1",
-        mealEntries: classic.mealEntries.map(withoutIds),
-        weightEntries: classic.weightEntries.map(withoutIds),
-      };
-      const result = await importIntoAccount(db, ACCOUNT, v11, () => {});
-      expect(result).toEqual({ mealCount: 0, weightCount: 0, duplicatesSkipped: 3 });
-      expect(inserts).toHaveLength(3);
-    });
-
-    it("add only the copies the account doesn't already have", async () => {
-      const { db, inserts, tables } = fakeDb();
-      // A snack logged by hand: a random row id, and null for missing optionals.
-      tables.get(app.mealEntries)!.set("manual-1", {
-        ...meal("Snack"),
-        caloriesPerDisplayUnit: null,
-        displayUnit: null,
-        notes: null,
-        id: "manual-1",
-      });
-
-      const result = await importIntoAccount(
-        db,
-        ACCOUNT,
-        file([meal("Snack"), meal("Snack")]),
-        () => {},
-      );
-      expect(result).toEqual({ mealCount: 1, weightCount: 0, duplicatesSkipped: 1 });
-      expect(inserts).toHaveLength(1);
-    });
-
-    it("still add an entry whose content differs only in its timestamp text", async () => {
-      const { db, tables } = fakeDb();
-      tables.get(app.mealEntries)!.set("manual-1", { ...meal("Snack"), id: "manual-1" });
-      const shifted = { ...meal("Snack"), timestamp: "2026-11-20T16:00:00.000Z" };
-      const result = await importIntoAccount(db, ACCOUNT, file([shifted]), () => {});
-      expect(result.mealCount).toBe(1);
-    });
-  });
-
   describe("a file's source ids", () => {
     const mealId = "0f8fad5b-d9cb-469f-a165-70867728950e";
     const weightId = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
     const withIds = (accountId?: string) => ({
-      ...file(
-        [meal("Kibble", mealId), meal("Treat", "co_zClassicMeal"), meal("Snack")],
-        [weight(10, weightId)],
-      ),
+      ...file([meal("Kibble", mealId)], [weight(10, weightId)]),
       version: "1.3",
       ...(accountId ? { accountId } : {}),
     });
@@ -244,14 +184,8 @@ describe("importIntoAccount", () => {
     it("are reused as row ids when the file is this account's own export", async () => {
       const { db, inserts } = fakeDb();
       const result = await importIntoAccount(db, ACCOUNT, withIds(ACCOUNT), () => {});
-      expect(result).toEqual({ mealCount: 3, weightCount: 1, duplicatesSkipped: 0 });
-      expect(inserts.map(({ id }) => id)).toEqual([
-        mealId,
-        // A Classic id and an id-less entry still get derived ids.
-        await rowId(ACCOUNT, "co_zClassicMeal"),
-        expect.not.stringMatching(new RegExp(`^(${mealId}|${weightId})$`)),
-        weightId,
-      ]);
+      expect(result).toEqual({ mealCount: 1, weightCount: 1, duplicatesSkipped: 0 });
+      expect(inserts.map(({ id }) => id)).toEqual([mealId, weightId]);
     });
 
     it("are only a source key for another account's export", async () => {
@@ -268,14 +202,6 @@ describe("importIntoAccount", () => {
       expect(inserts.map(({ id }) => id)).toContain(await rowId(ACCOUNT, mealId));
       expect(inserts.map(({ id }) => id)).not.toContain(mealId);
     });
-
-    it("still count once when the same source id repeats in this account's export", async () => {
-      const { db, inserts } = fakeDb();
-      const data = { ...withIds(ACCOUNT), mealEntries: [meal("A", mealId), meal("A", mealId)] };
-      const result = await importIntoAccount(db, ACCOUNT, data, () => {});
-      expect(result.duplicatesSkipped).toBe(1);
-      expect(inserts.filter(({ table }) => table === app.mealEntries)).toHaveLength(1);
-    });
   });
 
   it("writes nothing for an invalid file and reports its validation errors", async () => {
@@ -286,6 +212,26 @@ describe("importIntoAccount", () => {
     await expect(importIntoAccount(db, ACCOUNT, invalid, saveProfile)).rejects.toThrow(
       /Invalid data format: mealEntries\.0\.caloriesPerGram/,
     );
+    expect(inserts).toEqual([]);
+    expect(saveProfile).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "a v1.1 file",
+      { ...file([withoutId(meal("Kibble"))]), version: "1.1" },
+      /version: Export version "1\.1" isn't supported/,
+    ],
+    [
+      "an entry without an id",
+      file([withoutId(meal("Kibble"))]),
+      /mealEntries\.0\.id: id is required/,
+    ],
+  ])("writes nothing for %s", async (_name, data, message) => {
+    const { db, inserts } = fakeDb();
+    const saveProfile = vi.fn<(patch: ProfileInsert) => void>();
+    const withProfile = { ...data, profile: { firstName: "Sam" } };
+    await expect(importIntoAccount(db, ACCOUNT, withProfile, saveProfile)).rejects.toThrow(message);
     expect(inserts).toEqual([]);
     expect(saveProfile).not.toHaveBeenCalled();
   });

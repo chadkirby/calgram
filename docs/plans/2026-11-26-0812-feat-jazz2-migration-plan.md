@@ -109,7 +109,7 @@ Every calgram user's data lives in Jazz Cloud v1, which is being retired. When i
   - (session-settled: user-directed — chosen over one long-lived branch, and over feature flags in production: the user asked for a stack of two to four PRs)
 - KTD10. **Timestamps are stored as verbatim text.** No date type, no conversion to UTC or epoch. That keeps Daily-page day grouping unchanged (R3). Ordering uses the parsed instant at read time.
 - KTD11. **Food suggestions are derived from meals at read time,** not stored in a `foodMetadata` table. Today's stored copy drifts: deletes never update it, and edits count twice. Deriving it from about 5,000 rows in memory is cheap.
-- KTD12. **Utilities take plain row types.** `src/utils/*` stop importing Classic types, and export and import become pure functions (U2). The export format becomes v1.2: each entry gains an optional source `id`, so a downloaded Classic backup can be re-imported without duplicates. v1.1 files still import.
+- KTD12. **Utilities take plain row types.** `src/utils/*` stop importing Classic types, and export and import become pure functions (U2). Import accepts only the two formats real data comes in, and every entry must carry an `id`: v1.2 (Classic exports and the PR C fallback download, ids are Classic CoValue ids) and v1.3 (Jazz 2 exports, which also record the exporting account). Older files and entries without ids are rejected; supporting hypothetical old backups is out of scope.
 
 ### High-Level Technical Design
 

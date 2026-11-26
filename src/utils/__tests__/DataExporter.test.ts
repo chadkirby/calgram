@@ -5,7 +5,7 @@ describe("DataExporter", () => {
   describe("createJsonBlob", () => {
     it("should create a JSON blob from export data", () => {
       const mockData = {
-        version: "1.0",
+        version: "1.3",
         exportDate: "2023-01-01T00:00:00Z",
         mealEntries: [],
         weightEntries: [],
@@ -97,7 +97,7 @@ describe("DataExporter", () => {
   describe("downloadJsonFile", () => {
     it("should create and download JSON file", () => {
       const mockData = {
-        version: "1.0",
+        version: "1.3",
         exportDate: "2023-01-01T00:00:00Z",
         mealEntries: [],
         weightEntries: [],
@@ -119,7 +119,7 @@ describe("DataExporter", () => {
 
     it("should handle errors during file download", () => {
       const mockData = {
-        version: "1.0",
+        version: "1.3",
         exportDate: "2023-01-01T00:00:00Z",
         mealEntries: [],
         weightEntries: [],

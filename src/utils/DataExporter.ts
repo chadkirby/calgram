@@ -8,7 +8,7 @@ import type {
 } from "../schema";
 
 /**
- * v1.2 adds an optional source `id` to each entry; v1.3 adds the exporting Jazz 2
+ * v1.2 (Classic) gives each entry its source `id`; v1.3 (Jazz 2) adds the exporting
  * `accountId`, so importing into the same account can reuse those ids as row ids.
  */
 export const EXPORT_VERSION = "1.3";
@@ -16,7 +16,7 @@ export const EXPORT_VERSION = "1.3";
 export interface ExportedData {
   version: string;
   exportDate: string;
-  /** The Jazz 2 account the file was exported from (v1.3+). */
+  /** The Jazz 2 account the file was exported from (v1.3). */
   accountId?: string;
   profile?: ExportProfileDTO;
   mealEntries: ExportMealDTO[];
@@ -26,13 +26,13 @@ export interface ExportedData {
 /** A row whose optional fields may also be null, as Jazz 2 rows store them. */
 type SourceRow<T> = { [K in keyof T]: undefined extends T[K] ? T[K] | null : T[K] };
 
-/** Rows to export. A row's `id`, when present, is written as its source id. */
+/** Rows to export. Each row's `id` is written as its source id. */
 export interface ExportSource {
   /** The exporting Jazz 2 account, written to the file when given. */
   accountId?: string;
   profile: SourceRow<ProfileRow> | undefined;
-  meals: Iterable<SourceRow<MealRow> & { id?: string }>;
-  weights: Iterable<SourceRow<WeightRow> & { id?: string }>;
+  meals: Iterable<SourceRow<MealRow> & { id: string }>;
+  weights: Iterable<SourceRow<WeightRow> & { id: string }>;
 }
 
 export class DataExporter {
@@ -48,7 +48,7 @@ export class DataExporter {
       meals,
       (meal) =>
         ({
-          ...(meal.id ? { id: meal.id } : {}),
+          id: meal.id,
           timestamp: meal.timestamp,
           foodName: meal.foodName,
           foodCategory: meal.foodCategory,
@@ -65,7 +65,7 @@ export class DataExporter {
       weights,
       (weight) =>
         ({
-          ...(weight.id ? { id: weight.id } : {}),
+          id: weight.id,
           timestamp: weight.timestamp,
           weightValue: weight.weightValue,
           unit: weight.unit ?? undefined,

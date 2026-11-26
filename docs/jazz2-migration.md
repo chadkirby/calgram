@@ -1,6 +1,6 @@
 # Jazz Classic → Jazz 2 migration
 
-Status: spikes done (2026-11-25/26), including a real Cloudflare deploy, a Worker Preview, and a real Classic read. Nothing deployed to calgram. App code still on Classic (`jazz-tools@0.15.13`). A production v1.1 export (4,627 meals, 69 weigh-ins, full `profile`) passes `DataImporter.validateImportData`. 16 of its entries have date-only timestamps (`YYYY-MM-DD`), and the Jazz 2 import must accept those.
+Status: spikes done (2026-11-25/26), including a real Cloudflare deploy, a Worker Preview, and a real Classic read. Nothing deployed to calgram. App code still on Classic (`jazz-tools@0.15.13`). A production v1.1 export from 2026-11-26 (4,627 meals, 69 weigh-ins) served as sample data only; it is not meant to be imported. Import takes v1.2 (Classic, with ids) and v1.3 (Jazz 2) files.
 
 ## Decisions
 

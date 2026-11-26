@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { DataImporter, type ExportedData } from "../DataImporter";
 
-describe("DataImporter (current format only, strict)", () => {
+describe("DataImporter (v1.2 and v1.3, strict)", () => {
   describe("validateImportData", () => {
     it("should validate current format correctly", () => {
       const currentData: ExportedData = {
-        version: "1.0",
+        version: "1.3",
         exportDate: "2023-01-01T00:00:00.000Z",
         mealEntries: [],
         weightEntries: [],
@@ -18,7 +18,7 @@ describe("DataImporter (current format only, strict)", () => {
 
     it("should reject unknown keys at root (strict)", () => {
       const withUnknown = {
-        version: "1.0",
+        version: "1.3",
         exportDate: "2023-01-01T00:00:00.000Z",
         mealEntries: [],
         weightEntries: [],
@@ -32,10 +32,11 @@ describe("DataImporter (current format only, strict)", () => {
 
     it("should reject unknown keys in mealEntries items (strict)", () => {
       const withUnknownMeal = {
-        version: "1.0",
+        version: "1.3",
         exportDate: "2023-01-01T00:00:00.000Z",
         mealEntries: [
           {
+            id: "co_zApple",
             timestamp: "2023-01-01T12:00:00.000Z",
             foodName: "Apple",
             foodCategory: "Fruit",
@@ -59,7 +60,7 @@ describe("DataImporter (current format only, strict)", () => {
 
     it("should reject invalid ISO date", () => {
       const invalidDate = {
-        version: "1.0",
+        version: "1.3",
         exportDate: "not-a-date",
         mealEntries: [],
         weightEntries: [],

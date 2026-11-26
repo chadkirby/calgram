@@ -1,14 +1,8 @@
 import type { Db } from "jazz-tools";
 import { app, type ProfileInsert } from "../../jazz/jazz.generated";
 import { DataExporter, type ExportedData } from "@/utils/DataExporter";
-import {
-  DataImporter,
-  canonicalContent,
-  canonicalMeal,
-  canonicalWeight,
-  type PlannedRow,
-} from "@/utils/DataImporter";
-import { contentSourceKey, rowId } from "@/utils/rowIds";
+import { DataImporter, type PlannedRow } from "@/utils/DataImporter";
+import { rowId } from "@/utils/rowIds";
 import type { Profile } from "./data";
 
 /** How long export waits for the server's copy of the data before giving up on it. */
@@ -82,92 +76,44 @@ export async function exportAccount(
 }
 
 export interface RowWrites<T> {
-  /** Rows to insert, each with its deterministic id. */
+  /** Rows to insert, each with its row id. */
   inserts: { id: string; row: T }[];
   /** Entries this account already has. */
   alreadyPresent: number;
-  /** Entries that repeat an earlier entry's source id in the same file. */
-  duplicates: number;
 }
 
-/** A Jazz 2 row id (a UUID), as opposed to a Classic CoValue id (`co_z…`). */
-const ROW_ID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
- * Decide which planned rows to insert (KTD5). An entry is skipped when its source id
- * already is one of this account's row ids (re-importing a Jazz 2 export), when its
- * deterministic row id already exists (re-importing any other file), when an earlier
- * entry in the file had the same source key (a concatenated export), or, for an entry
- * without a source id, when its content key is in `existingContentKeys` (see
- * `contentKeysOf`).
- *
- * With `ownExport` (the file names this account), an entry whose source id is a Jazz 2
- * row id is inserted under that id itself, so the server's "object already exists" and
- * "row already deleted" guards apply: a row deleted since the export, or one the server
- * has but this device hasn't loaded, isn't added again. Everything else gets
- * `rowId(account, sourceKey)`.
+ * Decide which planned rows to insert (KTD5). With `ownExport` (the file names this
+ * account), each entry is inserted under its source id itself, so the server's "object
+ * already exists" and "row already deleted" guards apply: a row deleted since the
+ * export, or one the server has but this device hasn't loaded, isn't added again.
+ * Otherwise an entry gets `rowId(account, sourceId)`. An entry is skipped when its
+ * source id or that row id already is one of this account's row ids.
  */
 export async function planRowWrites<T>(
   accountId: string,
   planned: readonly PlannedRow<T>[],
   existingIds: ReadonlySet<string>,
   ownExport = false,
-  existingContentKeys: ReadonlySet<string> = new Set(),
 ): Promise<RowWrites<T>> {
   const ids = await Promise.all(
-    planned.map(({ sourceKey, hasSourceId }) =>
-      ownExport && hasSourceId && ROW_ID_SHAPE.test(sourceKey)
-        ? sourceKey
-        : rowId(accountId, sourceKey),
-    ),
+    planned.map(({ sourceId }) => (ownExport ? sourceId : rowId(accountId, sourceId))),
   );
-  const seen = new Set<string>();
-  const result: RowWrites<T> = { inserts: [], alreadyPresent: 0, duplicates: 0 };
-  for (const [i, { sourceKey, hasSourceId, row }] of planned.entries()) {
-    if (seen.has(sourceKey)) {
-      result.duplicates++;
-      continue;
-    }
-    seen.add(sourceKey);
+  const result: RowWrites<T> = { inserts: [], alreadyPresent: 0 };
+  for (const [i, { sourceId, row }] of planned.entries()) {
     const id = ids[i];
-    if (
-      existingIds.has(sourceKey) ||
-      existingIds.has(id) ||
-      (!hasSourceId && existingContentKeys.has(sourceKey))
-    )
-      result.alreadyPresent++;
+    if (existingIds.has(sourceId) || existingIds.has(id)) result.alreadyPresent++;
     else result.inserts.push({ id, row });
   }
   return result;
 }
 
-/**
- * The content source keys of rows this account already has: with N rows of identical
- * canonical content, the keys for occurrences 0..N-1 of that content. A file's id-less
- * entries get the same keys (`DataImporter.planImport`), so a file with M identical
- * entries adds only the M-N the account is missing, whatever ids the existing rows have.
- */
-export async function contentKeysOf<T>(
-  rows: readonly T[],
-  canonical: (row: T) => unknown[],
-): Promise<Set<string>> {
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    const content = canonicalContent(canonical(row));
-    counts.set(content, (counts.get(content) ?? 0) + 1);
-  }
-  const keys = await Promise.all(
-    [...counts].flatMap(([content, n]) =>
-      Array.from({ length: n }, (_, occurrence) => contentSourceKey(content, occurrence)),
-    ),
-  );
-  return new Set(keys);
-}
+const idsOf = (rows: readonly { id: string }[]) => new Set(rows.map((row) => row.id));
 
 export interface ImportResult {
   mealCount: number;
   weightCount: number;
-  /** Entries already in this account, plus repeats within the file. */
+  /** Entries already in this account. */
   duplicatesSkipped: number;
 }
 
@@ -185,8 +131,8 @@ function insertQuietly(write: { wait(options: { tier: "global" }): Promise<unkno
 }
 
 /**
- * Import an export file into this account. Rows are inserted local-first with
- * deterministic ids (or, for this account's own export, their original ids), only
+ * Import a v1.2 or v1.3 export file into this account. Rows are inserted local-first
+ * with deterministic ids (or, for this account's own export, their original ids), only
  * where missing. The counts are local-first: a row the server later rejects as
  * existing or deleted still counts as imported. The file's names and unit preferences are
  * written to the profile; its date of birth is dropped (no Jazz 2 column for it).
@@ -198,27 +144,15 @@ export async function importIntoAccount(
   jsonData: unknown,
   saveProfile: (patch: ProfileInsert) => void,
 ): Promise<ImportResult> {
-  const plan = await DataImporter.planImport(jsonData);
+  const plan = DataImporter.planImport(jsonData);
   if (plan.errors.length > 0) {
     throw new Error(`Invalid data format: ${plan.errors.join(", ")}`);
   }
 
   const [meals, weights] = await Promise.all([db.all(app.mealEntries), db.all(app.weightEntries)]);
   const ownExport = plan.accountId === accountId;
-  const mealWrites = await planRowWrites(
-    accountId,
-    plan.meals,
-    new Set(meals.map((m) => m.id)),
-    ownExport,
-    await contentKeysOf(meals, canonicalMeal),
-  );
-  const weightWrites = await planRowWrites(
-    accountId,
-    plan.weights,
-    new Set(weights.map((w) => w.id)),
-    ownExport,
-    await contentKeysOf(weights, canonicalWeight),
-  );
+  const mealWrites = await planRowWrites(accountId, plan.meals, idsOf(meals), ownExport);
+  const weightWrites = await planRowWrites(accountId, plan.weights, idsOf(weights), ownExport);
 
   for (const { id, row } of mealWrites.inserts) {
     insertQuietly(db.insert(app.mealEntries, row, { id }));
@@ -235,10 +169,6 @@ export async function importIntoAccount(
   return {
     mealCount: mealWrites.inserts.length,
     weightCount: weightWrites.inserts.length,
-    duplicatesSkipped:
-      mealWrites.alreadyPresent +
-      mealWrites.duplicates +
-      weightWrites.alreadyPresent +
-      weightWrites.duplicates,
+    duplicatesSkipped: mealWrites.alreadyPresent + weightWrites.alreadyPresent,
   };
 }

@@ -24,7 +24,7 @@ const treat = {
   notes: "after the walk",
 };
 
-/** A Classic-era backup: CoValue ids on most entries, one id-less entry, one id repeated. */
+/** A Classic backup: every entry carries its CoValue id. */
 const fixture = {
   version: "1.2",
   exportDate: "2025-07-28T00:00:00.000Z",
@@ -35,7 +35,10 @@ const fixture = {
     mealWeightUnit: "oz",
     bodyWeightUnit: "kg",
   },
-  mealEntries: [{ id: "co_zMealKibble", ...kibble }, { id: "co_zMealKibble", ...kibble }, treat],
+  mealEntries: [
+    { id: "co_zMealKibble", ...kibble },
+    { id: "co_zMealTreat", ...treat },
+  ],
   weightEntries: [
     {
       id: "co_zWeight1",
@@ -90,11 +93,11 @@ test("importing a backup twice adds its entries once, and export gives them back
 
   await importFile(page, fixture);
   await expect(alert).toContainText("Imported 2 meals and 2 weights");
-  await expect(alert).toContainText("Skipped (already present): 1");
+  await expect(alert).not.toContainText("Skipped");
 
   await importFile(page, fixture);
   await expect(alert).toContainText("Imported 0 meals and 0 weights");
-  await expect(alert).toContainText("Skipped (already present): 5");
+  await expect(alert).toContainText("Skipped (already present): 4");
 
   const exported = await exportFile(page);
   expect(exported.version).toBe("1.3");
@@ -172,12 +175,16 @@ test("an invalid file shows the validation errors and writes nothing", async ({ 
 
   const invalid = {
     ...fixture,
-    mealEntries: [{ ...kibble, caloriesPerGram: -1 }, treat],
+    mealEntries: [{ ...fixture.mealEntries[0], caloriesPerGram: -1 }, fixture.mealEntries[1]],
   };
   await importFile(page, invalid);
   const alert = settings.getByRole("alert");
   await expect(alert).toContainText("Import failed: Invalid data format");
   await expect(alert).toContainText("mealEntries.0.caloriesPerGram");
+
+  // A v1.1 file (entries without ids) is no longer supported.
+  await importFile(page, { ...fixture, version: "1.1", mealEntries: [kibble, treat] });
+  await expect(alert).toContainText('version: Export version "1.1" isn\'t supported');
 
   await importFile(page, "{ not json");
   await expect(alert).toContainText("Import failed: Failed to parse JSON file");

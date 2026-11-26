@@ -9,16 +9,16 @@ import {
   type WeightRow,
 } from "../schema";
 import type { ExportedData } from "./DataExporter";
-import { contentSourceKey } from "./rowIds";
 
 export type { ExportedData } from "./DataExporter";
 
-// Strict Zod schemas for the export format (reject unknown keys). Accepts v1.0 (no
-// profile), v1.1 (profile), v1.2 (optional source `id` on each entry) and v1.3
-// (optional exporting `accountId`).
+/** v1.2: Classic exports. v1.3: Jazz 2 exports, which also name the exporting account. */
+const SUPPORTED_VERSIONS = ["1.2", "1.3"] as const;
+
+// Strict Zod schema for the export format (rejects unknown keys).
 const ExportedDataSchema = z
   .object({
-    version: z.string(),
+    version: z.enum(SUPPORTED_VERSIONS),
     exportDate: ExportIsoString,
     accountId: z.string().optional(),
     profile: z.object(ExportProfileShape).strict().optional(),
@@ -27,20 +27,18 @@ const ExportedDataSchema = z
   })
   .strict();
 
-/** A row to write, with the source key its row id is derived from. */
+/** A row to write, with its entry's source id from the file. */
 export interface PlannedRow<T> {
-  sourceKey: string;
-  /** True when the source key is the entry's own `id` from the file. */
-  hasSourceId: boolean;
+  sourceId: string;
   row: T;
 }
 
 export interface ImportPlan {
-  /** The Jazz 2 account the file was exported from (v1.3+), when it names one. */
+  /** The Jazz 2 account the file was exported from (v1.3), when it names one. */
   accountId: string | undefined;
   meals: PlannedRow<MealRow>[];
   weights: PlannedRow<WeightRow>[];
-  /** Fields from the file's `profile` block (v1.1+), or undefined when it has none. */
+  /** Fields from the file's `profile` block, or undefined when it has none. */
   profile: Partial<ProfileRow> | undefined;
   /** Validation errors. When present, nothing is planned. */
   errors: string[];
@@ -58,6 +56,27 @@ function formatIssues(error: z.ZodError): string[] {
   });
 }
 
+/**
+ * Parse a file against the export format. An unsupported version is reported on its own,
+ * so an older file gives one clear error instead of one per id-less entry.
+ */
+function parse(jsonData: unknown) {
+  const version: unknown = (jsonData as { version?: unknown } | null)?.version;
+  if (
+    typeof jsonData === "object" &&
+    !(SUPPORTED_VERSIONS as readonly unknown[]).includes(version)
+  ) {
+    return {
+      errors: [
+        `version: Export version ${JSON.stringify(version)} isn't supported; import takes ` +
+          `version ${SUPPORTED_VERSIONS.join(" or ")} files, where every entry has an id`,
+      ],
+    };
+  }
+  const result = ExportedDataSchema.safeParse(jsonData);
+  return result.success ? { data: result.data } : { errors: formatIssues(result.error) };
+}
+
 /** Copy only the keys whose value is defined. */
 function definedFields<T extends object>(obj: T): Partial<T> {
   return Object.fromEntries(
@@ -65,87 +84,32 @@ function definedFields<T extends object>(obj: T): Partial<T> {
   ) as Partial<T>;
 }
 
-/** The text a content source key hashes. */
-export const canonicalContent = (fields: unknown[]): string => JSON.stringify(fields);
-
-/**
- * Source keys for a file's entries: the entry's source `id` when it has one,
- * otherwise a hash of its content plus its occurrence among identical entries, so two
- * identical snacks stay two rows and re-planning the same file gives the same keys.
- */
-async function planRows<T>(
-  entries: readonly (T & { id?: string })[],
-  canonical: (row: T) => unknown[],
-): Promise<PlannedRow<T>[]> {
-  const seen = new Map<string, number>();
-  return Promise.all(
-    entries.map(async ({ id, ...rest }) => {
-      const row = rest as T;
-      if (id) return { sourceKey: id, hasSourceId: true, row };
-      const content = canonicalContent(canonical(row));
-      const occurrence = seen.get(content) ?? 0;
-      seen.set(content, occurrence + 1);
-      return { sourceKey: await contentSourceKey(content, occurrence), hasSourceId: false, row };
-    }),
-  );
-}
-
-/** A row as stored or as read from a file: a missing optional field may be null. */
-type Nullable<T> = { [K in keyof T]: undefined extends T[K] ? T[K] | null : T[K] };
-
-// Fixed field order, so key order in the file doesn't change the hash. A missing
-// optional field is null whether it was undefined (a file) or null (a stored row), so
-// a stored row and the file entry it came from give the same content.
-export const canonicalMeal = (m: Nullable<MealRow>): unknown[] =>
-  [
-    "meal",
-    m.timestamp,
-    m.foodName,
-    m.foodCategory,
-    m.caloriesPerGram,
-    m.caloriesPerDisplayUnit,
-    m.weightInGrams,
-    m.displayUnit,
-    m.totalCalories,
-    m.notes,
-  ].map((value) => value ?? null);
-
-export const canonicalWeight = (w: Nullable<WeightRow>): unknown[] =>
-  ["weight", w.timestamp, w.weightValue, w.unit, w.notes].map((value) => value ?? null);
+const planRows = <T>(entries: readonly (T & { id: string })[]): PlannedRow<T>[] =>
+  entries.map(({ id, ...row }) => ({ sourceId: id, row: row as T }));
 
 export class DataImporter {
   /**
-   * Validate the imported data structure strictly (current format only)
+   * Validate the imported data structure strictly
    */
   static validateImportData(jsonData: unknown): { isValid: boolean; errors: string[] } {
-    const result = ExportedDataSchema.safeParse(jsonData);
-    if (result.success) {
-      return { isValid: true, errors: [] };
-    }
-    return { isValid: false, errors: formatIssues(result.error) };
+    const { errors = [] } = parse(jsonData);
+    return { isValid: errors.length === 0, errors };
   }
 
   /**
    * Plan an import without writing anything: validate the file, then return its rows
-   * with source keys and the profile patch from its `profile` block. Timestamps are kept
-   * verbatim. Account-independent: the caller turns source keys into row ids.
+   * with their source ids and the profile patch from its `profile` block. Timestamps are
+   * kept verbatim. Account-independent: the caller turns source ids into row ids.
    */
-  static async planImport(jsonData: unknown): Promise<ImportPlan> {
-    const result = ExportedDataSchema.safeParse(jsonData);
-    if (!result.success) {
-      return {
-        accountId: undefined,
-        meals: [],
-        weights: [],
-        profile: undefined,
-        errors: formatIssues(result.error),
-      };
+  static planImport(jsonData: unknown): ImportPlan {
+    const { data, errors } = parse(jsonData);
+    if (!data) {
+      return { accountId: undefined, meals: [], weights: [], profile: undefined, errors };
     }
-    const data = result.data;
     return {
       accountId: data.accountId,
-      meals: await planRows<MealRow>(data.mealEntries, canonicalMeal),
-      weights: await planRows<WeightRow>(data.weightEntries, canonicalWeight),
+      meals: planRows<MealRow>(data.mealEntries),
+      weights: planRows<WeightRow>(data.weightEntries),
       profile: data.profile ? definedFields(data.profile) : undefined,
       errors: [],
     };

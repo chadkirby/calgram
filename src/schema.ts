@@ -55,9 +55,11 @@ export const ExportIsoString = zod
   .string()
   .refine((s) => DateTime.fromISO(s).isValid, { message: "Invalid ISO date" });
 
-/** Since v1.2 every entry may carry its source `id`. */
+/** An entry's source id: its Classic CoValue id (v1.2) or its Jazz 2 row id (v1.3). */
+const ExportEntryId = zod.string({ error: "id is required" }).min(1, "id is required");
+
 export const ExportMealShape = {
-  id: zod.string().min(1).optional(),
+  id: ExportEntryId,
   timestamp: ExportIsoString,
   foodName: zod.string().min(1, "Food name is required"),
   foodCategory: zod.string().min(1, "Food category is required"),
@@ -70,14 +72,14 @@ export const ExportMealShape = {
 } as const;
 
 export const ExportWeightShape = {
-  id: zod.string().min(1).optional(),
+  id: ExportEntryId,
   timestamp: ExportIsoString,
   weightValue: zod.number().positive("Weight value must be positive"),
   notes: zod.string().optional(),
   unit: zod.enum(bodyWeightUnits).optional(),
 } as const;
 
-/** Profile and account settings, included in exports since version 1.1 */
+/** Profile and account settings */
 export const ExportProfileShape = {
   name: zod.string().optional(),
   firstName: zod.string().optional(),
