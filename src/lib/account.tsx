@@ -119,7 +119,7 @@ export type ReturningResult =
   | { kind: "classic" }
   | { kind: "error"; message: string };
 
-/** "I've used calgram before": one passkey prompt, routed by its handle (KTD7). */
+/** "I've used Sammygram before": one passkey prompt, routed by its handle (KTD7). */
 export async function signInWithPasskey(): Promise<ReturningResult> {
   const route = await promptForPasskey();
   if (route.kind !== "restore") return route;

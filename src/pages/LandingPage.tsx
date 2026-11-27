@@ -96,7 +96,7 @@ export function LandingPage() {
                 onClick={handleReturning}
                 disabled={busy}
               >
-                I've used calgram before
+                I've used Sammygram before
               </Button>
             )}
           </div>

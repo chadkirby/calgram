@@ -44,12 +44,12 @@ export function routePasskeyHandle(
   authenticatorData: ArrayBuffer | Uint8Array,
 ): PasskeyRoute {
   if (userHandle === null) {
-    return { kind: "error", message: "That passkey isn't a calgram account passkey." };
+    return { kind: "error", message: "That passkey isn't a Sammygram passkey." };
   }
   const handle = asBytes(userHandle);
   if (handle.byteLength === CLASSIC_HANDLE_BYTES) return { kind: "classic", handle };
   if (handle.byteLength !== DEVICE_KEY_BYTES) {
-    return { kind: "error", message: "That passkey isn't a calgram account passkey." };
+    return { kind: "error", message: "That passkey isn't a Sammygram passkey." };
   }
   const flags = asBytes(authenticatorData)[32] ?? 0;
   if ((flags & USER_PRESENT) === 0 || (flags & USER_VERIFIED) === 0) {
