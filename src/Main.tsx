@@ -12,6 +12,17 @@ import { router } from "./router.tsx";
 // Before the first render, so a returning user never sees the welcome screen (R4).
 migrateClassicSession();
 
+// Production only: the service worker serves the app's files from this device, so a
+// launch needs no network (vite-plugins/sw.js). Never in dev, where it would keep
+// serving a stale build.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch((error: unknown) => console.warn("Service worker registration failed:", error));
+  });
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <MigrationGate>
