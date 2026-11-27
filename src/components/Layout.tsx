@@ -3,15 +3,44 @@ import { AuthButton } from "../AuthButton";
 import { SettingsDialog } from "./SettingsDialog";
 import { PasskeyOffer } from "./PasskeyOffer";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SettingsIcon } from "lucide-react";
+import { useDesiredPath } from "@/hooks/useDesiredPath";
 import { useAccount } from "@/lib/account";
+
+const controlClass =
+  "bg-stone-100 py-1 px-2 sm:py-1.5 sm:px-3 text-xs sm:text-sm rounded-md text-muted-foreground";
+
+/**
+ * Settings and Log out while the account opens (the launch hint): the same size and
+ * place as the real buttons, so nothing moves, but inert, since they need the session.
+ */
+function OpeningControls() {
+  return (
+    <span aria-hidden="true" className="flex items-center gap-2 sm:gap-3">
+      <span className={`${controlClass} flex items-center`}>
+        <SettingsIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+      </span>
+      <span className={controlClass}>
+        <span className="sm:hidden">Logout</span>
+        <span className="hidden sm:inline">Log out</span>
+      </span>
+    </span>
+  );
+}
 
 export function Layout() {
   const { status, profile } = useAccount();
-  const isAuthenticated = status === "ready";
+  const isOpening = status === "opening";
+  // While the account opens, show the signed-in app (tabs and all), not the welcome.
+  const isAuthenticated = status === "ready" || isOpening;
   const navigate = useNavigate();
   const location = useLocation();
 
-  const currentTab = location.pathname.slice(1) || "meals";
+  const desiredPath = useDesiredPath();
+  // Opening at the home page, show the tab the account will land on.
+  const tabPath =
+    isOpening && location.pathname === "/" ? desiredPath.split(/[?#]/)[0] : location.pathname;
+  const currentTab = tabPath.slice(1) || "meals";
 
   const handleTabChange = (value: string) => {
     navigate(`/${value}`);
@@ -42,8 +71,14 @@ export function Layout() {
               {isAuthenticated && (
                 <div className="w-2 h-2 bg-green-500 rounded-full" title="Logged in" />
               )}
-              {isAuthenticated && <SettingsDialog />}
-              <AuthButton />
+              {isOpening ? (
+                <OpeningControls />
+              ) : (
+                <>
+                  {isAuthenticated && <SettingsDialog />}
+                  <AuthButton />
+                </>
+              )}
             </div>
           </div>
 
@@ -72,8 +107,14 @@ export function Layout() {
               ) : (
                 <span className="text-sm text-muted-foreground">Authenticate to sync data</span>
               )}
-              {isAuthenticated && <SettingsDialog />}
-              <AuthButton />
+              {isOpening ? (
+                <OpeningControls />
+              ) : (
+                <>
+                  {isAuthenticated && <SettingsDialog />}
+                  <AuthButton />
+                </>
+              )}
             </div>
           </div>
         </nav>
@@ -112,7 +153,7 @@ export function Layout() {
               </TabsTrigger>
             </TabsList>
 
-            <PasskeyOffer />
+            {!isOpening && <PasskeyOffer />}
             <div className="mt-1 sm:mt-4">
               <Outlet />
             </div>

@@ -12,7 +12,7 @@ import { deriveDeviceKey, findClassicSession, type ClassicIdentity } from "./cla
 /**
  * Where this browser's migration stands (plan's visit flowchart):
  * - `checking`: a Classic identity was found and it isn't known yet whether it needs
- *   migrating. Shows the same "Loading…" as the session.
+ *   migrating. Shows the same launch screen as the session (`<Launching>`).
  * - `moving`: copying Classic data ("Moving your data").
  * - `failed`: the guided screen, with retry and a download of the old data (R7).
  * - `idle`: nothing to do, or done. The app shows as usual.

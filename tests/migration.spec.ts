@@ -5,9 +5,11 @@ import {
   addMeal,
   exportFile,
   importFile,
+  launchRecord,
   openDataCard,
   openWithAuthenticator,
   startNewAccount,
+  watchLaunch,
 } from "./support/app";
 
 // U9: automatic migration from Classic. These tests create real Classic accounts on
@@ -114,9 +116,13 @@ test("a browser signed in to Classic is migrated silently, and Classic is left a
   expect(sorted(exported.weightEntries)).toEqual(sorted(seed.weights));
   expect(exported.profile).toEqual(seed.profile);
 
-  // The next visit goes straight to the app, with nothing copied twice.
+  // The next visit goes straight to the app, with nothing copied twice, and no
+  // "Loading…" while the migration check confirms it's done.
+  await watchLaunch(page);
   await page.reload();
   await expect(page).toHaveURL(/\/daily$/);
+  await expect(page.getByText("Welcome, Sam!")).toBeVisible();
+  expect(await launchRecord(page)).toMatchObject({ sawLoading: false, tabsFirst: true });
   const again = await exportRows(page);
   expect(again.mealEntries).toHaveLength(seed.meals.length);
 

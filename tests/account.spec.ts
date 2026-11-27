@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { addMeal, mealNames, openWithAuthenticator, startNewAccount } from "./support/app";
+import {
+  addMeal,
+  launchRecord,
+  mealNames,
+  openWithAuthenticator,
+  startNewAccount,
+  watchLaunch,
+} from "./support/app";
 
 // U6: accounts without Classic.
 
@@ -16,6 +23,52 @@ test("a brand-new visitor reaches the Daily page without a migration prompt, and
 
   await page.goto("/");
   await expect(page).toHaveURL(/\/daily$/);
+});
+
+test("a returning launch opens straight to the Daily page, with no screen in between", async ({
+  page,
+}) => {
+  await startNewAccount(page, "Sam");
+  await addMeal(page, { food: "Kibble", category: "Dry food", caloriesPerUnit: 1 });
+
+  await watchLaunch(page);
+  await page.reload();
+  await expect(mealNames(page)).toHaveText(["Kibble"]);
+  await expect(page.getByText("Welcome, Sam!")).toBeVisible();
+  expect(await launchRecord(page)).toEqual({
+    sawLoading: false,
+    sawChecking: false,
+    tabsFirst: true,
+  });
+
+  // The home-screen app opens at /?source=pwa.
+  await page.goto("/?source=pwa");
+  await expect(page).toHaveURL(/\/daily$/);
+  await expect(mealNames(page)).toHaveText(["Kibble"]);
+  expect(await launchRecord(page)).toEqual({
+    sawLoading: false,
+    sawChecking: false,
+    tabsFirst: true,
+  });
+});
+
+test("a hint left in a browser with no account still gets the welcome screen, and is dropped", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("seeded")) {
+      sessionStorage.setItem("seeded", "1");
+      localStorage.setItem("sammygram-account-ready", "1");
+    }
+  });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("sammygram-account-ready"))).toBeNull();
+
+  await watchLaunch(page);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
+  expect((await launchRecord(page)).tabsFirst).toBe(false);
 });
 
 test("a passkey saved on one device restores the account and its rows on another", async ({
@@ -79,10 +132,14 @@ test("a signed-in account the server confirms has no setup status gets the name 
   // The test harness signs this browser in as a device account with no profile row.
   await page.goto("/tests/harness/jazz.html");
   await page.waitForFunction(() => document.body.dataset.ready === "true");
+  // A hint left from an earlier account here: it opens the shell, then is dropped.
+  await page.evaluate(() => localStorage.setItem("sammygram-account-ready", "1"));
 
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "I've used Sammygram before" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
+  expect(await page.evaluate(() => localStorage.getItem("sammygram-account-ready"))).toBeNull();
   await page.getByRole("button", { name: "Start", exact: true }).click();
   await page.getByLabel("First name").fill("Lee");
   await page.getByRole("button", { name: "Continue" }).click();
@@ -103,9 +160,12 @@ test("after logging out and reloading, the welcome screen shows, not the last us
   await page.getByRole("button", { name: "Log out without a passkey" }).click();
   await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
 
+  // Logging out forgets that this device's account was ready: no app shell on launch.
+  await watchLaunch(page);
   await page.reload();
   await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
   await expect(page.getByTestId("main-tabs")).toHaveCount(0);
+  expect((await launchRecord(page)).tabsFirst).toBe(false);
   await expect(page.getByText("Secret snack")).toHaveCount(0);
   await expect(page.getByText("Welcome, Robin!")).toHaveCount(0);
 

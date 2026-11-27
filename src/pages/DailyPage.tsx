@@ -190,6 +190,9 @@ function DailyPageContent() {
     setIsAddMealDialogOpen(false);
   };
 
+  // Until the meals load, show nothing rather than "No meals logged" for a moment.
+  if (meals === undefined) return null;
+
   return (
     <div className="space-y-2 sm:space-y-3">
       <ConnectionStatus />

@@ -2,6 +2,7 @@ import { JazzProvider } from "jazz-tools/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
+import { Launching } from "./components/Launching.tsx";
 import "./index.css";
 import { SignedInAccount, SignedOutAccount } from "./lib/account.tsx";
 import { getJazzSession } from "./lib/jazz.ts";
@@ -28,9 +29,7 @@ createRoot(document.getElementById("root")!).render(
     <MigrationGate>
       <JazzProvider
         session={getJazzSession()}
-        loading={
-          <output className="block p-8 text-center text-sm text-muted-foreground">Loading…</output>
-        }
+        loading={<Launching />}
         signedOut={
           <SignedOutAccount>
             <RouterProvider router={router} />
