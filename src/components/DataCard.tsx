@@ -30,9 +30,7 @@ export function DataCard() {
     try {
       const { data: exportData, complete } = await exportAccount(db, accountId, profile);
 
-      // Generate filename with timestamp
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");
-      const filename = `calorie-tracker-export-${timestamp}.json`;
+      const filename = DataExporter.exportFilename();
 
       // Download the file
       DataExporter.downloadJsonFile(exportData, filename);

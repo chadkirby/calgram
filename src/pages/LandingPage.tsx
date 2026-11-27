@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { nativeSetup, signInWithPasskey, startNewAccount, useAccount } from "@/lib/account";
+import { classicIdentityFromHandle } from "@/migration/classicIdentity";
+import { migrateFromPasskey } from "@/migration/migrate";
 
 /** Shown while a signed-in account's setup status is being confirmed with the server. */
 export function AccountChecking() {
@@ -23,9 +25,6 @@ export function AccountChecking() {
     </output>
   );
 }
-
-const CLASSIC_PLACEHOLDER =
-  "That passkey is from the previous version of Sammygram. Moving those accounts here is coming soon.";
 
 export function LandingPage() {
   const { status, saveProfile } = useAccount();
@@ -64,9 +63,14 @@ export function LandingPage() {
     setBusy(true);
     setMessage(null);
     const result = await signInWithPasskey();
-    if (result.kind === "classic") setMessage(CLASSIC_PLACEHOLDER);
     if (result.kind === "error") setMessage(result.message);
     setBusy(false);
+    if (result.kind === "classic") {
+      await migrateFromPasskey(classicIdentityFromHandle(result.handle)).catch((error: unknown) => {
+        console.error("Starting the migration failed:", error);
+        setMessage("Couldn't open your account. Please try again.");
+      });
+    }
   };
 
   return (

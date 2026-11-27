@@ -80,6 +80,8 @@ export interface RowWrites<T> {
   inserts: { id: string; row: T }[];
   /** Entries this account already has. */
   alreadyPresent: number;
+  /** Row ids of those entries. */
+  presentIds: string[];
 }
 
 /**
@@ -99,16 +101,21 @@ export async function planRowWrites<T>(
   const ids = await Promise.all(
     planned.map(({ sourceId }) => (ownExport ? sourceId : rowId(accountId, sourceId))),
   );
-  const result: RowWrites<T> = { inserts: [], alreadyPresent: 0 };
+  const result: RowWrites<T> = { inserts: [], alreadyPresent: 0, presentIds: [] };
   for (const [i, { sourceId, row }] of planned.entries()) {
     const id = ids[i];
-    if (existingIds.has(sourceId) || existingIds.has(id)) result.alreadyPresent++;
-    else result.inserts.push({ id, row });
+    const present = existingIds.has(id) ? id : existingIds.has(sourceId) ? sourceId : undefined;
+    if (present) {
+      result.alreadyPresent++;
+      result.presentIds.push(present);
+    } else {
+      result.inserts.push({ id, row });
+    }
   }
   return result;
 }
 
-const idsOf = (rows: readonly { id: string }[]) => new Set(rows.map((row) => row.id));
+export const idsOf = (rows: readonly { id: string }[]) => new Set(rows.map((row) => row.id));
 
 export interface ImportResult {
   mealCount: number;
@@ -121,7 +128,7 @@ export interface ImportResult {
  * The server rejects an insert whose id exists or was deleted; for an import that means
  * the entry is already accounted for, so it isn't an error (KTD5).
  */
-const isAlreadyPresent = (error: unknown) =>
+export const isAlreadyPresent = (error: unknown) =>
   /object already exists|row already deleted/.test(String(error));
 
 function insertQuietly(write: { wait(options: { tier: "global" }): Promise<unknown> }) {

@@ -1,6 +1,12 @@
-import { readFile } from "node:fs/promises";
-import { expect, test, type Page } from "@playwright/test";
-import { addMeal, mealNames, startNewAccount } from "./support/app";
+import { expect, test } from "@playwright/test";
+import {
+  addMeal,
+  exportFile,
+  importFile,
+  mealNames,
+  openDataCard,
+  startNewAccount,
+} from "./support/app";
 
 // U7: export and import in Settings → Data run on Jazz 2.
 
@@ -49,31 +55,6 @@ const fixture = {
     { id: "co_zWeight2", timestamp: "2025-07-28", weightValue: 10.4 },
   ],
 };
-
-async function openDataCard(page: Page) {
-  await page.getByTitle("Application settings").filter({ visible: true }).click();
-  return page.getByRole("dialog", { name: "Settings" });
-}
-
-async function importFile(page: Page, data: unknown) {
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "backup.json",
-    mimeType: "application/json",
-    buffer: Buffer.from(typeof data === "string" ? data : JSON.stringify(data)),
-  });
-}
-
-async function exportFile(page: Page) {
-  const settings = page.getByRole("dialog", { name: "Settings" });
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    settings.getByRole("button", { name: "Export Data" }).click(),
-  ]);
-  expect(download.suggestedFilename()).toMatch(/^calorie-tracker-export-[\dT-]+\.json$/);
-  // The server's copy was read too, so the backup isn't flagged as possibly incomplete.
-  await expect(settings.getByRole("alert")).toContainText("Data exported successfully!");
-  return JSON.parse(await readFile(await download.path(), "utf8"));
-}
 
 /** An entry without its id, for comparing contents. */
 const content = ({ id: _id, ...rest }: { id?: string }) => rest;

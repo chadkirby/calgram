@@ -5,24 +5,31 @@ import { RouterProvider } from "react-router-dom";
 import "./index.css";
 import { SignedInAccount, SignedOutAccount } from "./lib/account.tsx";
 import { getJazzSession } from "./lib/jazz.ts";
+import { MigrationGate } from "./migration/MigrationGate.tsx";
+import { migrateClassicSession } from "./migration/migrate.ts";
 import { router } from "./router.tsx";
+
+// Before the first render, so a returning user never sees the welcome screen (R4).
+migrateClassicSession();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <JazzProvider
-      session={getJazzSession()}
-      loading={
-        <output className="block p-8 text-center text-sm text-muted-foreground">Loading…</output>
-      }
-      signedOut={
-        <SignedOutAccount>
+    <MigrationGate>
+      <JazzProvider
+        session={getJazzSession()}
+        loading={
+          <output className="block p-8 text-center text-sm text-muted-foreground">Loading…</output>
+        }
+        signedOut={
+          <SignedOutAccount>
+            <RouterProvider router={router} />
+          </SignedOutAccount>
+        }
+      >
+        <SignedInAccount>
           <RouterProvider router={router} />
-        </SignedOutAccount>
-      }
-    >
-      <SignedInAccount>
-        <RouterProvider router={router} />
-      </SignedInAccount>
-    </JazzProvider>
+        </SignedInAccount>
+      </JazzProvider>
+    </MigrationGate>
   </StrictMode>,
 );

@@ -93,6 +93,12 @@ export class DataExporter {
     };
   }
 
+  /** The name a downloaded export gets: `calorie-tracker-export-<UTC time>.json`. */
+  static exportFilename(now = new Date()): string {
+    const timestamp = now.toISOString().slice(0, 19).replace(/[:]/g, "-");
+    return `calorie-tracker-export-${timestamp}.json`;
+  }
+
   /**
    * Create JSON blob from export data
    */
