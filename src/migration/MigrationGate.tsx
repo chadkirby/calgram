@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { DataExporter } from "@/utils/DataExporter";
 import type { ClassicIdentity } from "./classicIdentity";
-import { beginMigration, useMigration } from "./migrate";
+import { beginMigration, storedCarried, useMigration } from "./migrate";
 
 /**
  * Shows the app, unless this browser is migrating Classic data. It sits outside the
@@ -58,6 +58,12 @@ function MigrationFallback({ identity }: { identity: ClassicIdentity }) {
     try {
       const { readClassicAccount } = await import("./classicReader");
       const data = await readClassicAccount(identity);
+      // Meals logged under Start wait in this browser until the move succeeds; include them.
+      const carried = storedCarried(identity);
+      if (carried) {
+        data.mealEntries.push(...carried.mealEntries);
+        data.weightEntries.push(...carried.weightEntries);
+      }
       DataExporter.downloadJsonFile(data, DataExporter.exportFilename());
     } catch (error) {
       console.error("Downloading the old data failed:", error);

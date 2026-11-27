@@ -32,7 +32,7 @@ function setState(next: MigrationState) {
   for (const listener of listeners) listener();
 }
 
-const getMigrationState = () => state;
+export const getMigrationState = () => state;
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
@@ -75,8 +75,10 @@ async function acknowledged(write: Write): Promise<void> {
 
 /**
  * Insert each planned row that isn't there yet under its KTD5 id, and resolve once the
- * server has acknowledged every one. "Already exists" and "already deleted" count as
- * acknowledged. Any other rejection rejects.
+ * server has every planned row. "Already exists" and "already deleted" count as
+ * acknowledged; any other rejection rejects. A row this browser already had locally
+ * (written by an earlier attempt, perhaps never sent) is checked against the server's
+ * copy instead, and one the server doesn't have yet rejects, so `migrated` waits.
  */
 export async function copyRows(
   db: Pick<Db, "all" | "insert">,
@@ -94,6 +96,18 @@ export async function copyRows(
     ...mealWrites.inserts.map(({ id, row }) => copy(db.insert(app.mealEntries, row, { id }))),
     ...weightWrites.inserts.map(({ id, row }) => copy(db.insert(app.weightEntries, row, { id }))),
   ]);
+
+  const localOnly = [...mealWrites.presentIds, ...weightWrites.presentIds];
+  if (localOnly.length === 0) return;
+  const [serverMeals, serverWeights] = await Promise.all([
+    db.all(app.mealEntries, { tier: "remote" }),
+    db.all(app.weightEntries, { tier: "remote" }),
+  ]);
+  const onServer = new Set([...idsOf(serverMeals), ...idsOf(serverWeights)]);
+  const missing = localOnly.filter((id) => !onServer.has(id));
+  if (missing.length > 0) {
+    throw new Error(`${missing.length} rows haven't reached the server yet`);
+  }
 }
 
 function planOrThrow(data: ExportedData): ImportPlan {
@@ -217,7 +231,7 @@ async function migrate(
  * (R4 to R6). Safe to call again: a run in progress is shared, and every write is
  * insert-if-missing (KTD5). Ends `idle`, or `failed` with the guided screen (R7).
  */
-export function beginMigration(identity: ClassicIdentity): Promise<void> {
+export function beginMigration(identity: ClassicIdentity, run = migrate): Promise<void> {
   running ??= (async () => {
     // Progress from a run that already ended (a write acknowledged after another was
     // rejected) must not replace the screen that run left behind.
@@ -227,7 +241,7 @@ export function beginMigration(identity: ClassicIdentity): Promise<void> {
     };
     if (state.kind !== "moving") setState({ kind: "checking" });
     try {
-      await migrate(identity, report);
+      await run(identity, report);
       live = false;
       setState({ kind: "idle" });
     } catch (error) {

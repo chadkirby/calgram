@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { DataImporter } from "@/utils/DataImporter";
+import { rowId } from "@/utils/rowIds";
 import {
+  beginMigration,
   CARRIED_ROWS_KEY,
   copyRows,
+  getMigrationState,
+  type MigrationState,
   migratedProfile,
   migratedProfileId,
   storedCarried,
@@ -87,5 +91,60 @@ describe("storedCarried", () => {
     expect(storedCarried({ seed: new Uint8Array(32), accountId: "co_zA" })).toEqual(data);
     expect(storedCarried({ seed: new Uint8Array(32), accountId: "co_zB" })).toBeUndefined();
     localStorage.removeItem(CARRIED_ROWS_KEY);
+  });
+});
+
+/** A db holding row `id` locally, and on the server only when `onServer`. */
+const dbWith = (id: string, onServer: boolean) =>
+  ({
+    all: async (_table: unknown, options?: { tier?: string }) =>
+      options?.tier === "remote" && !onServer ? [] : [{ id }],
+    insert: () => {
+      throw new Error("nothing should be inserted");
+    },
+  }) as unknown as Parameters<typeof copyRows>[0];
+
+describe("copyRows with rows an earlier attempt wrote locally", () => {
+  const plan = DataImporter.planImport({
+    version: "1.2",
+    exportDate: "2026-11-27T00:00:00.000Z",
+    mealEntries: [
+      {
+        id: "co_zA",
+        timestamp: "2026-11-27",
+        foodName: "A",
+        foodCategory: "Test",
+        caloriesPerGram: 1,
+        weightInGrams: 1,
+        totalCalories: 1,
+      },
+    ],
+    weightEntries: [],
+  });
+
+  it("rejects while the server doesn't have such a row yet", async () => {
+    const id = await rowId("acct", "co_zA");
+    await expect(copyRows(dbWith(id, false), "acct", plan, () => {})).rejects.toThrow(
+      "haven't reached the server",
+    );
+  });
+
+  it("resolves once the server has it", async () => {
+    const id = await rowId("acct", "co_zA");
+    await expect(copyRows(dbWith(id, true), "acct", plan, () => {})).resolves.toBeUndefined();
+  });
+});
+
+describe("beginMigration", () => {
+  it("keeps the failed screen when a failed run reports progress late", async () => {
+    let report: ((state: MigrationState) => void) | undefined;
+    await beginMigration({ seed: new Uint8Array(32), accountId: "co_zA" }, async (_id, r) => {
+      report = r;
+      r({ kind: "moving", copied: 1, total: 3 });
+      throw new Error("a row was rejected");
+    });
+    expect(getMigrationState().kind).toBe("failed");
+    report?.({ kind: "moving", copied: 2, total: 3 });
+    expect(getMigrationState().kind).toBe("failed");
   });
 });

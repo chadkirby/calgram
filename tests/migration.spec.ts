@@ -286,10 +286,13 @@ test("meals logged under Start survive a failed migration, a reload, and Try aga
   await expect(failed).toBeVisible({ timeout: 90_000 });
   await page.reload();
   await expect(failed).toBeVisible({ timeout: 90_000 });
+  const carried = () => page.evaluate(() => localStorage.getItem("calgram-migration-carried-rows"));
+  expect(await carried()).not.toBeNull();
 
   reachable = true;
   await page.getByRole("button", { name: "Try again" }).click();
   await expectMigrated(page);
+  expect(await carried()).toBeNull();
   const foods = (await exportRows(page)).mealEntries.map((m: { foodName: string }) => m.foodName);
   expect(foods).toHaveLength(seed.meals.length + 2);
   expect(foods).toEqual(expect.arrayContaining(["New kibble", "New treat"]));
