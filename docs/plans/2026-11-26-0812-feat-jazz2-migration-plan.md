@@ -66,6 +66,7 @@ Every calgram user's data lives in Jazz Cloud v1, which is being retired. When i
 - Making the Daily page and the Trends page agree on which day a meal belongs to, for meals logged in another time zone. That's an existing inconsistency, unchanged by this work.
 - New features, UI redesign, and the unused date-of-birth field.
 - Fixing `TrendAnalyzer.calculateTemporalWeightSmooth`, an existing stub that returns `[]`. Port it as it is.
+- Considered and not built: a way back to migration for someone who taps Start by mistake and is now signed in to an empty account. Log out, then "I've used Sammygram before", still brings their old data back; only meals logged in the meantime are lost if they didn't save a passkey.
 - Considered and not built: closing production's `/jazz` to sign-ups between PR A and the cutover. Abuse of an unused endpoint on a small app is unlikely, and it would show up in Cloudflare usage. Revisit if usage shows unexplained storage.
 
 ### Open Questions
@@ -109,7 +110,7 @@ Every calgram user's data lives in Jazz Cloud v1, which is being retired. When i
   - (session-settled: user-directed — chosen over one long-lived branch, and over feature flags in production: the user asked for a stack of two to four PRs)
 - KTD10. **Timestamps are stored as verbatim text.** No date type, no conversion to UTC or epoch. That keeps Daily-page day grouping unchanged (R3). Ordering uses the parsed instant at read time.
 - KTD11. **Food suggestions are derived from meals at read time,** not stored in a `foodMetadata` table. Today's stored copy drifts: deletes never update it, and edits count twice. Deriving it from about 5,000 rows in memory is cheap.
-- KTD12. **Utilities take plain row types.** `src/utils/*` stop importing Classic types, and export and import become pure functions (U2). The export format becomes v1.2: each entry gains an optional source `id`, so a downloaded Classic backup can be re-imported without duplicates. v1.1 files still import.
+- KTD12. **Utilities take plain row types.** `src/utils/*` stop importing Classic types, and export and import become pure functions (U2). Import accepts only the two formats real data comes in, and every entry must carry an `id`: v1.2 (Classic exports and the PR C fallback download, ids are Classic CoValue ids) and v1.3 (Jazz 2 exports, which also record the exporting account). Older files and entries without ids are rejected; supporting hypothetical old backups is out of scope.
 
 ### High-Level Technical Design
 
@@ -136,7 +137,7 @@ flowchart TB
   status -->|none| classic
   j2 -->|no| classic{Signed-in Classic<br/>session here?}
   classic -->|yes| derive[Derive Jazz 2 key<br/>from Classic seed]
-  classic -->|no| welcome[Welcome screen:<br/>new here / used calgram before]
+  classic -->|no| welcome[Welcome screen:<br/>new here / used Sammygram before]
   welcome -->|new here| create[Create device account,<br/>status native] --> offer[Offer to save passkey] --> app
   welcome -->|used before| pk[One passkey prompt]
   pk -->|51-byte handle: Classic| derive
@@ -316,7 +317,7 @@ flowchart TB
   1. Replace Classic sign-up and log-in with:
      - "Start" (create a device account, ask for a first name, write setup status `native` per KTD6);
      - "Save a passkey" (`BrowserPasskeyBackup.backup`), offered after first use and in Settings;
-     - "I've used calgram before" (one passkey prompt, routed per KTD7).
+     - "I've used Sammygram before" (one passkey prompt, routed per KTD7).
   2. Keep "Sign out" where Log out is today. It clears this browser's Jazz 2 account and local data. For a migrated account, it also removes the local Classic session, so the next load doesn't silently sign back in. R9 covers Classic data on the server, not this local copy of the session. A `native` account with no saved passkey would be unrecoverable after signing out, so Sign out offers to save a passkey first and needs an explicit confirmation to go ahead without one.
   3. In PR B, a 51-byte Classic passkey routes to a "migration coming" placeholder. PR C wires it to migration.
 - **Test scenarios:**
@@ -375,15 +376,14 @@ flowchart TB
 - **Dependencies:** U5, U6, U8
 - **Files:**
   - `src/migration/migrate.ts` (key derivation, inserts, setup status)
-  - `src/migration/MigrationGate.tsx` (the flow in the High-Level Technical Design)
-  - `src/migration/MigrationFallback.tsx` (retry and download old data)
-  - `tests/fixtures/classicSeed.ts` (test-only: runs `jazz-classic` in the page to create a Classic account on the target hostname, registers its passkey on a Chromium virtual authenticator, and writes entries from an export file)
+  - `src/migration/MigrationGate.tsx` (the "Moving your data" screen, and the fallback with retry and download old data)
+  - `tests/harness/classic-harness.ts` (test-only: runs `jazz-classic` in the page to create a Classic account on Jazz Cloud v1, signs the browser in to it, and registers its passkey on a Chromium virtual authenticator)
   - tests: `src/migration/__tests__/migrate.test.ts`, `tests/migration.spec.ts`
 - **Approach:**
   1. Follow the visit flowchart, reading setup status from the server's copy (KTD6).
   2. Derive the key per KTD4.
   3. Insert missing rows per KTD5, wait for server acknowledgement, then write status `migrated` (KTD6).
-  4. If this browser already had a `native` account with rows when a Classic identity is found, copy those rows into the derived account before switching. That way nothing logged under "new here" is lost.
+  4. If this browser already had a `native` account with rows when its Classic session is found, keep those rows until the derived account has them, and copy them in. That way nothing logged under "new here" is lost, even if the first attempt fails or the page reloads.
   5. The fallback's download runs the Classic reader and saves a v1.2 file with source ids (KTD12).
   6. Show a short "Moving your data" status with progress while it runs. No other new UI.
 - **Test scenarios:**
@@ -395,7 +395,7 @@ flowchart TB
     - Killing the page mid-migration, then reloading, finishes with no duplicates and status `migrated`.
     - A forced Classic read failure shows the guided screen. Its download produces a v1.2 file, and importing that file after a partial migration adds no duplicates.
     - A browser holding only an anonymous Classic credential gets the welcome screen.
-    - A `native` account with two meals, then "I've used calgram before" with a Classic passkey, ends with the Classic data plus those two meals.
+    - A `native` account with two meals, then a Classic session in the same browser, ends with the Classic data plus those two meals, including after a failed first attempt, a reload and Try again.
 - **Verification:** all scenarios pass on PR C's Preview. The Classic account's data is unchanged afterwards (R9).
 
 ### U10. Staging rehearsal

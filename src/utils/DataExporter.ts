@@ -1,6 +1,4 @@
-import { type Loaded } from "jazz-classic";
 import type {
-  JazzAccount,
   MealRow,
   ProfileRow,
   WeightRow,
@@ -9,12 +7,17 @@ import type {
   ExportProfileDTO,
 } from "../schema";
 
-/** v1.2 adds an optional source `id` to each entry. */
-export const EXPORT_VERSION = "1.2";
+/**
+ * v1.2 (Classic) gives each entry its source `id`; v1.3 (Jazz 2) adds the exporting
+ * `accountId`, so importing into the same account can reuse those ids as row ids.
+ */
+export const EXPORT_VERSION = "1.3";
 
 export interface ExportedData {
   version: string;
   exportDate: string;
+  /** The Jazz 2 account the file was exported from (v1.3). */
+  accountId?: string;
   profile?: ExportProfileDTO;
   mealEntries: ExportMealDTO[];
   weightEntries: ExportWeightDTO[];
@@ -23,26 +26,29 @@ export interface ExportedData {
 /** A row whose optional fields may also be null, as Jazz 2 rows store them. */
 type SourceRow<T> = { [K in keyof T]: undefined extends T[K] ? T[K] | null : T[K] };
 
-/** Rows to export. A row's `id`, when present, is written as its source id. */
+/** Rows to export. Each row's `id` is written as its source id. */
 export interface ExportSource {
+  /** The exporting Jazz 2 account, written to the file when given. */
+  accountId?: string;
   profile: SourceRow<ProfileRow> | undefined;
-  meals: Iterable<SourceRow<MealRow> & { id?: string }>;
-  weights: Iterable<SourceRow<WeightRow> & { id?: string }>;
+  meals: Iterable<SourceRow<MealRow> & { id: string }>;
+  weights: Iterable<SourceRow<WeightRow> & { id: string }>;
 }
-
-const present = <T>(item: T | null | undefined): item is T => item != null;
 
 export class DataExporter {
   /**
    * Build the export file from plain rows. Pure: fields are picked explicitly, so a
-   * Classic CoValue or a Jazz 2 row can be passed as is. Timestamps are copied verbatim.
+   * Jazz 2 row can be passed as is. Timestamps are copied verbatim.
    */
-  static buildExport({ profile, meals, weights }: ExportSource, now = new Date()): ExportedData {
+  static buildExport(
+    { accountId, profile, meals, weights }: ExportSource,
+    now = new Date(),
+  ): ExportedData {
     const mealEntries = Array.from(
       meals,
       (meal) =>
         ({
-          ...(meal.id ? { id: meal.id } : {}),
+          id: meal.id,
           timestamp: meal.timestamp,
           foodName: meal.foodName,
           foodCategory: meal.foodCategory,
@@ -59,7 +65,7 @@ export class DataExporter {
       weights,
       (weight) =>
         ({
-          ...(weight.id ? { id: weight.id } : {}),
+          id: weight.id,
           timestamp: weight.timestamp,
           weightValue: weight.weightValue,
           unit: weight.unit ?? undefined,
@@ -80,55 +86,17 @@ export class DataExporter {
     return {
       version: EXPORT_VERSION,
       exportDate: now.toISOString(),
+      ...(accountId ? { accountId } : {}),
       ...(profileData ? { profile: profileData } : {}),
       mealEntries,
       weightEntries,
     };
   }
 
-  /**
-   * Classic adapter: load a Classic account and export it with `buildExport`. Each
-   * entry's CoValue id becomes its source id, so a Jazz 2 import of the file won't
-   * duplicate rows. The Classic importer ignores ids, as it always has.
-   */
-  static async exportUserData(account: Loaded<typeof JazzAccount>): Promise<ExportedData> {
-    if (!account.root) {
-      throw new Error("Account root not available");
-    }
-
-    let loadedAccount = account;
-
-    // Ensure the account root is loaded first, if ensureLoaded method exists
-    if (typeof account.ensureLoaded === "function") {
-      loadedAccount = await account.ensureLoaded({
-        resolve: {
-          profile: true,
-          root: {
-            mealEntries: true,
-            weightEntries: true,
-          },
-        },
-      });
-    }
-
-    const root = loadedAccount.root;
-    if (!root) {
-      throw new Error("Failed to load account root");
-    }
-
-    const profile = loadedAccount.profile;
-
-    return this.buildExport({
-      profile: {
-        name: profile?.name,
-        firstName: profile?.firstName,
-        dateOfBirth: root.dateOfBirth,
-        mealWeightUnit: profile?.mealWeightUnit,
-        bodyWeightUnit: profile?.bodyWeightUnit,
-      },
-      meals: [...(root.mealEntries ?? [])].filter(present),
-      weights: [...(root.weightEntries ?? [])].filter(present),
-    });
+  /** The name a downloaded export gets: `calorie-tracker-export-<UTC time>.json`. */
+  static exportFilename(now = new Date()): string {
+    const timestamp = now.toISOString().slice(0, 19).replace(/[:]/g, "-");
+    return `calorie-tracker-export-${timestamp}.json`;
   }
 
   /**

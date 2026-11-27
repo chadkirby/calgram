@@ -2,13 +2,13 @@
 
 ## Overview
 
-The DataExporter utility provides functionality for exporting meal and weight tracking data from the Jazz account to a structured JSON format. This utility is used by the DataCard component to enable users to backup their data or transfer it to another system.
+The DataExporter utility provides functionality for exporting meal and weight tracking data to a structured JSON format. This utility is used by the DataCard component to enable users to backup their data or transfer it to another system.
 
 ## Features
 
 ### Data Export
 
-- Exports all meal entries and weight entries from the Jazz account
+- Exports the profile, meal entries and weight entries passed to it
 - Transforms data to a comprehensive JSON format
 - Generates download files for user access
 - Handles error conditions gracefully
@@ -17,36 +17,16 @@ The DataExporter utility provides functionality for exporting meal and weight tr
 
 ### buildExport
 
-Builds the export file (version `1.2`) from plain rows. Pure: no account access, no I/O. Fields are picked explicitly, so Classic CoValues and Jazz 2 rows can both be passed. Timestamps are copied verbatim.
+Builds the export file (version `1.3`) from plain rows. Pure: no account access, no I/O. Fields are picked explicitly, so Jazz 2 rows (with `null` optional fields) can be passed as is. Timestamps are copied verbatim.
 
 ```typescript
 static buildExport(
-  source: { profile: ProfileRow | undefined; meals: Iterable<MealRow & { id?: string }>; weights: Iterable<WeightRow & { id?: string }> },
+  source: { accountId?: string; profile: ProfileRow | undefined; meals: Iterable<MealRow & { id: string }>; weights: Iterable<WeightRow & { id: string }> },
   now?: Date,
 ): ExportedData
 ```
 
-A row's `id`, when present, is written as the entry's source `id` (new in v1.2), so a re-import can recognise entries it already has.
-
-### exportUserData
-
-Classic adapter: loads a Classic account and exports it with `buildExport`. Each entry's CoValue id becomes its source `id`.
-
-```typescript
-static async exportUserData(account: Loaded<typeof JazzAccount>): Promise<ExportedData>
-```
-
-**Parameters:**
-
-- `account`: The loaded Jazz account containing meal and weight entries
-
-**Returns:**
-
-- `Promise<ExportedData>`: A promise that resolves to the exported data
-
-**Throws:**
-
-- `Error`: If the account root is not available or fails to load
+Each row's `id` is written as the entry's source `id`, so a re-import can recognise entries it already has; import rejects entries without one. `accountId`, when given, is written at the top level: the Jazz 2 account the file came from.
 
 ### downloadJsonFile
 
@@ -73,9 +53,10 @@ The main data structure for exported data.
 
 ```typescript
 interface ExportedData {
-  version: string; // "1.2"
+  version: string; // "1.3"
   exportDate: string;
-  profile?: ExportProfileDTO; // since 1.1
+  accountId?: string; // exporting Jazz 2 account (v1.3; v1.2 Classic exports have none)
+  profile?: ExportProfileDTO;
   mealEntries: ExportedMealEntry[];
   weightEntries: ExportedWeightEntry[];
 }
@@ -87,7 +68,7 @@ Structure for individual meal entries in the export.
 
 ```typescript
 interface ExportedMealEntry {
-  id?: string; // source id, since 1.2
+  id: string; // source id: Classic CoValue id (v1.2) or Jazz 2 row id (v1.3)
   timestamp: string;
   foodName: string;
   foodCategory: string;
@@ -106,7 +87,7 @@ Structure for individual weight entries in the export.
 
 ```typescript
 interface ExportedWeightEntry {
-  id?: string; // source id, since 1.2
+  id: string; // source id: Classic CoValue id (v1.2) or Jazz 2 row id (v1.3)
   timestamp: string;
   weightValue: number;
   unit?: string;
@@ -116,13 +97,14 @@ interface ExportedWeightEntry {
 
 ## Usage
 
-The DataExporter utility is used by the DataCard component:
+The DataCard component exports the signed-in account through `exportAccount` in `src/lib/backup.ts`, which reads the account's Jazz 2 rows and calls `buildExport`. Each entry's `id` is its Jazz 2 row id.
 
 ```typescript
 import { DataExporter } from "@/utils/DataExporter";
+import { exportAccount } from "@/lib/backup";
 
-// Export user data
-const exportData = await DataExporter.exportUserData(me);
+const { data: exportData, complete } = await exportAccount(db, accountId, profile);
+// complete is false when the server's copy couldn't be read in time.
 
 // Generate filename with timestamp
 const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");
@@ -135,12 +117,6 @@ DataExporter.downloadJsonFile(exportData, filename);
 ## Error Handling
 
 The utility provides comprehensive error handling:
-
-### Export Errors
-
-- Account root not available
-- Failed to load account root
-- Data access errors
 
 ### Download Errors
 

@@ -11,8 +11,7 @@ export interface FoodMetadataRow {
 }
 
 /**
- * Food suggestions for the meal form. Field names match Classic's stored
- * `FoodIntelligence`, so consumers accept either.
+ * Food suggestions for the meal form, derived from the meals at read time.
  */
 export interface FoodIntelligenceData {
   /** Up to 12 distinct food names, newest first. */

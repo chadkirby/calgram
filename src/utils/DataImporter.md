@@ -2,213 +2,74 @@
 
 ## Overview
 
-The DataImporter utility provides functionality for importing meal and weight tracking data from JSON files into the Jazz account. This utility supports both legacy import format and the new export format, and is used by the DataCard component to enable users to restore their data.
+DataImporter validates and plans the import of an export file. It is pure: it reads no account and writes nothing. `importIntoAccount` in `src/lib/backup.ts` turns its plan into Jazz 2 writes for the DataCard component.
 
-## Features
+It accepts two kinds of export file, and every entry in either must carry its source `id`:
 
-### Data Import
+- v1.2: Classic exports. Each `id` is the entry's Classic CoValue id (`co_z…`).
+- v1.3: Jazz 2 exports. Each `id` is the entry's Jazz 2 row id, and the top-level `accountId` names the exporting account.
 
-- Imports meal entries and weight entries from JSON files
-- Supports both legacy and new export formats
-- Handles duplicate entries gracefully without creating duplicates
-- Provides detailed import results and error reporting
-
-### Format Detection
-
-- Automatically detects the format of imported data
-- Supports legacy format with `meal_entries` and `weight_entries` arrays
-- Supports new format with `mealEntries` and `weightEntries` arrays
-
-### Data Validation
-
-- Validates the structure of imported data
-- Provides detailed error messages for invalid data
-- Handles malformed JSON gracefully
+Any other version (including v1.0 and v1.1, whose entries have no ids) fails validation with a single `version: Export version "1.1" isn't supported; …` error, and an entry without an `id` fails with `mealEntries.0.id: id is required`. Validation is strict: unknown keys are rejected.
 
 ## Methods
 
-### planImport
+### validateImportData
 
-Validates a parsed file and plans its rows without writing anything. Accepts v1.0, v1.1 and v1.2 files.
+Validates a parsed file against the export format.
 
 ```typescript
-static async planImport(jsonData: unknown): Promise<ImportPlan>
+static validateImportData(jsonData: unknown): { isValid: boolean; errors: string[] }
+```
+
+Each error is `path: message`, for example `mealEntries.0.caloriesPerGram: Calories per gram cannot be negative`.
+
+### planImport
+
+Validates a parsed file and plans its rows without writing anything.
+
+```typescript
+static planImport(jsonData: unknown): ImportPlan
 
 interface ImportPlan {
-  meals: { sourceKey: string; row: MealRow }[];
-  weights: { sourceKey: string; row: WeightRow }[];
+  accountId: string | undefined; // the exporting account (v1.3), when the file names one
+  meals: { sourceId: string; row: MealRow }[];
+  weights: { sourceId: string; row: WeightRow }[];
   profile: Partial<ProfileRow> | undefined; // from the file's `profile` block
   errors: string[]; // validation errors; when present, nothing is planned
 }
 ```
 
-Each row's source key is its source `id` (v1.2) when present. Otherwise it is a hash of the entry's content plus its occurrence index among identical entries, so two identical entries stay two rows and planning the same file twice gives the same keys. `rowId(accountId, sourceKey)` in `rowIds.ts` turns a source key into the row's deterministic id.
-
-### importData
-
-Classic adapter: writes `planImport`'s rows into a Classic account. It ignores the profile patch, as the Classic importer always has.
-
-Imports data from exported JSON file (supports both legacy and new formats).
-
-```typescript
-static async importData(jsonData: ExportedData, account: Loaded<typeof JazzAccount>): Promise<ImportResult>
-```
-
-**Parameters:**
-
-- `jsonData`: The parsed JSON data to import
-- `account`: The loaded Jazz account to import data into
-
-**Returns:**
-
-- `Promise<ImportResult>`: A promise that resolves to the import results
-
-**Throws:**
-
-- `Error`: If the account root is not available or fails to load
-
-### detectDataFormat
-
-Detects the format of the imported data.
-
-```typescript
-static detectDataFormat(jsonData: any): 'legacy' | 'current' | 'unknown'
-```
-
-**Parameters:**
-
-- `jsonData`: The parsed JSON data to analyze
-
-**Returns:**
-
-- `'legacy' | 'current' | 'unknown'`: The detected format
-
-### validateImportData
-
-Validates the imported data structure.
-
-```typescript
-static validateImportData(jsonData: any): { isValid: boolean; errors: string[] }
-```
-
-**Parameters:**
-
-- `jsonData`: The parsed JSON data to validate
-
-**Returns:**
-
-- `{ isValid: boolean; errors: string[] }`: Validation result with errors if any
+Each row's `sourceId` is the entry's `id` from the file. Timestamps are kept verbatim.
 
 ### parseJsonFile
 
-Parses and validates JSON file content.
+Parses file text as JSON and checks that it is an object. Throws `Failed to parse JSON file: …` otherwise.
 
 ```typescript
 static parseJsonFile(fileContent: string): ExportedData
 ```
 
-**Parameters:**
+## Writing the plan (src/lib/backup.ts)
 
-- `fileContent`: The raw file content as string
+`importIntoAccount(db, accountId, jsonData, saveProfile)` imports a file into the signed-in Jazz 2 account:
 
-**Returns:**
+- An invalid file throws `Invalid data format: …` and writes nothing.
+- In this account's own export (the file's `accountId` is the importing account), each entry is inserted under its source `id` itself, so the server's guards stop it bringing back a row deleted since the export or duplicating one this device hasn't loaded yet. Otherwise its row id is `rowId(accountId, sourceId)` (`rowIds.ts`). Rows are inserted with that id, never upserted, and only when missing (plan KTD5): an entry is skipped when its source `id` or its row id already is one of this account's row ids.
+- Inserts are local-first and don't wait for the server. The server rejects an insert whose id exists or was deleted; that counts as already present, not an error. The returned counts are local-first too: a row the server later rejects still counts as imported.
+- Names and unit preferences from the `profile` block are saved to the profile row. `dateOfBirth` is dropped: Jazz 2 has no column for it.
 
-- `ExportedData`: The parsed JSON data
-
-**Throws:**
-
-- `Error`: If the JSON parsing fails
-
-## Data Structures
-
-### ImportResult
-
-Structure for import operation results.
+It returns:
 
 ```typescript
 interface ImportResult {
-  mealCount: number;
-  weightCount: number;
-  duplicatesSkipped: number;
-  errors: string[];
+  mealCount: number; // meals inserted
+  weightCount: number; // weigh-ins inserted
+  duplicatesSkipped: number; // entries already present
 }
 ```
-
-### ExportedData (Union Type)
-
-Union type for both legacy and new export formats.
-
-```typescript
-type ExportedData = LegacyExportedData | NewExportedData;
-```
-
-### LegacyExportedData
-
-Structure for legacy export format.
-
-```typescript
-interface LegacyExportedData {
-  meal_entries: LegacyExportedMealEntry[];
-  weight_entries: LegacyExportedWeightEntry[];
-}
-```
-
-### NewExportedData
-
-Structure for new export format.
-
-```typescript
-interface NewExportedData {
-  version: string;
-  exportDate: string;
-  mealEntries: NewExportedMealEntry[];
-  weightEntries: NewExportedWeightEntry[];
-}
-```
-
-## Usage
-
-The DataImporter utility is used by the DataCard component:
-
-```typescript
-import { DataImporter } from "@/utils/DataImporter";
-
-// Read file content
-const fileContent = await file.text();
-
-// Parse JSON data
-const jsonData = DataImporter.parseJsonFile(fileContent);
-
-// Validate data structure
-const validation = DataImporter.validateImportData(jsonData);
-if (!validation.isValid) {
-  throw new Error(`Invalid data format: ${validation.errors.join(", ")}`);
-}
-
-// Import data
-const result = await DataImporter.importData(jsonData, me);
-```
-
-## Error Handling
-
-The utility provides comprehensive error handling:
-
-### Import Errors
-
-- Invalid file format
-- Malformed JSON data
-- Data validation errors
-- Jazz synchronization errors
-- Network errors
-
-### Validation Errors
-
-- Missing required fields
-- Invalid data types
-- Incorrect array structures
 
 ## Related Components
 
-- [DataCard](../components/DataCard.tsx) - Component that uses this utility
-- [SettingsDialog](../components/SettingsDialog.tsx) - Parent component that uses DataCard
-- [DataExporter](./DataExporter.ts) - Utility for exporting data
+- [DataCard](../components/DataCard.tsx) - Settings card with the Import and Export buttons
+- [backup.ts](../lib/backup.ts) - Jazz 2 export and import
+- [DataExporter](./DataExporter.ts) - Builds export files

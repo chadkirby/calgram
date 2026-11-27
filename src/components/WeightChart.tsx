@@ -8,8 +8,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useAccount } from "jazz-classic/react";
-import { JazzAccount, type WeightEntry } from "../schema";
+import { useAccount } from "@/lib/account";
+import { useWeights } from "@/lib/data";
 import { TrendAnalyzer } from "../utils/TrendAnalyzer";
 import {
   Line,
@@ -21,7 +21,6 @@ import {
   ResponsiveContainer,
   ComposedChart,
 } from "recharts";
-import type { Loaded } from "jazz-classic";
 
 // Animation constants
 const CHART_ANIMATION_DURATION = 200;
@@ -106,14 +105,8 @@ function WeightTooltip({
 }
 
 export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }: WeightChartProps) {
-  const { me } = useAccount(JazzAccount, {
-    resolve: {
-      profile: true,
-      root: {
-        weightEntries: { $each: true },
-      },
-    },
-  });
+  const { profile } = useAccount();
+  const weightEntries = useWeights();
 
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 640,
@@ -137,9 +130,6 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
     { value: "90", label: "Last 90 days" },
   ];
 
-  const weightEntries = me?.root?.weightEntries;
-  const profile = me?.profile;
-
   // Prepare chart data using TrendAnalyzer with unit conversion
   const { chartData, summaryStats, weightAxisConfig, hasData, axisLabel } = useMemo(() => {
     if (!weightEntries) {
@@ -153,11 +143,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
     }
 
     const days = parseInt(timeRange);
-    const weightData = TrendAnalyzer.prepareWeightData(
-      weightEntries.filter((weight): weight is Loaded<typeof WeightEntry> => weight != null),
-      profile,
-      days,
-    );
+    const weightData = TrendAnalyzer.prepareWeightData(weightEntries, profile, days);
 
     const label = TrendAnalyzer.getWeightAxisLabel(profile);
 
@@ -240,13 +226,13 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
           {summaryStats && (
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary" className="text-xs">
-                Avg: {TrendAnalyzer.formatWeightTooltip(summaryStats.avgWeight, me?.profile)}
+                Avg: {TrendAnalyzer.formatWeightTooltip(summaryStats.avgWeight, profile)}
               </Badge>
               <Badge variant="secondary" className="text-xs">
-                Min: {TrendAnalyzer.formatWeightTooltip(summaryStats.minWeight, me?.profile)}
+                Min: {TrendAnalyzer.formatWeightTooltip(summaryStats.minWeight, profile)}
               </Badge>
               <Badge variant="secondary" className="text-xs">
-                Max: {TrendAnalyzer.formatWeightTooltip(summaryStats.maxWeight, me?.profile)}
+                Max: {TrendAnalyzer.formatWeightTooltip(summaryStats.maxWeight, profile)}
               </Badge>
               {summaryStats.weightChange && (
                 <Badge
@@ -254,10 +240,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                   className="text-xs"
                 >
                   Δ: {summaryStats.weightChange > 0 ? "+" : ""}
-                  {TrendAnalyzer.formatWeightTooltip(
-                    Math.abs(summaryStats.weightChange),
-                    me?.profile,
-                  )}
+                  {TrendAnalyzer.formatWeightTooltip(Math.abs(summaryStats.weightChange), profile)}
                 </Badge>
               )}
             </div>

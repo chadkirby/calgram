@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAccount } from "jazz-classic/react";
-import { JazzAccount, WeightEntry, type BodyWeightUnit } from "../schema";
+import { useDb } from "jazz-tools/react";
+import { type BodyWeightUnit } from "../schema";
+import { app } from "../../jazz/jazz.generated";
+import { useAccount } from "@/lib/account";
+import type { Weight } from "@/lib/data";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WeightPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
@@ -12,17 +15,10 @@ import { WeightEntryDialog } from "@/components/WeightEntryDialog";
 import { Plus } from "lucide-react";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
-import type { Loaded } from "jazz-classic";
 
 function WeightPageContent() {
-  const { me } = useAccount(JazzAccount, {
-    resolve: {
-      profile: true,
-      root: {
-        weightEntries: { $each: true },
-      },
-    },
-  });
+  const db = useDb();
+  const { profile } = useAccount();
 
   const { updateSyncStatus } = useNetworkStatus();
   const [timeRange, setTimeRange] = useState("30");
@@ -30,7 +26,7 @@ function WeightPageContent() {
   const [dialogState, setDialogState] = useState<{
     isOpen: boolean;
     mode: "add" | "edit";
-    entry?: Loaded<typeof WeightEntry>;
+    entry?: Weight;
   }>({
     isOpen: false,
     mode: "add",
@@ -51,7 +47,7 @@ function WeightPageContent() {
     });
   };
 
-  const handleEditWeight = (entry: Loaded<typeof WeightEntry>) => {
+  const handleEditWeight = (entry: Weight) => {
     setDialogState({
       isOpen: true,
       mode: "edit",
@@ -72,27 +68,15 @@ function WeightPageContent() {
     unit: BodyWeightUnit;
     notes?: string;
   }) => {
-    if (!me?.root) return;
-
     try {
       await withSyncErrorHandling(
-        async () => {
-          // Create weight entry using Jazz schema
-          const weightEntry = WeightEntry.create(
-            {
-              timestamp: data.date,
-              weightValue: data.weightValue,
-              unit: data.unit,
-              notes: data.notes || "",
-            },
-            me.root._owner,
-          );
-
-          // Add to weight entries
-          me.root.weightEntries?.push(weightEntry);
-
-          return weightEntry;
-        },
+        async () =>
+          db.insert(app.weightEntries, {
+            timestamp: data.date,
+            weightValue: data.weightValue,
+            unit: data.unit,
+            notes: data.notes || "",
+          }),
         "weight-creation",
         updateSyncStatus,
       )();
@@ -112,9 +96,9 @@ function WeightPageContent() {
           <div className="flex flex-row justify-between items-center gap-2">
             <CardTitle className="text-lg sm:text-xl lg:text-2xl">
               Weight Tracking{" "}
-              {me?.profile?.firstName && (
+              {profile?.firstName && (
                 <span className="text-sm text-muted-foreground truncate">
-                  ({me.profile.firstName})
+                  ({profile.firstName})
                 </span>
               )}
             </CardTitle>

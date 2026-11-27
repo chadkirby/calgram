@@ -2,16 +2,16 @@ import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAccount } from "jazz-classic/react";
+import { useDb } from "jazz-tools/react";
 import { DataExporter } from "@/utils/DataExporter";
 import { DataImporter } from "@/utils/DataImporter";
-import { JazzAccount } from "@/schema";
+import { useAccount } from "@/lib/account";
+import { exportAccount, importIntoAccount } from "@/lib/backup";
 import { Upload, Download, Loader2, Check, AlertCircle } from "lucide-react";
 
 export function DataCard() {
-  const { me } = useAccount(JazzAccount, {
-    resolve: { root: { mealEntries: true, weightEntries: true } },
-  });
+  const db = useDb();
+  const { accountId, profile, saveProfile } = useAccount();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -22,29 +22,29 @@ export function DataCard() {
     mealCount?: number;
     weightCount?: number;
     duplicatesSkipped?: number;
-    errors?: string[];
   } | null>(null);
 
   const handleExport = async () => {
-    if (!me) return;
-
+    if (!accountId) return;
     setIsExporting(true);
     try {
-      // Export user data
-      const exportData = await DataExporter.exportUserData(me);
+      const { data: exportData, complete } = await exportAccount(db, accountId, profile);
 
-      // Generate filename with timestamp
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");
-      const filename = `calorie-tracker-export-${timestamp}.json`;
+      const filename = DataExporter.exportFilename();
 
       // Download the file
       DataExporter.downloadJsonFile(exportData, filename);
 
-      // Show success message
-      setImportResult({
-        success: true,
-        message: "Data exported successfully!",
-      });
+      // Show success message, or say the backup may be missing what only the server has
+      setImportResult(
+        complete
+          ? { success: true, message: "Data exported successfully!" }
+          : {
+              success: false,
+              message:
+                "Exported the data on this device, but the server couldn't be reached, so this backup may be incomplete. Export again when you're online to be sure it has everything.",
+            },
+      );
     } catch (error) {
       console.error("Export failed:", error);
       setImportResult({
@@ -62,7 +62,7 @@ export function DataCard() {
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !me) {
+    if (!file || !accountId) {
       return;
     }
 
@@ -73,26 +73,14 @@ export function DataCard() {
       // Read file content
       const fileContent = await file.text();
 
-      // Parse JSON data
+      // Parse, validate, then insert the rows this account doesn't have yet
       const jsonData = DataImporter.parseJsonFile(fileContent);
+      const result = await importIntoAccount(db, accountId, jsonData, saveProfile);
 
-      // Validate data structure
-      const validation = DataImporter.validateImportData(jsonData);
-      if (!validation.isValid) {
-        throw new Error(`Invalid data format: ${validation.errors.join(", ")}`);
-      }
-
-      // Import data
-      const result = await DataImporter.importData(jsonData, me);
-
-      // Show success message with import details
       setImportResult({
         success: true,
         message: `Imported ${result.mealCount} meals and ${result.weightCount} weights`,
-        mealCount: result.mealCount,
-        weightCount: result.weightCount,
-        duplicatesSkipped: result.duplicatesSkipped,
-        errors: result.errors.length > 0 ? result.errors : undefined,
+        ...result,
       });
     } catch (error) {
       console.error("Import failed:", error);
@@ -165,13 +153,9 @@ export function DataCard() {
               {importResult.success && importResult.mealCount !== undefined && (
                 <span className="block mt-1 text-xs">
                   Meals: {importResult.mealCount}, Weights: {importResult.weightCount}
-                  {importResult.duplicatesSkipped &&
-                    importResult.duplicatesSkipped > 0 &&
-                    `, Skipped duplicates: ${importResult.duplicatesSkipped}`}
+                  {!!importResult.duplicatesSkipped &&
+                    `, Skipped (already present): ${importResult.duplicatesSkipped}`}
                 </span>
-              )}
-              {importResult.errors && importResult.errors.length > 0 && (
-                <span className="block mt-1 text-xs">Errors: {importResult.errors.join(", ")}</span>
               )}
             </AlertDescription>
           </Alert>

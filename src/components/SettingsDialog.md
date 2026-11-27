@@ -51,65 +51,7 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 
 ## Data Import/Export Formats
 
-### Export Format
-
-The new export format is more comprehensive and structured:
-
-```json
-{
-  "version": "1.0",
-  "exportDate": "2025-01-29T10:30:00Z",
-  "mealEntries": [
-    {
-      "timestamp": "2025-01-29T08:00:00Z",
-      "foodName": "Banana",
-      "foodCategory": "Fruit",
-      "caloriesPerGram": 0.89,
-      "caloriesPerDisplayUnit": "g",
-      "weightInGrams": 120,
-      "displayUnit": "g",
-      "totalCalories": 106.8,
-      "notes": "Medium sized banana"
-    }
-  ],
-  "weightEntries": [
-    {
-      "timestamp": "2025-01-29T07:00:00Z",
-      "weightValue": 70.5,
-      "unit": "kg",
-      "notes": "Morning weight"
-    }
-  ]
-}
-```
-
-### Legacy Format Support
-
-The importer continues to support the existing legacy format:
-
-```json
-{
-  "meal_entries": [
-    {
-      "id": 1,
-      "food": "Banana",
-      "weight": 120,
-      "calories_per_gram": 0.89,
-      "total_calories": 106.8,
-      "category": "Fruit",
-      "date": "2025-01-29T08:00:00Z"
-    }
-  ],
-  "weight_entries": [
-    {
-      "id": 1,
-      "weight": 70.5,
-      "date": "2025-01-29T07:00:00Z",
-      "notes": "Morning weight"
-    }
-  ]
-}
-```
+Export writes v1.3 files: the exporting `accountId`, and each entry with its Jazz 2 row `id`. Import takes v1.3 files and v1.2 Classic exports (each entry with its Classic CoValue `id`); any other version, or an entry without an `id`, is rejected. See [DataImporter.md](../utils/DataImporter.md) and [DataExporter.md](../utils/DataExporter.md) for the format.
 
 ## Error Handling
 

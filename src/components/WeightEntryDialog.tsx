@@ -13,14 +13,15 @@ import {
 import { Check, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { DateTime } from "luxon";
-import { WeightEntry, type BodyWeightUnit, bodyWeightUnits } from "../schema";
+import { type BodyWeightUnit, bodyWeightUnits } from "../schema";
 import { WeightInput, getStepForUnit, getPlaceholderForUnit } from "@/components/WeightInput";
 import { UnitPreferenceManager } from "@/utils/UnitPreferenceManager";
-import { useAccount } from "jazz-classic/react";
-import { JazzAccount } from "../schema";
+import { useDb } from "jazz-tools/react";
+import { app } from "../../jazz/jazz.generated";
+import { useAccount } from "@/lib/account";
+import type { Weight } from "@/lib/data";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
-import type { Loaded } from "jazz-classic";
 import { DatePicker } from "@/components/ui/date-picker";
 
 // Zod schema for weight form validation
@@ -48,7 +49,7 @@ interface WeightEntryDialogProps {
     unit: BodyWeightUnit;
     notes?: string;
   }) => Promise<void>;
-  entry?: Loaded<typeof WeightEntry>;
+  entry?: Weight;
   mode: "add" | "edit";
 }
 
@@ -60,16 +61,13 @@ export function WeightEntryDialog({
   entry,
   mode,
 }: WeightEntryDialogProps) {
-  const { me } = useAccount(JazzAccount, {
-    resolve: {
-      profile: true,
-    },
-  });
+  const db = useDb();
+  const { profile, saveProfile } = useAccount();
   const { updateSyncStatus } = useNetworkStatus();
 
   // Get default unit from user preferences
   const getDefaultUnit = (): BodyWeightUnit => {
-    return UnitPreferenceManager.getBodyWeightUnit(me?.profile);
+    return UnitPreferenceManager.getBodyWeightUnit(profile);
   };
 
   const [formData, setFormData] = useState<WeightFormValues>({
@@ -83,23 +81,23 @@ export function WeightEntryDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Initialize form when dialog opens or entry changes. This adjusts state during render
-  // whenever any of the tracked values change (null on first render so it also runs on mount).
-  const profile = me?.profile;
+  // Initialize form when dialog opens or the entry or mode changes. This adjusts state
+  // during render whenever any of the tracked values change (null on first render so it
+  // also runs on mount). Not on profile changes: the profile is only read for the default
+  // unit when the form opens, and a profile update (saving a new unit preference, or a
+  // rename in another tab) mustn't wipe what's being typed or the success message.
   const [prevResetDeps, setPrevResetDeps] = useState<{
     isOpen: boolean;
     entry: typeof entry;
     mode: typeof mode;
-    profile: typeof profile;
   } | null>(null);
   if (
     prevResetDeps === null ||
     prevResetDeps.isOpen !== isOpen ||
     prevResetDeps.entry !== entry ||
-    prevResetDeps.mode !== mode ||
-    prevResetDeps.profile !== profile
+    prevResetDeps.mode !== mode
   ) {
-    setPrevResetDeps({ isOpen, entry, mode, profile });
+    setPrevResetDeps({ isOpen, entry, mode });
     if (isOpen) {
       if (mode === "edit" && entry) {
         setFormData({
@@ -168,12 +166,13 @@ export function WeightEntryDialog({
       if (mode === "edit" && entry) {
         // Update existing entry
         await withSyncErrorHandling(
-          async () => {
-            entry.timestamp = validatedData.date;
-            entry.weightValue = validatedData.weightValue;
-            entry.unit = validatedData.unit;
-            entry.notes = validatedData.notes || "";
-          },
+          async () =>
+            db.update(app.weightEntries, entry.id, {
+              timestamp: validatedData.date,
+              weightValue: validatedData.weightValue,
+              unit: validatedData.unit,
+              notes: validatedData.notes || "",
+            }),
           "weight-update",
           updateSyncStatus,
         )();
@@ -190,8 +189,8 @@ export function WeightEntryDialog({
       }
 
       // Save unit preference for future use
-      if (me?.profile) {
-        UnitPreferenceManager.setBodyWeightUnit(me.profile, validatedData.unit);
+      if (profile && profile.bodyWeightUnit !== validatedData.unit) {
+        saveProfile({ bodyWeightUnit: validatedData.unit });
       }
 
       // Show success feedback

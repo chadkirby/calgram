@@ -1,101 +1,76 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAccount, usePasskeyAuth } from "jazz-classic/react";
-import { useAuthenticated } from "@/lib/useAuthenticated";
-import { APPLICATION_NAME } from "../Main";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { JazzAccount } from "../schema";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { nativeSetup, signInWithPasskey, startNewAccount, useAccount } from "@/lib/account";
+import { classicIdentityFromHandle } from "@/migration/classicIdentity";
+import { migrateFromPasskey } from "@/migration/migrate";
 
-/** Persist the chosen first name (and fill in a placeholder full name) on the Jazz profile. */
-function persistSignupName(profile: { name: string; firstName: string }, firstName: string) {
-  profile.firstName = (firstName || "").trim() || "Nobody";
-  if (!profile.name || profile.name === "Anonymous user") {
-    profile.name = profile.firstName;
-  }
+/** Shown while a signed-in account's setup status is being confirmed with the server. */
+export function AccountChecking() {
+  const { networkStatus } = useNetworkStatus();
+  return (
+    <output className="block text-sm text-muted-foreground text-center py-8">
+      {networkStatus.isOnline
+        ? "Checking your account…"
+        : "You're offline. Waiting for a connection to finish setting up your account…"}
+    </output>
+  );
 }
 
 export function LandingPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isAuthenticated = useAuthenticated();
+  const { status, saveProfile } = useAccount();
 
-  // Track where user originally wanted to go (e.g., /weight) so we can send them there post-auth
-  const desiredPath = useMemo(() => {
-    const p = new URLSearchParams(location.search).get("redirect");
-    return p && p.startsWith("/") ? p : "/daily";
-  }, [location.search]);
-
-  const { me } = useAccount(JazzAccount, { resolve: { profile: true } });
-  const auth = usePasskeyAuth({ appName: APPLICATION_NAME });
-
-  // Sign-up dialog state
+  // Name step: "Start" asks for a first name before creating anything.
   const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const errorId = useId();
 
-  // Open dialog when URL has ?signup=1 or when user clicks Sign up.
-  // Adjusts state during render whenever location.search changes (null on first render so it
-  // also runs on mount).
-  const [prevSearch, setPrevSearch] = useState<string | null>(null);
-  if (prevSearch !== location.search) {
-    setPrevSearch(location.search);
-    const isSignup = new URLSearchParams(location.search).get("signup") === "1";
-    if (isSignup) {
-      setOpen(true);
-    }
-  }
+  const openNameStep = () => {
+    setMessage(null);
+    setOpen(true);
+  };
 
-  // If already authenticated, go to desiredPath immediately
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(desiredPath, { replace: true });
-    }
-  }, [isAuthenticated, desiredPath, navigate]);
-
-  // Initialize local firstName from profile when dialog opens, or when the profile's firstName
-  // changes while open. Adjusts state during render when `open` or the profile firstName change
-  // (null on first render so it also runs on mount).
-  const profileFirstName = me?.profile?.firstName;
-  const [prevFirstNameSync, setPrevFirstNameSync] = useState<{
-    open: boolean;
-    profileFirstName: string | undefined;
-  } | null>(null);
-  if (
-    prevFirstNameSync === null ||
-    prevFirstNameSync.open !== open ||
-    prevFirstNameSync.profileFirstName !== profileFirstName
-  ) {
-    setPrevFirstNameSync({ open, profileFirstName });
-    if (open && me?.profile) {
-      setFirstName(me.profile.firstName ?? "");
-    }
-  }
-
-  // IMPORTANT: Do NOT trigger auth.signUp() automatically.
-  // Only run the passkey flow after the user clicks Continue in the dialog.
-  const openSignup = () => setOpen(true);
-
-  const handleContinue = async () => {
+  const handleContinue = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
     try {
-      // Persist firstName before starting auth, so the profile is ready after sign-in
-      if (me?.profile) {
-        persistSignupName(me.profile, firstName);
+      if (status === "signed-out") {
+        // The signed-in tree takes over from here and leaves for ?redirect= or /daily.
+        await startNewAccount(firstName);
+      } else {
+        saveProfile(nativeSetup(firstName));
       }
-      // Now start the passkey flow with a meaningful WebAuthn user name
-      const label = `Sammygram (${(firstName || "").trim() || "User"})`;
-      await auth.signUp(label);
-      // After successful signup, redirect will be handled by the isAuthenticated effect
-      // but also navigate here as a fallback
-      navigate(desiredPath, { replace: true });
-    } catch (e) {
-      console.error("Sign up failed:", e);
+    } catch (error) {
+      console.error("Starting failed:", error);
+      setMessage("Couldn't start. Please try again.");
+      setBusy(false);
     }
   };
 
-  const handleCancel = () => {
-    setOpen(false);
+  const handleReturning = async () => {
+    setBusy(true);
+    setMessage(null);
+    const result = await signInWithPasskey();
+    if (result.kind === "error") setMessage(result.message);
+    setBusy(false);
+    if (result.kind === "classic") {
+      await migrateFromPasskey(classicIdentityFromHandle(result.handle)).catch((error: unknown) => {
+        console.error("Starting the migration failed:", error);
+        setMessage("Couldn't open your account. Please try again.");
+      });
+    }
   };
 
   return (
@@ -110,14 +85,33 @@ export function LandingPage() {
         clear picture of weight over time. Weigh food, log calories, and keep your subject on track.
       </p>
 
-      <div className="flex items-center gap-3 sm:gap-4">
-        <Button className="btn-touch px-5 sm:px-6" onClick={openSignup}>
-          Sign up
-        </Button>
-        <Button className="btn-touch px-5 sm:px-6" variant="outline" onClick={() => auth.logIn()}>
-          Log in
-        </Button>
-      </div>
+      {status === "checking" ? (
+        <AccountChecking />
+      ) : (
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button className="btn-touch px-5 sm:px-6" onClick={openNameStep} disabled={busy}>
+              Start
+            </Button>
+            {status === "signed-out" && (
+              <Button
+                className="btn-touch px-5 sm:px-6"
+                variant="outline"
+                onClick={handleReturning}
+                disabled={busy}
+              >
+                I've used Sammygram before
+              </Button>
+            )}
+          </div>
+          {/* While the name step is open, its error shows inside the dialog instead. */}
+          {message && !open && (
+            <p role="alert" className="max-w-md text-sm text-muted-foreground">
+              {message}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="max-w-4xl grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-2 sm:pt-4 text-left">
         <FeatureCard
@@ -161,13 +155,18 @@ export function LandingPage() {
         </p>
       </div>
 
-      {/* Sign-up modal dialog on the landing page */}
-      <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : handleCancel())}>
+      {/* Name step for Start */}
+      <Dialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
         <DialogContent className="sm:max-w-[425px]" autoFocus={false}>
           <DialogHeader>
             <DialogTitle>Create your account</DialogTitle>
+            <DialogDescription>This is how you'll be greeted in the app.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <form
+            className="grid gap-4 py-2"
+            onSubmit={handleContinue}
+            aria-describedby={message ? errorId : undefined}
+          >
             <div className="grid gap-2">
               <Label htmlFor="firstName">First name</Label>
               <Input
@@ -177,17 +176,26 @@ export function LandingPage() {
                 onChange={(e) => setFirstName(e.target.value)}
                 autoFocus={false}
               />
-              <p className="text-xs text-muted-foreground">
-                We’ll label your passkey as Sammygram ({firstName || "User"}).
-              </p>
             </div>
+            {message && (
+              <p id={errorId} role="alert" className="text-sm text-destructive">
+                {message}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleCancel}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={busy}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleContinue}>Continue</Button>
+              <Button type="submit" disabled={busy}>
+                Continue
+              </Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

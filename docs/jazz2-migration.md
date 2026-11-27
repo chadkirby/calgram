@@ -1,6 +1,6 @@
 # Jazz Classic → Jazz 2 migration
 
-Status: spikes done (2026-11-25/26), including a real Cloudflare deploy, a Worker Preview, and a real Classic read. Nothing deployed to calgram. App code still on Classic (`jazz-tools@0.15.13`). A production v1.1 export (4,627 meals, 69 weigh-ins, full `profile`) passes `DataImporter.validateImportData`. 16 of its entries have date-only timestamps (`YYYY-MM-DD`), and the Jazz 2 import must accept those.
+Status: spikes done (2026-11-25/26), including a real Cloudflare deploy, a Worker Preview, and a real Classic read. Nothing deployed to calgram. App code still on Classic (`jazz-tools@0.15.13`). A production v1.1 export from 2026-11-26 (4,627 meals, 69 weigh-ins) served as sample data only; it is not meant to be imported. Import takes v1.2 (Classic, with ids) and v1.3 (Jazz 2) files.
 
 ## Decisions
 
@@ -50,6 +50,14 @@ Verified on 2026-11-26 (formerly listed here):
 ## Notes
 
 - Production's Classic client connects to Jazz Cloud v1 with the key `fallback@example.com`. No Cloudflare build sets `VITE_JAZZ_API_KEY`; the real value lives only in a local `.env.local`. The key identifies the app and doesn't gate data: an account written under one key reads fine under another (`spikes/jazz2/tests/cross-key.mjs`). Left as is on purpose.
+
+## Stored formats fixed at cutover
+
+Changing either of these after real users migrate would open different accounts or give rows new ids.
+
+- **Jazz 2 key from a Classic seed (KTD4):** HKDF-SHA256 with the 32 seed bytes as input, an empty salt, info `calgram/jazz2-device-key/v1`, and 32 bytes of output. The output is written as `jazz-auth-v1:` plus unpadded base64url. This is the construction `spikes/jazz2/tests/classic-read.mjs` ran against a real Classic account. Code: `src/migration/classicIdentity.ts`.
+- **Row ids (KTD5):** the first 16 bytes of SHA-256 over `calgram/rows/v1|<Jazz 2 account id>|<source id>`, with UUID version 5 and RFC 4122 variant bits. A migrated account's profile row uses the source id `calgram:profile`. Code: `src/utils/rowIds.ts`, `src/migration/migrate.ts`.
+- **Where a Classic session lives:** `localStorage["jazz-logged-in-secret"]`, JSON `{ accountID, secretSeed: number[32], accountSecret, provider }`. A Classic passkey's `userHandle` is the seed followed by the 19 raw bytes of the account id (`co_z` + base58).
 
 ## Plan
 

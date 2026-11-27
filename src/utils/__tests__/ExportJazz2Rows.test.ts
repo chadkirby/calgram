@@ -37,7 +37,7 @@ const profile: Profile = {
 };
 
 describe("DataExporter.buildExport with Jazz 2 rows", () => {
-  it("omits null fields, and the file passes import validation", async () => {
+  it("omits null fields, and the file passes import validation", () => {
     const exported = DataExporter.buildExport({
       profile,
       meals: [meal],
@@ -62,7 +62,7 @@ describe("DataExporter.buildExport with Jazz 2 rows", () => {
     expect(json.profile).toEqual({ firstName: "Sam", bodyWeightUnit: "kg" });
 
     expect(DataImporter.validateImportData(json).errors).toEqual([]);
-    const plan = await DataImporter.planImport(json);
+    const plan = DataImporter.planImport(json);
     expect(plan.errors).toEqual([]);
     expect(plan.meals).toHaveLength(1);
     expect(plan.weights).toHaveLength(1);

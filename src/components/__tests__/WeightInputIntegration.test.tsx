@@ -14,9 +14,7 @@ vi.mock("@/utils/WeightConverter", () => ({
 vi.mock("@/utils/UnitPreferenceManager", () => ({
   UnitPreferenceManager: {
     getMealWeightUnit: vi.fn<typeof UnitPreferenceManager.getMealWeightUnit>(),
-    setMealWeightUnit: vi.fn<typeof UnitPreferenceManager.setMealWeightUnit>(),
     getBodyWeightUnit: vi.fn<typeof UnitPreferenceManager.getBodyWeightUnit>(),
-    setBodyWeightUnit: vi.fn<typeof UnitPreferenceManager.setBodyWeightUnit>(),
   },
 }));
 
@@ -129,17 +127,12 @@ describe("WeightInput Integration", () => {
 
       // Mock UnitPreferenceManager methods
       const mockGetMealWeightUnit = vi.mocked(UnitPreferenceManager.getMealWeightUnit);
-      const mockSetMealWeightUnit = vi.mocked(UnitPreferenceManager.setMealWeightUnit);
 
       mockGetMealWeightUnit.mockReturnValue("g");
 
       // Simulate loading user preference
       const userPreferredUnit = UnitPreferenceManager.getMealWeightUnit(mockProfile);
       expect(userPreferredUnit).toBe("g");
-
-      // Simulate saving user preference
-      UnitPreferenceManager.setMealWeightUnit(mockProfile, "oz");
-      expect(mockSetMealWeightUnit).toHaveBeenCalledWith(mockProfile, "oz");
     });
 
     it("should integrate with UnitPreferenceManager for body weights", () => {
@@ -147,17 +140,12 @@ describe("WeightInput Integration", () => {
 
       // Mock UnitPreferenceManager methods
       const mockGetBodyWeightUnit = vi.mocked(UnitPreferenceManager.getBodyWeightUnit);
-      const mockSetBodyWeightUnit = vi.mocked(UnitPreferenceManager.setBodyWeightUnit);
 
       mockGetBodyWeightUnit.mockReturnValue("lbs");
 
       // Simulate loading user preference
       const userPreferredUnit = UnitPreferenceManager.getBodyWeightUnit(mockProfile);
       expect(userPreferredUnit).toBe("lbs");
-
-      // Simulate saving user preference
-      UnitPreferenceManager.setBodyWeightUnit(mockProfile, "kg");
-      expect(mockSetBodyWeightUnit).toHaveBeenCalledWith(mockProfile, "kg");
     });
   });
 

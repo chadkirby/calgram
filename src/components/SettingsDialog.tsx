@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAccount } from "jazz-classic/react";
 import { SettingsIcon } from "lucide-react";
 import {
   Dialog,
@@ -14,50 +13,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataCard } from "@/components/DataCard";
-import { JazzAccount } from "../schema";
-
-/** Writes the edited names onto the Jazz profile CoValue (Jazz syncs automatically). */
-function saveProfileNames(
-  profile: { name: string; firstName: string },
-  fullName: string,
-  firstName: string,
-) {
-  profile.name = fullName.trim() || "Anonymous user";
-  profile.firstName = firstName.trim() || "Nobody";
-}
+import { useAccount, useSavePasskey } from "@/lib/account";
 
 export function SettingsDialog() {
-  const { me } = useAccount(JazzAccount, {
-    resolve: { profile: true },
-  });
+  const { profile, saveProfile } = useAccount();
+  const { save: savePasskey, state: passkeyState } = useSavePasskey();
 
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [firstName, setFirstName] = useState("");
+  // The names the form opened with. Save writes only the fields that differ from
+  // these, so a change made while Settings is open (an import, say) isn't overwritten.
+  const [opened, setOpened] = useState({ fullName: "", firstName: "" });
 
   // Initialize form values when dialog opens
   const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen && me?.profile) {
-      setFullName(me.profile.name || "");
-      setFirstName(me.profile.firstName || "");
+    if (newOpen && profile) {
+      const names = { fullName: profile.name || "", firstName: profile.firstName || "" };
+      setOpened(names);
+      setFullName(names.fullName);
+      setFirstName(names.firstName);
     }
     setOpen(newOpen);
   };
 
   const handleSave = () => {
-    if (me?.profile) {
-      // Update the profile data - Jazz handles synchronization automatically
-      saveProfileNames(me.profile, fullName, firstName);
+    if (profile) {
+      const patch: { name?: string | null; firstName?: string | null } = {};
+      if (fullName !== opened.fullName) patch.name = fullName.trim() || null;
+      if (firstName !== opened.firstName) patch.firstName = firstName.trim() || null;
+      if (Object.keys(patch).length > 0) saveProfile(patch);
     }
     setOpen(false);
   };
 
   const handleCancel = () => {
-    // Reset form values to original
-    if (me?.profile) {
-      setFullName(me.profile.name || "");
-      setFirstName(me.profile.firstName || "");
-    }
     setOpen(false);
   };
 
@@ -116,6 +106,27 @@ export function SettingsDialog() {
                 </Button>
                 <Button onClick={handleSave}>Save Changes</Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Passkey Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Passkey</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Save a passkey to get back into your account on another device or after logging out.
+              </p>
+              <Button variant="outline" onClick={savePasskey} disabled={passkeyState === "saving"}>
+                Save a passkey
+              </Button>
+              {passkeyState === "saved" && <p className="text-sm">Passkey saved.</p>}
+              {passkeyState === "error" && (
+                <p role="alert" className="text-sm text-destructive">
+                  Couldn't save a passkey. Please try again.
+                </p>
+              )}
             </CardContent>
           </Card>
 

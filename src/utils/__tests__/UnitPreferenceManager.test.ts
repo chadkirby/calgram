@@ -50,37 +50,6 @@ describe("UnitPreferenceManager", () => {
     });
   });
 
-  describe("setMealWeightUnit", () => {
-    it("should set meal weight unit when profile is available", () => {
-      const profile = createMockProfile();
-      UnitPreferenceManager.setMealWeightUnit(profile, "kg");
-      expect(profile.mealWeightUnit).toBe("kg");
-    });
-
-    it("should update existing meal weight unit", () => {
-      const profile = createMockProfile("g");
-      UnitPreferenceManager.setMealWeightUnit(profile, "lb");
-      expect(profile.mealWeightUnit).toBe("lb");
-    });
-
-    it("should log warning when profile is undefined", () => {
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      UnitPreferenceManager.setMealWeightUnit(undefined, "kg");
-      expect(consoleSpy).toHaveBeenCalledWith("Cannot set meal weight unit: profile not available");
-      consoleSpy.mockRestore();
-    });
-
-    it("should handle all valid meal weight units", () => {
-      const units: MealWeightUnit[] = ["g", "oz", "lb", "kg"];
-
-      units.forEach((unit) => {
-        const profile = createMockProfile();
-        UnitPreferenceManager.setMealWeightUnit(profile, unit);
-        expect(profile.mealWeightUnit).toBe(unit);
-      });
-    });
-  });
-
   describe("getBodyWeightUnit", () => {
     it("should return default unit (pounds) when profile is undefined", () => {
       const result = UnitPreferenceManager.getBodyWeightUnit(undefined);
@@ -110,37 +79,6 @@ describe("UnitPreferenceManager", () => {
     });
   });
 
-  describe("setBodyWeightUnit", () => {
-    it("should set body weight unit when profile is available", () => {
-      const profile = createMockProfile();
-      UnitPreferenceManager.setBodyWeightUnit(profile, "kg");
-      expect(profile.bodyWeightUnit).toBe("kg");
-    });
-
-    it("should update existing body weight unit", () => {
-      const profile = createMockProfile(undefined, "lbs");
-      UnitPreferenceManager.setBodyWeightUnit(profile, "kg");
-      expect(profile.bodyWeightUnit).toBe("kg");
-    });
-
-    it("should log warning when profile is undefined", () => {
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      UnitPreferenceManager.setBodyWeightUnit(undefined, "kg");
-      expect(consoleSpy).toHaveBeenCalledWith("Cannot set body weight unit: profile not available");
-      consoleSpy.mockRestore();
-    });
-
-    it("should handle all valid body weight units", () => {
-      const units: BodyWeightUnit[] = ["lbs", "kg"];
-
-      units.forEach((unit) => {
-        const profile = createMockProfile();
-        UnitPreferenceManager.setBodyWeightUnit(profile, unit);
-        expect(profile.bodyWeightUnit).toBe(unit);
-      });
-    });
-  });
-
   describe("default unit getters", () => {
     it("should return correct default meal weight unit", () => {
       const result = UnitPreferenceManager.getDefaultMealWeightUnit();
@@ -163,20 +101,6 @@ describe("UnitPreferenceManager", () => {
       expect(mealUnit).toBe("kg");
       expect(bodyUnit).toBe("lbs");
     });
-
-    it("should maintain independence between meal and body weight units", () => {
-      const profile = createMockProfile();
-
-      UnitPreferenceManager.setMealWeightUnit(profile, "oz");
-      UnitPreferenceManager.setBodyWeightUnit(profile, "kg");
-
-      expect(profile.mealWeightUnit).toBe("oz");
-      expect(profile.bodyWeightUnit).toBe("kg");
-
-      // Verify they don't affect each other
-      UnitPreferenceManager.setMealWeightUnit(profile, "lb");
-      expect(profile.bodyWeightUnit).toBe("kg"); // Should remain unchanged
-    });
   });
 
   describe("edge cases", () => {
@@ -188,15 +112,6 @@ describe("UnitPreferenceManager", () => {
 
       expect(mealUnit).toBe("g");
       expect(bodyUnit).toBe("lbs");
-    });
-
-    it("should not throw when setting units on valid profile", () => {
-      const profile = createMockProfile();
-
-      expect(() => {
-        UnitPreferenceManager.setMealWeightUnit(profile, "kg");
-        UnitPreferenceManager.setBodyWeightUnit(profile, "kg");
-      }).not.toThrow();
     });
   });
 });

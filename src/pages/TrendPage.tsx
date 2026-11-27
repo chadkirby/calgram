@@ -8,8 +8,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useAccount } from "jazz-classic/react";
-import { JazzAccount, type MealEntry, type WeightEntry } from "../schema";
+import { useAccount } from "@/lib/account";
+import { useMeals, useWeights } from "@/lib/data";
 import { TrendAnalyzer } from "../utils/TrendAnalyzer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TrendPageErrorFallback } from "@/components/PageErrorFallback";
@@ -25,7 +25,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import type { Loaded } from "jazz-classic";
 
 // Animation constants
 const CHART_ANIMATION_DURATION = 200;
@@ -126,15 +125,9 @@ function TrendTooltip({
 }
 
 function TrendPageContent() {
-  const { me } = useAccount(JazzAccount, {
-    resolve: {
-      profile: true,
-      root: {
-        mealEntries: { $each: true },
-        weightEntries: { $each: true },
-      },
-    },
-  });
+  const { profile } = useAccount();
+  const mealEntries = useMeals();
+  const weightEntries = useWeights();
   const [timeRange, setTimeRange] = useState("30");
   const [isLoading, setIsLoading] = useState(false);
   const [windowWidth, setWindowWidth] = useState(
@@ -159,10 +152,6 @@ function TrendPageContent() {
     { value: "90", label: "Last 90 days" },
   ];
 
-  const mealEntries = me?.root?.mealEntries;
-  const weightEntries = me?.root?.weightEntries;
-  const profile = me?.profile;
-
   // Prepare chart data using TrendAnalyzer with unit conversion
   const { chartData, summaryStats, calorieAxisConfig, weightAxisConfig, hasData, weightAxisLabel } =
     useMemo(() => {
@@ -179,8 +168,8 @@ function TrendPageContent() {
 
       const days = parseInt(timeRange);
       const combinedData = TrendAnalyzer.prepareCombinedData(
-        mealEntries.filter((meal): meal is Loaded<typeof MealEntry> => meal != null),
-        weightEntries.filter((weight): weight is Loaded<typeof WeightEntry> => weight != null),
+        mealEntries,
+        weightEntries,
         profile,
         days,
       );
@@ -242,10 +231,8 @@ function TrendPageContent() {
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">
             Calorie Trend{" "}
-            {me?.profile?.firstName && (
-              <span className="text-sm text-muted-foreground truncate">
-                ({me.profile.firstName})
-              </span>
+            {profile?.firstName && (
+              <span className="text-sm text-muted-foreground truncate">({profile.firstName})</span>
             )}
           </CardTitle>
           <div className="flex flex-col gap-4 pt-2 sm:pt-4">
@@ -272,8 +259,7 @@ function TrendPageContent() {
                 </Badge>
                 {summaryStats.avgWeight && (
                   <Badge variant="secondary" className="text-xs">
-                    Avg Weight:{" "}
-                    {TrendAnalyzer.formatWeightTooltip(summaryStats.avgWeight, me?.profile)}
+                    Avg Weight: {TrendAnalyzer.formatWeightTooltip(summaryStats.avgWeight, profile)}
                   </Badge>
                 )}
                 {summaryStats.weightChange && (
@@ -284,7 +270,7 @@ function TrendPageContent() {
                     Δ: {summaryStats.weightChange > 0 ? "+" : ""}
                     {TrendAnalyzer.formatWeightTooltip(
                       Math.abs(summaryStats.weightChange),
-                      me?.profile,
+                      profile,
                     )}
                   </Badge>
                 )}

@@ -1,27 +1,35 @@
-import { JazzReactProvider } from "jazz-classic/react";
+import { JazzProvider } from "jazz-tools/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import "./index.css";
-import { apiKey } from "./apiKey.ts";
-import { JazzAccount } from "./schema.ts";
+import { SignedInAccount, SignedOutAccount } from "./lib/account.tsx";
+import { getJazzSession } from "./lib/jazz.ts";
+import { MigrationGate } from "./migration/MigrationGate.tsx";
+import { migrateClassicSession } from "./migration/migrate.ts";
 import { router } from "./router.tsx";
 
-// This identifies the app in the passkey auth
-export const APPLICATION_NAME = "Sammygram Calorie Tracker";
+// Before the first render, so a returning user never sees the welcome screen (R4).
+migrateClassicSession();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <JazzReactProvider
-      sync={{
-        peer: `wss://cloud.jazz.tools/?key=${apiKey}`,
-      }}
-      storage="indexedDB"
-      AccountSchema={JazzAccount}
-    >
-      <RouterProvider router={router} />
-
-      {/* <JazzInspector /> */}
-    </JazzReactProvider>
+    <MigrationGate>
+      <JazzProvider
+        session={getJazzSession()}
+        loading={
+          <output className="block p-8 text-center text-sm text-muted-foreground">Loading…</output>
+        }
+        signedOut={
+          <SignedOutAccount>
+            <RouterProvider router={router} />
+          </SignedOutAccount>
+        }
+      >
+        <SignedInAccount>
+          <RouterProvider router={router} />
+        </SignedInAccount>
+      </JazzProvider>
+    </MigrationGate>
   </StrictMode>,
 );

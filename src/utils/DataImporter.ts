@@ -1,54 +1,44 @@
-import { Group, type Loaded } from "jazz-classic";
 import { z } from "zod";
 import {
-  MealEntry,
-  WeightEntry,
-  FoodMetadata,
   ExportIsoString,
   ExportMealShape,
   ExportWeightShape,
   ExportProfileShape,
-  type FoodIntelligence,
-  type JazzAccount,
   type MealRow,
   type ProfileRow,
   type WeightRow,
 } from "../schema";
 import type { ExportedData } from "./DataExporter";
-import { contentSourceKey } from "./rowIds";
 
 export type { ExportedData } from "./DataExporter";
 
-// Strict Zod schemas for the export format (reject unknown keys). Accepts v1.0 (no
-// profile), v1.1 (profile) and v1.2 (optional source `id` on each entry).
+/** v1.2: Classic exports. v1.3: Jazz 2 exports, which also name the exporting account. */
+const SUPPORTED_VERSIONS = ["1.2", "1.3"] as const;
+
+// Strict Zod schema for the export format (rejects unknown keys).
 const ExportedDataSchema = z
   .object({
-    version: z.string(),
+    version: z.enum(SUPPORTED_VERSIONS),
     exportDate: ExportIsoString,
+    accountId: z.string().optional(),
     profile: z.object(ExportProfileShape).strict().optional(),
     mealEntries: z.array(z.object(ExportMealShape).strict()),
     weightEntries: z.array(z.object(ExportWeightShape).strict()),
   })
   .strict();
 
-// Result interface for import operations
-interface ImportResult {
-  mealCount: number;
-  weightCount: number;
-  duplicatesSkipped: number;
-  errors: string[];
-}
-
-/** A row to write, with the source key its row id is derived from. */
+/** A row to write, with its entry's source id from the file. */
 export interface PlannedRow<T> {
-  sourceKey: string;
+  sourceId: string;
   row: T;
 }
 
 export interface ImportPlan {
+  /** The Jazz 2 account the file was exported from (v1.3), when it names one. */
+  accountId: string | undefined;
   meals: PlannedRow<MealRow>[];
   weights: PlannedRow<WeightRow>[];
-  /** Fields from the file's `profile` block (v1.1+), or undefined when it has none. */
+  /** Fields from the file's `profile` block, or undefined when it has none. */
   profile: Partial<ProfileRow> | undefined;
   /** Validation errors. When present, nothing is planned. */
   errors: string[];
@@ -66,6 +56,27 @@ function formatIssues(error: z.ZodError): string[] {
   });
 }
 
+/**
+ * Parse a file against the export format. An unsupported version is reported on its own,
+ * so an older file gives one clear error instead of one per id-less entry.
+ */
+function parse(jsonData: unknown) {
+  const version: unknown = (jsonData as { version?: unknown } | null)?.version;
+  if (
+    typeof jsonData === "object" &&
+    !(SUPPORTED_VERSIONS as readonly unknown[]).includes(version)
+  ) {
+    return {
+      errors: [
+        `version: Export version ${JSON.stringify(version)} isn't supported; import takes ` +
+          `version ${SUPPORTED_VERSIONS.join(" or ")} files, where every entry has an id`,
+      ],
+    };
+  }
+  const result = ExportedDataSchema.safeParse(jsonData);
+  return result.success ? { data: result.data } : { errors: formatIssues(result.error) };
+}
+
 /** Copy only the keys whose value is defined. */
 function definedFields<T extends object>(obj: T): Partial<T> {
   return Object.fromEntries(
@@ -73,239 +84,35 @@ function definedFields<T extends object>(obj: T): Partial<T> {
   ) as Partial<T>;
 }
 
-/**
- * Source keys for a file's entries: the entry's source `id` when it has one,
- * otherwise a hash of its content plus its occurrence among identical entries, so two
- * identical snacks stay two rows and re-planning the same file gives the same keys.
- */
-async function planRows<T>(
-  entries: readonly (T & { id?: string })[],
-  canonical: (row: T) => unknown[],
-): Promise<PlannedRow<T>[]> {
-  const seen = new Map<string, number>();
-  return Promise.all(
-    entries.map(async ({ id, ...rest }) => {
-      const row = rest as T;
-      if (id) return { sourceKey: id, row };
-      const content = JSON.stringify(canonical(row));
-      const occurrence = seen.get(content) ?? 0;
-      seen.set(content, occurrence + 1);
-      return { sourceKey: await contentSourceKey(content, occurrence), row };
-    }),
-  );
-}
-
-// Fixed field order, so key order in the file doesn't change the hash.
-const canonicalMeal = (m: MealRow): unknown[] => [
-  "meal",
-  m.timestamp,
-  m.foodName,
-  m.foodCategory,
-  m.caloriesPerGram,
-  m.caloriesPerDisplayUnit,
-  m.weightInGrams,
-  m.displayUnit,
-  m.totalCalories,
-  m.notes,
-];
-
-const canonicalWeight = (w: WeightRow): unknown[] => [
-  "weight",
-  w.timestamp,
-  w.weightValue,
-  w.unit,
-  w.notes,
-];
+const planRows = <T>(entries: readonly (T & { id: string })[]): PlannedRow<T>[] =>
+  entries.map(({ id, ...row }) => ({ sourceId: id, row: row as T }));
 
 export class DataImporter {
   /**
-   * Validate the imported data structure strictly (current format only)
+   * Validate the imported data structure strictly
    */
   static validateImportData(jsonData: unknown): { isValid: boolean; errors: string[] } {
-    const result = ExportedDataSchema.safeParse(jsonData);
-    if (result.success) {
-      return { isValid: true, errors: [] };
-    }
-    return { isValid: false, errors: formatIssues(result.error) };
+    const { errors = [] } = parse(jsonData);
+    return { isValid: errors.length === 0, errors };
   }
 
   /**
    * Plan an import without writing anything: validate the file, then return its rows
-   * with source keys and the profile patch from its `profile` block. Timestamps are kept
-   * verbatim. Account-independent: the caller turns source keys into row ids.
+   * with their source ids and the profile patch from its `profile` block. Timestamps are
+   * kept verbatim. Account-independent: the caller turns source ids into row ids.
    */
-  static async planImport(jsonData: unknown): Promise<ImportPlan> {
-    const result = ExportedDataSchema.safeParse(jsonData);
-    if (!result.success) {
-      return { meals: [], weights: [], profile: undefined, errors: formatIssues(result.error) };
+  static planImport(jsonData: unknown): ImportPlan {
+    const { data, errors } = parse(jsonData);
+    if (!data) {
+      return { accountId: undefined, meals: [], weights: [], profile: undefined, errors };
     }
-    const data = result.data;
     return {
-      meals: await planRows<MealRow>(data.mealEntries, canonicalMeal),
-      weights: await planRows<WeightRow>(data.weightEntries, canonicalWeight),
+      accountId: data.accountId,
+      meals: planRows<MealRow>(data.mealEntries),
+      weights: planRows<WeightRow>(data.weightEntries),
       profile: data.profile ? definedFields(data.profile) : undefined,
       errors: [],
     };
-  }
-
-  /**
-   * Classic adapter: import a file into a Classic account. Rows come from `planImport`;
-   * the profile block is still ignored here, as it always was on Classic.
-   */
-  static async importData(
-    jsonData: ExportedData,
-    account: Loaded<typeof JazzAccount>,
-  ): Promise<ImportResult> {
-    if (!account.root) {
-      throw new Error("Account root not available");
-    }
-
-    const plan = await this.planImport(jsonData);
-    if (plan.errors.length > 0) {
-      throw new Error(`Invalid import file: ${plan.errors.join("; ")}`);
-    }
-
-    // Ensure the account root is loaded first
-    const loadedAccount = await account.ensureLoaded({
-      resolve: {
-        root: {
-          mealEntries: true,
-          weightEntries: true,
-          foodIntelligence: {
-            recentFoods: true,
-            recentCategories: true,
-            foodData: true,
-          },
-        },
-      },
-    });
-
-    if (!loadedAccount.root) {
-      throw new Error("Failed to load account root");
-    }
-
-    if (!loadedAccount.root.mealEntries || !loadedAccount.root.weightEntries) {
-      throw new Error("Account root does not have mealEntries or weightEntries");
-    }
-
-    const group = Group.create();
-    let mealCount = 0;
-    let weightCount = 0;
-    let duplicatesSkipped = 0;
-    const errors: string[] = [];
-
-    // Import meal entries
-    if (loadedAccount.root.mealEntries) {
-      for (const { row: exportedMeal } of plan.meals) {
-        try {
-          const mealEntry = MealEntry.create(
-            {
-              timestamp: exportedMeal.timestamp,
-              foodName: exportedMeal.foodName,
-              foodCategory: exportedMeal.foodCategory,
-              caloriesPerGram: exportedMeal.caloriesPerGram,
-              caloriesPerDisplayUnit: exportedMeal.caloriesPerDisplayUnit,
-              weightInGrams: exportedMeal.weightInGrams,
-              displayUnit: exportedMeal.displayUnit,
-              notes: exportedMeal.notes,
-              totalCalories: exportedMeal.totalCalories,
-            },
-            group,
-          );
-
-          loadedAccount.root.mealEntries.push(mealEntry);
-          mealCount++;
-
-          // Update food intelligence with imported data
-          if (loadedAccount.root.foodIntelligence) {
-            this.updateFoodIntelligenceNewFormat(loadedAccount.root.foodIntelligence, exportedMeal);
-          }
-        } catch (error) {
-          console.warn("Failed to import meal entry:", exportedMeal, error);
-          errors.push(
-            `Failed to import meal entry: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
-        }
-      }
-    }
-
-    // Import weight entries
-    if (loadedAccount.root.weightEntries) {
-      for (const { row: exportedWeight } of plan.weights) {
-        try {
-          const weightEntry = WeightEntry.create(
-            {
-              timestamp: exportedWeight.timestamp,
-              weightValue: exportedWeight.weightValue,
-              unit: exportedWeight.unit,
-              notes: exportedWeight.notes,
-            },
-            group,
-          );
-
-          loadedAccount.root.weightEntries.push(weightEntry);
-          weightCount++;
-        } catch (error) {
-          console.warn("Failed to import weight entry:", exportedWeight, error);
-          errors.push(
-            `Failed to import weight entry: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
-        }
-      }
-    }
-
-    return { mealCount, weightCount, duplicatesSkipped, errors };
-  }
-
-  /**
-   * Update food intelligence with imported meal data (current format)
-   */
-  private static updateFoodIntelligenceNewFormat(
-    foodIntelligence: Loaded<typeof FoodIntelligence>,
-    meal: MealRow,
-  ) {
-    try {
-      // Add to recent foods if not already present
-      if (foodIntelligence.recentFoods && !foodIntelligence.recentFoods.includes(meal.foodName)) {
-        foodIntelligence.recentFoods.push(meal.foodName);
-      }
-
-      // Add to recent categories if not already present
-      if (
-        foodIntelligence.recentCategories &&
-        !foodIntelligence.recentCategories.includes(meal.foodCategory)
-      ) {
-        foodIntelligence.recentCategories.push(meal.foodCategory);
-      }
-
-      // Update or create food metadata
-      if (foodIntelligence.foodData) {
-        const existingMetadata = foodIntelligence.foodData[meal.foodName];
-        if (existingMetadata) {
-          // Update existing metadata
-          existingMetadata.lastUsedCPG = meal.caloriesPerGram;
-          existingMetadata.lastUsedCategory = meal.foodCategory;
-          existingMetadata.usageCount = existingMetadata.usageCount + 1;
-          existingMetadata.lastUsed = meal.timestamp;
-        } else {
-          // Create new metadata
-          const group = Group.create();
-          const metadata = FoodMetadata.create(
-            {
-              lastUsedCPG: meal.caloriesPerGram,
-              lastUsedCategory: meal.foodCategory,
-              usageCount: 1,
-              lastUsed: meal.timestamp,
-            },
-            group,
-          );
-
-          foodIntelligence.foodData[meal.foodName] = metadata;
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to update food intelligence for:", meal.foodName, error);
-    }
   }
 
   /**

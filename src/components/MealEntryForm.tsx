@@ -9,17 +9,19 @@ import { CalorieInput } from "@/components/CalorieInput";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { SyncErrorHandler, withSyncErrorHandling } from "@/utils/SyncErrorHandler";
 
-import { JazzAccount, MealEntry } from "../schema";
+import { useDb } from "jazz-tools/react";
+import { app } from "../../jazz/jazz.generated";
+import { useAccount } from "@/lib/account";
+import { toMeal, useMeals, type Meal } from "@/lib/data";
 import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { CalorieUnitConverter } from "../utils/CalorieUnitConverter";
-import { FoodIntelligenceManager } from "../utils/FoodIntelligenceManager";
+import { deriveFoodIntelligence } from "../utils/foodIntelligence";
 import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
 import { WeightConverter } from "../utils/WeightConverter";
 import { Check } from "lucide-react";
 import * as React from "react";
 import { z } from "zod";
 import { DateTime } from "luxon";
-import { type Loaded } from "jazz-classic";
 import { FoodPredictor } from "../utils/FoodPredictor";
 
 // Enhanced Zod schema for comprehensive form validation
@@ -49,10 +51,9 @@ function getCurrentTime() {
 
 interface MealEntryFormProps {
   mode: "create" | "edit";
-  initialData?: Loaded<typeof MealEntry>;
-  onSuccess: (meal: Loaded<typeof MealEntry>) => void;
+  initialData?: Meal;
+  onSuccess: (meal: Meal) => void;
   onCancel: () => void;
-  me: Loaded<typeof JazzAccount>;
   showImport?: boolean; // Only show import on create mode
   title?: string; // Custom title for the form
   defaultDate?: string; // Default date for create mode (YYYY-MM-DD format)
@@ -63,16 +64,18 @@ export function MealEntryForm({
   initialData,
   onSuccess,
   onCancel,
-  me,
   title,
   defaultDate,
 }: MealEntryFormProps) {
   const { updateSyncStatus } = useNetworkStatus();
+  const db = useDb();
+  const { profile, saveProfile } = useAccount();
+  const mealEntries = useMeals();
 
   // Parse initial data for edit mode
   const getInitialFormData = (): MealFormValues => {
     // Get user's preferred meal weight unit
-    const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
+    const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(profile);
     // Default calorie unit to grams
     const preferredCalorieUnit = "g" as const;
 
@@ -147,19 +150,17 @@ export function MealEntryForm({
     }
   };
 
-  // Get food intelligence data for suggestions
-  const foodIntelligence = me?.root?.foodIntelligence;
-  const recentFoods = foodIntelligence
-    ? FoodIntelligenceManager.getRecentFoods(foodIntelligence)
-    : [];
-  const recentCategories = foodIntelligence
-    ? FoodIntelligenceManager.getRecentCategories(foodIntelligence)
-    : [];
+  // Food suggestions, derived from the meals themselves (KTD11)
+  const foodIntelligence = React.useMemo(
+    () => (mealEntries ? deriveFoodIntelligence(mealEntries) : undefined),
+    [mealEntries],
+  );
+  const recentFoods = foodIntelligence?.recentFoods ?? [];
+  const recentCategories = foodIntelligence?.recentCategories ?? [];
 
   // Prefill for create mode using FoodPredictor; never overwrite after user types.
   // Runs during render on mount and whenever mode, the meal entries list or food intelligence
   // change (the tracker is updated before any bail-out so each change is consumed once).
-  const mealEntries = me?.root?.mealEntries;
   const [prevPrefillDeps, setPrevPrefillDeps] = React.useState<{
     mode: typeof mode;
     mealEntries: typeof mealEntries;
@@ -181,19 +182,15 @@ export function MealEntryForm({
     // Only prefill if fields are still empty
     if (formData.foodName?.trim() || formData.foodCategory?.trim()) return;
 
-    const entries = [...mealEntries].filter((e): e is NonNullable<typeof e> => e != null);
-    if (entries.length === 0) return;
+    if (mealEntries.length === 0) return;
 
-    const prediction = FoodPredictor.getTopFoodPredictions(entries, new Date(), 4, 1)[0];
+    const prediction = FoodPredictor.getTopFoodPredictions(mealEntries, new Date(), 4, 1)[0];
     if (!prediction) return;
 
     const predictedFood = prediction.foodName;
     const resolvedCategory =
-      FoodPredictor.resolveCategoryForFood(
-        foodIntelligence || undefined,
-        predictedFood,
-        prediction.entries,
-      ) || "";
+      FoodPredictor.resolveCategoryForFood(foodIntelligence, predictedFood, prediction.entries) ||
+      "";
 
     // If food intelligence has a lastUsedCPG for this food, prefill calories per display unit (keep current unit)
     let caloriesPerDisplayValue = formData.caloriesPerDisplayValue;
@@ -260,25 +257,14 @@ export function MealEntryForm({
   );
 
   // Calculate today's total calories
-  const todayTotal = me?.root?.mealEntries
-    ? CalorieCalculator.calculateDailyTotal(
-        [...me.root.mealEntries].filter(
-          (entry): entry is NonNullable<typeof entry> => entry !== null,
-        ),
-        CalorieCalculator.getTodayAtMidnight(),
-      )
-    : 0;
+  const todayTotal = CalorieCalculator.calculateDailyTotal(
+    mealEntries,
+    CalorieCalculator.getTodayAtMidnight(),
+  );
 
   const onSubmit = async (e: React.FormEvent) => {
     console.log("Submitting meal form:", formData);
     e.preventDefault();
-    if (!me?.root) return;
-
-    // Ensure required collections exist
-    if (!me.root.mealEntries) {
-      console.error("mealEntries collection is missing");
-      return;
-    }
 
     // Validate form with Zod
     const validationResult = mealFormSchema.safeParse(formData);
@@ -321,7 +307,9 @@ export function MealEntryForm({
       );
 
       // Save user's unit preference
-      UnitPreferenceManager.setMealWeightUnit(me?.profile || undefined, validatedData.weightUnit);
+      if (profile?.mealWeightUnit !== validatedData.weightUnit) {
+        saveProfile({ mealWeightUnit: validatedData.weightUnit });
+      }
 
       // Combine date and time to create ISO timestamp
       const combinedDateTime = DateTime.fromISO(`${validatedData.date}T${validatedData.time}`);
@@ -331,69 +319,30 @@ export function MealEntryForm({
         throw new Error("Invalid date/time combination");
       }
 
-      let mealEntry: Loaded<typeof MealEntry>;
+      // Timestamps are stored exactly as built here (KTD10).
+      const fields = {
+        timestamp: isoTimestamp,
+        foodName: validatedData.foodName,
+        foodCategory: validatedData.foodCategory,
+        caloriesPerGram: caloriesPerGram, // Store as calories per gram
+        caloriesPerDisplayUnit: validatedData.calorieUnit, // Store display unit
+        weightInGrams: weightInGrams, // Store in grams
+        displayUnit: validatedData.weightUnit, // Store display unit
+        notes: validatedData.notes || "",
+        totalCalories: mealTotalCalories,
+      };
 
-      if (mode === "edit" && initialData) {
-        // Update existing meal entry
-        await withSyncErrorHandling(
-          async () => {
-            // Update the existing meal entry fields
-            initialData.timestamp = isoTimestamp;
-            initialData.foodName = validatedData.foodName;
-            initialData.foodCategory = validatedData.foodCategory;
-            initialData.caloriesPerGram = caloriesPerGram; // Store as calories per gram
-            initialData.caloriesPerDisplayUnit = validatedData.calorieUnit; // Store display unit
-            initialData.weightInGrams = weightInGrams; // Store in grams
-            initialData.displayUnit = validatedData.weightUnit; // Store display unit
-            initialData.notes = validatedData.notes || "";
-            initialData.totalCalories = mealTotalCalories;
-
-            // Update food intelligence
-            if (foodIntelligence) {
-              FoodIntelligenceManager.updateFoodData(foodIntelligence, initialData);
-            }
-
-            return initialData;
-          },
-          "meal-update",
-          updateSyncStatus,
-        )();
-
-        mealEntry = initialData;
-      } else {
-        // Create new meal entry
-        mealEntry = await withSyncErrorHandling(
-          async () => {
-            // Create meal entry using Jazz schema
-            const newMealEntry = MealEntry.create(
-              {
-                timestamp: isoTimestamp,
-                foodName: validatedData.foodName,
-                foodCategory: validatedData.foodCategory,
-                caloriesPerGram: caloriesPerGram, // Store as calories per gram
-                caloriesPerDisplayUnit: validatedData.calorieUnit, // Store display unit
-                weightInGrams: weightInGrams, // Store in grams
-                displayUnit: validatedData.weightUnit, // Store display unit
-                notes: validatedData.notes || "",
-                totalCalories: mealTotalCalories,
-              },
-              me.root!._owner,
-            );
-
-            // Add to meal entries
-            me.root?.mealEntries?.push(newMealEntry);
-
-            // Update food intelligence
-            if (foodIntelligence) {
-              FoodIntelligenceManager.updateFoodData(foodIntelligence, newMealEntry);
-            }
-
-            return newMealEntry;
-          },
-          "meal-creation",
-          updateSyncStatus,
-        )();
-      }
+      const mealEntry = await withSyncErrorHandling(
+        async (): Promise<Meal> => {
+          if (mode === "edit" && initialData) {
+            db.update(app.mealEntries, initialData.id, fields);
+            return { ...initialData, ...fields };
+          }
+          return toMeal(db.insert(app.mealEntries, fields).value);
+        },
+        mode === "edit" ? "meal-update" : "meal-creation",
+        updateSyncStatus,
+      )();
 
       // Show success feedback
       setSubmitSuccess(true);
@@ -403,9 +352,7 @@ export function MealEntryForm({
 
       // For create mode, reset form after success
       if (mode === "create") {
-        const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(
-          me?.profile || undefined,
-        );
+        const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(profile);
         const preferredCalorieUnit = "g" as const;
         setFormData({
           date: getCurrentDate(),
@@ -440,7 +387,7 @@ export function MealEntryForm({
       setFormData(getInitialFormData());
     } else {
       // Clear form for create mode
-      const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(me?.profile || undefined);
+      const preferredWeightUnit = UnitPreferenceManager.getMealWeightUnit(profile);
       const preferredCalorieUnit = "g" as const;
       setFormData({
         date: getCurrentDate(),
@@ -460,7 +407,7 @@ export function MealEntryForm({
 
   const notesId = React.useId();
 
-  const userName = me?.profile?.firstName || me?.profile?.name || "User";
+  const userName = profile?.firstName || profile?.name || "User";
   const defaultTitle = mode === "edit" ? `Edit Meal Entry` : `Log Meal for ${userName}`;
 
   return (
