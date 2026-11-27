@@ -25,7 +25,7 @@ export function AccountChecking() {
 }
 
 const CLASSIC_PLACEHOLDER =
-  "That passkey is from the previous version of calgram. Moving those accounts here is coming soon.";
+  "That passkey is from the previous version of Sammygram. Moving those accounts here is coming soon.";
 
 export function LandingPage() {
   const { status, saveProfile } = useAccount();
