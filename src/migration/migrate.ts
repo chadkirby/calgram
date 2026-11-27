@@ -249,7 +249,7 @@ export function migrateClassicSession() {
 }
 
 /**
- * "I've used calgram before" with a Classic passkey (R5). The identity is kept as this
+ * "I've used Sammygram before" with a Classic passkey (R5). The identity is kept as this
  * browser's Classic session first, so a reload mid-migration resumes it.
  */
 export async function migrateFromPasskey(identity: ClassicIdentity) {

@@ -140,7 +140,7 @@ test("a Classic passkey on another device opens the same account, with no duplic
   await openHarness(b.page);
   await b.page.evaluate((acct) => classicHarness.registerPasskey(acct), account);
   await b.page.goto("/");
-  await b.page.getByRole("button", { name: "I've used calgram before" }).click();
+  await b.page.getByRole("button", { name: "I've used Sammygram before" }).click();
   await expectMigrated(b.page);
 
   const second = await exportRows(b.page);
@@ -245,7 +245,7 @@ test("a browser holding only an anonymous Classic session gets the welcome scree
   await signInToClassic(page, account, "anonymous");
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "I've used calgram before" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "I've used Sammygram before" })).toBeVisible();
   await expect(page.getByText("Moving your data")).toHaveCount(0);
 });
 

@@ -72,7 +72,7 @@ export function MigrationFallback({ identity }: { identity: ClassicIdentity }) {
     <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4 text-center">
       <h1 className="text-xl font-semibold">We couldn't move your data yet</h1>
       <p className="max-w-md text-sm text-muted-foreground">
-        calgram has moved to a new home, and your meals and weigh-ins need to come along. That
+        Sammygram has moved to a new home, and your meals and weigh-ins need to come along. That
         didn't work this time, usually because the old service didn't answer. Nothing has been lost:
         your data is still where it was.
       </p>
