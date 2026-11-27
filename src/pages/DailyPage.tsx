@@ -35,7 +35,7 @@ import { CalorieCalculator } from "../utils/CalorieCalculator";
 import { UnitPreferenceManager } from "../utils/UnitPreferenceManager";
 import { app } from "../../jazz/jazz.generated";
 import { useAccount } from "@/lib/account";
-import { useMeals, type Meal } from "@/lib/data";
+import { useMealsIncludingDay, type Meal } from "@/lib/data";
 
 /**
  * Meals in time order (KTD10): by the instant each verbatim timestamp parses to.
@@ -66,8 +66,8 @@ function CustomTooltip({ active, payload }: any) {
 function DailyPageContent() {
   const db = useDb();
   const { profile } = useAccount();
-  const meals = useMeals();
   const [selectedDate, setSelectedDate] = useState(CalorieCalculator.getTodayAtMidnight());
+  const meals = useMealsIncludingDay(CalorieCalculator.getDateOnlyFromIso(selectedDate));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -209,6 +209,7 @@ function DailyPageContent() {
               variant="ghost"
               size="sm"
               onClick={goToPreviousDay}
+              aria-label="Previous day"
               className="p-2 touch-manipulation"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -255,6 +256,7 @@ function DailyPageContent() {
               variant="ghost"
               size="sm"
               onClick={goToNextDay}
+              aria-label="Next day"
               className="p-2 touch-manipulation"
             >
               <ChevronRight className="h-4 w-4" />

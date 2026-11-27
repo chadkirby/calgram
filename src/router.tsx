@@ -6,6 +6,7 @@ import { TrendPage } from "./pages/TrendPage";
 import { LandingPage } from "./pages/LandingPage";
 import { AboutPage } from "./pages/AboutPage";
 import { useAccount } from "./lib/account";
+import { MealsProvider } from "./lib/data";
 import { AccountChecking } from "./pages/LandingPage";
 
 /** Where to go once the account is ready: `?redirect=` if it names an app path. */
@@ -35,7 +36,11 @@ function AuthedOutlet() {
     const redirect = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/?redirect=${redirect}`} replace />;
   }
-  return <Outlet />;
+  return (
+    <MealsProvider>
+      <Outlet />
+    </MealsProvider>
+  );
 }
 
 export const router = createBrowserRouter([
