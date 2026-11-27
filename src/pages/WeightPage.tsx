@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DEFAULT_TIME_RANGE } from "@/utils/timeRanges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDb } from "jazz-tools/react";
@@ -21,7 +22,7 @@ function WeightPageContent() {
   const { profile } = useAccount();
 
   const { updateSyncStatus } = useNetworkStatus();
-  const [timeRange, setTimeRange] = useState("30");
+  const [timeRange, setTimeRange] = useState(DEFAULT_TIME_RANGE);
   const [isLoading, setIsLoading] = useState(false);
   const [dialogState, setDialogState] = useState<{
     isOpen: boolean;

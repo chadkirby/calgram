@@ -35,6 +35,12 @@ const createMockProfile = (bodyWeightUnit?: "lbs" | "kg") => {
   } satisfies ProfileRow;
 };
 
+// Midnight n days ago, as an ISO string
+const daysAgo = (n: number) => DateTime.now().startOf("day").minus({ days: n }).toISO() || "";
+
+// Day n after a fixed start, as a ms timestamp
+const day = (n: number) => DateTime.fromISO("2026-09-01").plus({ days: n }).toMillis();
+
 describe("TrendAnalyzer", () => {
   describe("calculateLOWESSTrend", () => {
     it("should return original data for arrays with less than 3 points", () => {
@@ -111,6 +117,19 @@ describe("TrendAnalyzer", () => {
       expect(yesterdayData?.calories).toBe(600);
     });
 
+    it("returns days oldest first even when meals arrive out of order", () => {
+      const meals = [
+        createMockMealEntry(daysAgo(3), "A", 100),
+        createMockMealEntry(daysAgo(20), "B", 200),
+        createMockMealEntry(daysAgo(0), "C", 300),
+        createMockMealEntry(daysAgo(9), "D", 400),
+      ];
+
+      const result = TrendAnalyzer.prepareDailyCalorieData(meals, 30);
+
+      expect(result.map((point) => point.calories)).toEqual([200, 400, 100, 300]);
+    });
+
     it("should only include days with meals (no zero-calorie days)", () => {
       const today = DateTime.now().startOf("day").toISO() || "";
       const meals = [createMockMealEntry(today, "Breakfast", 300)];
@@ -185,6 +204,19 @@ describe("TrendAnalyzer", () => {
     });
   });
 
+  describe("prepareWeightData with no range limit", () => {
+    it("returns every weigh-in up to today when days is Infinity", () => {
+      const weights = [
+        createMockWeightEntry(daysAgo(400), 14.8),
+        createMockWeightEntry(daysAgo(40), 15.0),
+        createMockWeightEntry(daysAgo(5), 15.2),
+      ];
+      expect(
+        TrendAnalyzer.prepareWeightData(weights, undefined, Infinity).map((p) => p.weight),
+      ).toEqual([14.8, 15.0, 15.2]);
+    });
+  });
+
   describe("prepareCombinedData", () => {
     it("should combine calorie and weight data", () => {
       const today = DateTime.now().startOf("day").toISO() || "";
@@ -227,11 +259,11 @@ describe("TrendAnalyzer", () => {
   describe("calculateTrendLines", () => {
     it("should calculate trend lines for chart data", () => {
       const data: ChartDataPoint[] = [
-        { date: new Date(), calories: 2000, weight: 70.0 },
-        { date: new Date(), calories: 2200, weight: 70.2 },
-        { date: new Date(), calories: 1800, weight: 70.1 },
-        { date: new Date(), calories: 2100, weight: 69.9 },
-        { date: new Date(), calories: 1900, weight: 70.3 },
+        { date: new Date(day(0)), calories: 2000, weight: 70.0 },
+        { date: new Date(day(1)), calories: 2200, weight: 70.2 },
+        { date: new Date(day(2)), calories: 1800, weight: 70.1 },
+        { date: new Date(day(3)), calories: 2100, weight: 69.9 },
+        { date: new Date(day(4)), calories: 1900, weight: 70.3 },
       ];
 
       const result = TrendAnalyzer.calculateTrendLines(data);
@@ -244,11 +276,11 @@ describe("TrendAnalyzer", () => {
 
     it("should handle data with missing weight values", () => {
       const data: ChartDataPoint[] = [
-        { date: new Date(), calories: 2000, weight: 70.0 },
-        { date: new Date(), calories: 2200 }, // No weight
-        { date: new Date(), calories: 1800, weight: 70.1 },
-        { date: new Date(), calories: 2100 }, // No weight
-        { date: new Date(), calories: 1900, weight: 70.3 },
+        { date: new Date(day(0)), calories: 2000, weight: 70.0 },
+        { date: new Date(day(1)), calories: 2200 }, // No weight
+        { date: new Date(day(2)), calories: 1800, weight: 70.1 },
+        { date: new Date(day(3)), calories: 2100 }, // No weight
+        { date: new Date(day(4)), calories: 1900, weight: 70.3 },
       ];
 
       const result = TrendAnalyzer.calculateTrendLines(data);
@@ -256,21 +288,21 @@ describe("TrendAnalyzer", () => {
       expect(result.caloriesTrend).toHaveLength(5);
       expect(result.weightTrend).toHaveLength(5);
 
-      // With sufficient weight data (3+ points), missing values should be interpolated
+      // The trend spans every day from the first weigh-in to the last
       expect(result.weightTrend[0]).toBeDefined(); // Has weight data
-      expect(result.weightTrend[1]).toBeDefined(); // Should be interpolated
+      expect(result.weightTrend[1]).toBeDefined(); // Between weigh-ins
       expect(result.weightTrend[2]).toBeDefined(); // Has weight data
-      expect(result.weightTrend[3]).toBeDefined(); // Should be interpolated
+      expect(result.weightTrend[3]).toBeDefined(); // Between weigh-ins
       expect(result.weightTrend[4]).toBeDefined(); // Has weight data
     });
 
-    it("should handle sparse weight data with temporal smoothing", () => {
+    it("fills the days between weigh-ins", () => {
       const data: ChartDataPoint[] = [
-        { date: new Date(), calories: 2000, weight: 70.0 },
-        { date: new Date(), calories: 2200 }, // No weight
-        { date: new Date(), calories: 1800 }, // No weight
-        { date: new Date(), calories: 2100 }, // No weight
-        { date: new Date(), calories: 1900, weight: 70.3 },
+        { date: new Date(day(0)), calories: 2000, weight: 70.0 },
+        { date: new Date(day(1)), calories: 2200 }, // No weight
+        { date: new Date(day(2)), calories: 1800 }, // No weight
+        { date: new Date(day(3)), calories: 2100 }, // No weight
+        { date: new Date(day(4)), calories: 1900, weight: 70.3 },
       ];
 
       const result = TrendAnalyzer.calculateTrendLines(data);
@@ -278,12 +310,34 @@ describe("TrendAnalyzer", () => {
       expect(result.caloriesTrend).toHaveLength(5);
       expect(result.weightTrend).toHaveLength(5);
 
-      // With temporal smoothing, values should be interpolated based on exponential kernel
+      // The trend line spans every day from the first weigh-in to the last
       expect(result.weightTrend[0]).toBeDefined(); // Has weight data
-      expect(result.weightTrend[1]).toBeDefined(); // Should be smoothed
-      expect(result.weightTrend[2]).toBeDefined(); // Should be smoothed
-      expect(result.weightTrend[3]).toBeDefined(); // Should be smoothed
+      expect(result.weightTrend[1]).toBeDefined(); // Between weigh-ins
+      expect(result.weightTrend[2]).toBeDefined(); // Between weigh-ins
+      expect(result.weightTrend[3]).toBeDefined(); // Between weigh-ins
       expect(result.weightTrend[4]).toBeDefined(); // Has weight data
+    });
+
+    it("fits the weight trend to the weigh-ins it is given, not just the chart's", () => {
+      // Chart days have meals but no weigh-ins; the weigh-ins fall on other days,
+      // one of them before the chart starts
+      const data: ChartDataPoint[] = [10, 11, 12].map((d) => ({
+        date: new Date(day(d)),
+        calories: 250,
+      }));
+      const weighIns: ChartDataPoint[] = [
+        { date: new Date(day(0)), weight: 15 },
+        { date: new Date(day(13)), weight: 16 },
+        { date: new Date(day(5)) }, // no weight: ignored
+      ];
+
+      expect(TrendAnalyzer.calculateTrendLines(data).weightTrend).toEqual([
+        undefined,
+        undefined,
+        undefined,
+      ]);
+      const { weightTrend } = TrendAnalyzer.calculateTrendLines(data, 0.3, weighIns);
+      weightTrend.forEach((value, i) => expect(value).toBeCloseTo(15 + (10 + i) / 13, 2));
     });
 
     it("should handle empty data", () => {
@@ -291,6 +345,120 @@ describe("TrendAnalyzer", () => {
 
       expect(result.caloriesTrend).toEqual([]);
       expect(result.weightTrend).toEqual([]);
+    });
+  });
+
+  describe("calculateWeightTrend", () => {
+    // Sammy's last year: flat, a slow rise, a peak in August, then a decline
+    const sammy = [
+      [0, 14.6],
+      [8, 14.6],
+      [14, 14.7],
+      [154, 15.0],
+      [261, 15.5],
+      [279, 15.3],
+      [320, 15.24],
+      [335, 15.08],
+    ].map(([d, value]) => ({ timestamp: day(d), value }));
+    const year = Array.from({ length: 336 }, (_, i) => day(i));
+
+    it("is the line through two weigh-ins", () => {
+      const trend = TrendAnalyzer.calculateWeightTrend(
+        [
+          { timestamp: day(0), value: 15 },
+          { timestamp: day(30), value: 16 },
+        ],
+        [day(0), day(15), day(30)],
+      );
+      expect(trend[0]).toBeCloseTo(15);
+      expect(trend[1]).toBeCloseTo(15.5);
+      expect(trend[2]).toBeCloseTo(16);
+    });
+
+    it("turns where the weight turned, and ends near the latest weigh-ins", () => {
+      const trend = TrendAnalyzer.calculateWeightTrend(sammy, year) as number[];
+      const peakDay = trend.indexOf(Math.max(...trend));
+      expect(peakDay).toBeGreaterThan(200);
+      expect(peakDay).toBeLessThan(300);
+      expect(Math.abs(trend[335] - 15.08)).toBeLessThan(0.1);
+      expect(trend[335]).toBeLessThan(trend[peakDay]);
+    });
+
+    it("doesn't chase a single weigh-in", () => {
+      const trend = TrendAnalyzer.calculateWeightTrend(sammy, year) as number[];
+      // The one 15.5 reading in August pulls the curve up, but not all the way
+      expect(trend[261]).toBeLessThan(15.45);
+      expect(trend[261]).toBeGreaterThan(15.3);
+    });
+
+    it("has no jumps, even across months without weigh-ins", () => {
+      const trend = TrendAnalyzer.calculateWeightTrend(sammy, year) as number[];
+      for (let i = 1; i < trend.length; i++) {
+        expect(Math.abs(trend[i] - trend[i - 1])).toBeLessThan(0.01);
+      }
+    });
+
+    it("averages out noise in frequent weigh-ins", () => {
+      const weighIns = Array.from({ length: 90 }, (_, i) => ({
+        timestamp: day(i),
+        value: 70 - 0.02 * i + (i % 2 === 0 ? 0.4 : -0.4),
+      }));
+      const trend = TrendAnalyzer.calculateWeightTrend(
+        weighIns,
+        weighIns.map((w) => w.timestamp),
+      ) as number[];
+      trend.forEach((value, i) => expect(Math.abs(value - (70 - 0.02 * i))).toBeLessThan(0.1));
+    });
+
+    it("covers the whole first and last day when weigh-ins carry a time of day", () => {
+      const at7am = (d: number) => day(d) + 7 * 60 * 60 * 1000;
+      const at8pm = (d: number) => day(d) + 20 * 60 * 60 * 1000;
+      const trend = TrendAnalyzer.calculateWeightTrend(
+        [
+          { timestamp: at7am(0), value: 15 },
+          { timestamp: at8pm(10), value: 16 },
+        ],
+        [day(0), day(10)], // chart points at midnight
+      );
+      expect(trend[0]).toBeDefined();
+      expect(trend[1]).toBeDefined();
+    });
+
+    it("counts weigh-ins on consecutive days as two days, even under 24 hours apart", () => {
+      const evening = day(0) + 20 * 60 * 60 * 1000;
+      const nextMorning = day(1) + 7 * 60 * 60 * 1000;
+      const trend = TrendAnalyzer.calculateWeightTrend(
+        [
+          { timestamp: evening, value: 15 },
+          { timestamp: nextMorning, value: 15.2 },
+        ],
+        [day(0), day(1)],
+      );
+      expect(trend.every((value) => value !== undefined)).toBe(true);
+    });
+
+    it("gives no trend outside the weigh-ins or from fewer than two days of them", () => {
+      const two = [
+        { timestamp: day(5), value: 15 },
+        { timestamp: day(10), value: 16 },
+      ];
+      expect(TrendAnalyzer.calculateWeightTrend(two, [day(0), day(20)])).toEqual([
+        undefined,
+        undefined,
+      ]);
+      expect(TrendAnalyzer.calculateWeightTrend([], [day(0)])).toEqual([undefined]);
+      expect(
+        TrendAnalyzer.calculateWeightTrend([{ timestamp: day(5), value: 15 }], [day(5)]),
+      ).toEqual([undefined]);
+      expect(
+        TrendAnalyzer.calculateWeightTrend(
+          [
+            { timestamp: day(5), value: 15 },
+            { timestamp: day(5), value: 15.2 },
+          ],
+          [day(5)],
+        ),
+      ).toEqual([undefined]);
     });
   });
 
