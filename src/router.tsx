@@ -7,12 +7,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { AboutPage } from "./pages/AboutPage";
 import { useAccount } from "./lib/account";
 import { AccountChecking } from "./pages/LandingPage";
-
-/** Where to go once the account is ready: `?redirect=` if it names an app path. */
-function useDesiredPath() {
-  const redirect = new URLSearchParams(useLocation().search).get("redirect");
-  return redirect && redirect.startsWith("/") ? redirect : "/daily";
-}
+import { useDesiredPath } from "./hooks/useDesiredPath";
 
 function HomeRoute() {
   const { status } = useAccount();
@@ -20,6 +15,8 @@ function HomeRoute() {
   if (status === "ready") {
     return <Navigate to={desiredPath} replace />;
   }
+  // Stay put while the account opens: a stale hint must not leave /daily in the URL.
+  if (status === "opening") return null;
   return <LandingPage />;
 }
 
@@ -28,6 +25,10 @@ function HomeRoute() {
 function AuthedOutlet() {
   const { status } = useAccount();
   const location = useLocation();
+  if (status === "opening") {
+    // The page fills in once the account has opened; nothing in between.
+    return null;
+  }
   if (status === "checking") {
     return <AccountChecking />;
   }

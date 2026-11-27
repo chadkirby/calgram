@@ -3,17 +3,20 @@ import { useAll, useDb, useJazzSession } from "jazz-tools/react";
 import { app, type ProfileInsert } from "../../jazz/jazz.generated";
 import { toProfile, type Profile } from "./data";
 import { getJazzSession } from "./jazz";
+import { forgetReady, hasReadyHint, rememberReady } from "./launchHint";
 import { forgetPasskeyFlags, markPasskeySaved, promptForPasskey, savePasskey } from "./passkey";
 
 /**
  * Where this visitor is (plan's visit flowchart, PR B subset):
  * - `signed-out`: no Jazz 2 account in this browser. Show the welcome screen.
+ * - `opening`: this device's account was ready last time (the launch hint), and the
+ *   session or the profile row hasn't loaded yet. Show the app shell, without data.
  * - `checking`: signed in, the setup status isn't known yet (still loading, or
  *   waiting for the server to confirm it's missing).
  * - `needs-setup`: signed in, and the server confirms there's no setup status.
  * - `ready`: setup status present. Show the app.
  */
-export type AccountStatus = "signed-out" | "checking" | "needs-setup" | "ready";
+export type AccountStatus = "signed-out" | "opening" | "checking" | "needs-setup" | "ready";
 
 export interface AccountState {
   status: AccountStatus;
@@ -35,7 +38,24 @@ const AccountContext = createContext<AccountState>(signedOut);
 export const useAccount = () => useContext(AccountContext);
 
 export function SignedOutAccount({ children }: { children: React.ReactNode }) {
+  // No account here, so a hint left behind (the key was cleared, say) is stale.
+  useEffect(forgetReady, []);
   return <AccountContext.Provider value={signedOut}>{children}</AccountContext.Provider>;
+}
+
+const opening: AccountState = {
+  status: "opening",
+  saveProfile: () => {
+    throw new Error("The account hasn't opened yet");
+  },
+};
+
+/**
+ * The app shell for a launch with the ready hint, before there's a session client to
+ * read from. Its children must not need the session: the migration gate shows it too.
+ */
+export function OpeningAccount({ children }: { children: React.ReactNode }) {
+  return <AccountContext.Provider value={opening}>{children}</AccountContext.Provider>;
 }
 
 const firstWithStatus = (rows: Profile[] | undefined) =>
@@ -53,6 +73,7 @@ export function SignedInAccount({ children }: { children: React.ReactNode }) {
   const local = useMemo(() => data?.map(toProfile), [data]);
   const localProfile = firstWithStatus(local);
   const [remote, setRemote] = useState<Profile[]>();
+  const [hinted] = useState(hasReadyHint);
 
   const confirmWithServer = local !== undefined && !localProfile?.setupStatus;
   useEffect(() => {
@@ -76,12 +97,19 @@ export function SignedInAccount({ children }: { children: React.ReactNode }) {
 
   const status: AccountStatus =
     local === undefined
-      ? "checking"
+      ? hinted
+        ? "opening"
+        : "checking"
       : profile?.setupStatus
         ? "ready"
         : remote === undefined
           ? "checking"
           : "needs-setup";
+
+  useEffect(() => {
+    if (status === "ready") rememberReady();
+    else if (status === "needs-setup") forgetReady();
+  }, [status]);
 
   const saveProfile = useCallback(
     (patch: ProfileInsert) => {
@@ -165,6 +193,9 @@ export function useSavePasskey() {
 export async function signOut(profile: Profile | undefined) {
   const session = getJazzSession();
   const accountId = session.getSnapshot().user?.accountId;
+  // First, so the session's switch shows "Loading…", not the signed-in app shell. If
+  // the sign-out fails, the next ready status writes the hint again.
+  forgetReady();
   await session.signOut();
   if (accountId) forgetPasskeyFlags(accountId);
   if (profile?.setupStatus === "migrated") {

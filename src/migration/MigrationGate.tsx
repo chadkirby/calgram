@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Launching } from "@/components/Launching";
 import { Button } from "@/components/ui/button";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { DataExporter } from "@/utils/DataExporter";
@@ -8,7 +9,8 @@ import { beginMigration, storedCarried, useMigration } from "./migrate";
 /**
  * Shows the app, unless this browser is migrating Classic data. It sits outside the
  * router and the session's signed-in/signed-out trees, so neither the welcome screen
- * nor "Start" appears while an account is half migrated.
+ * nor "Start" appears while an account is half migrated. While it checks, a device
+ * whose account was ready shows the app shell, which reads no data.
  */
 export function MigrationGate({ children }: { children: React.ReactNode }) {
   const migration = useMigration();
@@ -16,9 +18,7 @@ export function MigrationGate({ children }: { children: React.ReactNode }) {
     case "idle":
       return children;
     case "checking":
-      return (
-        <output className="block p-8 text-center text-sm text-muted-foreground">Loading…</output>
-      );
+      return <Launching />;
     case "moving":
       return <MovingData copied={migration.copied} total={migration.total} />;
     case "failed":

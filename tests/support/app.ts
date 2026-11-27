@@ -118,3 +118,35 @@ export async function exportFile(page: Page) {
   await expect(settings.getByRole("alert")).toContainText("Data exported successfully!");
   return JSON.parse(await readFile(await download.path(), "utf8"));
 }
+
+export interface LaunchRecord {
+  /** "Loading…" rendered at some point. */
+  sawLoading: boolean;
+  /** "Checking your account…" rendered at some point. */
+  sawChecking: boolean;
+  /** The first content in #root already had the main tabs. */
+  tabsFirst: boolean | undefined;
+}
+
+/**
+ * Record, from the first paint, what each later navigation in `page` shows on its way
+ * to the app: the end state alone can't tell a direct launch from one with screens
+ * in between.
+ */
+export async function watchLaunch(page: Page) {
+  await page.addInitScript(() => {
+    const record = { sawLoading: false, sawChecking: false, tabsFirst: undefined as unknown };
+    (window as unknown as { launch: typeof record }).launch = record;
+    new MutationObserver(() => {
+      const root = document.getElementById("root");
+      if (!root?.firstChild) return;
+      record.tabsFirst ??= root.querySelector('[data-testid="main-tabs"]') !== null;
+      const text = root.textContent ?? "";
+      if (text.includes("Loading…")) record.sawLoading = true;
+      if (text.includes("Checking your account…")) record.sawChecking = true;
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
+}
+
+export const launchRecord = (page: Page) =>
+  page.evaluate(() => (window as unknown as { launch: LaunchRecord }).launch);
