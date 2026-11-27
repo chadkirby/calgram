@@ -3,6 +3,11 @@ import { WeightConverter } from "./WeightConverter";
 import { UnitPreferenceManager } from "./UnitPreferenceManager";
 import type { BodyWeightUnit, MealRow, ProfileRow, WeightRow } from "../schema";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Local midnight at the start of the day containing `ms`. */
+const dayStart = (ms: number) => DateTime.fromMillis(ms).startOf("day").toMillis();
+
 /**
  * Data point interface for chart data
  */
@@ -85,11 +90,13 @@ export class TrendAnalyzer {
       }
     });
 
-    // Create data points for each day in the range
-    const dataPoints: ChartDataPoint[] = [...dailyTotals.entries()].map(([dateKey, calories]) => ({
-      date: DateTime.fromISO(dateKey).toJSDate(), // Convert to JS Date
-      calories,
-    }));
+    // One point per logged day, oldest first (meals arrive in arbitrary order)
+    const dataPoints: ChartDataPoint[] = [...dailyTotals.entries()]
+      .toSorted(([a], [b]) => a.localeCompare(b))
+      .map(([dateKey, calories]) => ({
+        date: DateTime.fromISO(dateKey).toJSDate(), // Convert to JS Date
+        calories,
+      }));
 
     return dataPoints;
   }
@@ -99,6 +106,7 @@ export class TrendAnalyzer {
    * @param weights - Array of weight entries
    * @param profile - User profile for unit preferences
    * @param days - Number of days to include (default 30)
+   *   (`Infinity` for every weigh-in up to today)
    * @returns Array of chart data points with date and weight in display unit
    */
   static prepareWeightData(
@@ -115,13 +123,13 @@ export class TrendAnalyzer {
 
     // Calculate the date range using Luxon
     const endDate = DateTime.now().startOf("day");
-    const startDate = endDate.minus({ days: days - 1 });
+    const startDate = Number.isFinite(days) ? endDate.minus({ days: days - 1 }) : undefined;
 
-    // Filter and sort weight entries within the date range
+    // Keep and sort the weight entries within the date range
     const filteredWeights = weights
       .filter((weight) => {
         const weightDate = DateTime.fromISO(weight.timestamp);
-        return weightDate >= startDate && weightDate <= endDate;
+        return (startDate === undefined || weightDate >= startDate) && weightDate <= endDate;
       })
       .toSorted(
         (a, b) =>
@@ -180,95 +188,88 @@ export class TrendAnalyzer {
   }
 
   /**
-   * Calculate temporal smoothing for weight data using exponential kernel
-   * @param weightDataPoints - Array of weight data points with timestamps
-   * @param allTimePoints - Array of all timestamps to smooth over
-   * @param kernelWidth - Kernel width parameter (default 4)
-   * @returns Array of smoothed weight values
+   * Weight trend: a smooth curve through the weigh-ins that bends where the
+   * weight really turned but doesn't chase single weigh-ins.
+   *
+   * At each time, fit a straight line to all the weigh-ins, weighting each by how
+   * close it is in date (a Gaussian with a spread of `spreadDays`), and read the
+   * line there (local linear regression). A change has to last about that long to
+   * show up as a turn; shorter wobbles are averaged out. Because the spread is
+   * wider than the usual gap between weigh-ins, the curve averages several of
+   * them rather than passing through each. It is drawn from the first weigh-in's
+   * day to the last's; with weigh-ins on fewer than two days there is no trend.
+   *
+   * @param weighIns - Weigh-ins in any order (ms timestamps); pass weigh-ins from
+   *   before the chart's range too, so its left edge reflects them
+   * @param times - Times to evaluate the trend at (ms timestamps)
+   * @param spreadDays - How far in time a weigh-in's influence reaches (1 SD)
    */
-  static calculateTemporalWeightSmooth(
-    weightDataPoints: { timestamp: number; value: number }[],
-    allTimePoints: number[],
-    kernelWidth: number = 4,
+  static calculateWeightTrend(
+    weighIns: { timestamp: number; value: number }[],
+    times: number[],
+    spreadDays: number = 45,
   ): (number | undefined)[] {
-    if (weightDataPoints.length === 0) {
-      return Array.from({ length: allTimePoints.length }, () => undefined);
-    }
+    const none = () => times.map(() => undefined);
+    // Work in calendar days: chart points are at local midnight, while a weigh-in
+    // may carry a time of day, and a day across a DST change isn't 24 hours.
+    const days = new Set(weighIns.map((p) => dayStart(p.timestamp)));
+    if (days.size < 2) return none();
+    const first = Math.min(...days);
+    const last = DateTime.fromMillis(Math.max(...days))
+      .endOf("day")
+      .toMillis();
 
-    const smoothedValues: (number | undefined)[] = [];
-    const sortedWeightData = weightDataPoints.toSorted((a, b) => a.timestamp - b.timestamp);
-
-    for (const timePoint of allTimePoints) {
-      let weightSum = 0;
-      let valueSum = 0;
-
-      sortedWeightData.forEach((point) => {
-        // Calculate temporal distance in days
-        const distanceMs = Math.abs(timePoint - point.timestamp);
-        const distanceDays = distanceMs / (24 * 60 * 60 * 1000);
-
-        // Exponential kernel - gives more weight to closer points
-        const weight = Math.exp(-0.5 * Math.pow(distanceDays / kernelWidth, 2));
-
-        valueSum += weight * point.value;
-        weightSum += weight;
-      });
-
-      // Only add a smoothed value if we have sufficient weight contribution
-      if (weightSum > 0.01) {
-        smoothedValues.push(valueSum / weightSum);
-      } else {
-        // Find nearest weight point as fallback
-        const nearestPoint = sortedWeightData.reduce((nearest, current) => {
-          const currentDistance = Math.abs(current.timestamp - timePoint);
-          const nearestDistance = Math.abs(nearest.timestamp - timePoint);
-          return currentDistance < nearestDistance ? current : nearest;
-        });
-
-        // Only use nearest point if it's within reasonable distance (e.g., 30 days)
-        const nearestDistanceDays =
-          Math.abs(nearestPoint.timestamp - timePoint) / (24 * 60 * 60 * 1000);
-        if (nearestDistanceDays <= 30) {
-          smoothedValues.push(nearestPoint.value);
-        } else {
-          smoothedValues.push(undefined);
-        }
+    return times.map((t) => {
+      if (t < first || t > last) return undefined;
+      let sw = 0;
+      let sx = 0;
+      let sy = 0;
+      let sxx = 0;
+      let sxy = 0;
+      for (const p of weighIns) {
+        const x = (p.timestamp - t) / DAY_MS; // days from t
+        const w = Math.exp(-0.5 * (x / spreadDays) ** 2);
+        sw += w;
+        sx += w * x;
+        sy += w * p.value;
+        sxx += w * x * x;
+        sxy += w * x * p.value;
       }
-    }
-
-    return smoothedValues;
+      if (sw === 0) return undefined;
+      // Weighted spread of the dates around t, in days²: too narrow to give a slope
+      // (one weigh-in dominates), so use the weighted average instead
+      const spread = sxx / sw - (sx / sw) ** 2;
+      if (spread < 1) return sy / sw;
+      const slope = (sxy / sw - (sx / sw) * (sy / sw)) / spread;
+      return sy / sw - slope * (sx / sw); // the fitted line's value at t
+    });
   }
 
   /**
    * Calculate trend lines for chart data
-   * @param data - Array of chart data points
+   * @param data - Array of chart data points (one per day, oldest first)
    * @param bandwidth - LOWESS bandwidth for calorie trend (default 0.3)
+   * @param weighIns - Weigh-ins to fit the weight trend to; defaults to the
+   *   weights in `data`. Pass every weigh-in, so ones on days without meals or
+   *   before the range still count.
    * @returns Object with calorie and weight trend arrays
    */
   static calculateTrendLines(
     data: ChartDataPoint[],
     bandwidth: number = 0.3,
+    weighIns?: ChartDataPoint[],
   ): { caloriesTrend: number[]; weightTrend: (number | undefined)[] } {
     // Extract calorie values (replace undefined with 0) and calculate LOWESS trend
     const calorieValues = data.map((point) => point.calories || 0);
     const caloriesTrend = this.calculateLOWESSTrend(calorieValues, bandwidth);
 
-    // Extract weight data points with timestamps
-    const weightDataPoints: { timestamp: number; value: number }[] = [];
-    data.forEach((point) => {
-      if (point.weight !== undefined) {
-        weightDataPoints.push({
-          timestamp: point.date.getTime(),
-          value: point.weight,
-        });
-      }
-    });
-
-    // Get all timestamps for temporal smoothing
-    const allTimePoints = data.map((point) => point.date.getTime());
-
-    // Calculate temporal weight trend using exponential kernel smoothing
-    const weightTrend = this.calculateTemporalWeightSmooth(weightDataPoints, allTimePoints);
+    const weightPoints = (weighIns ?? data).flatMap((point) =>
+      point.weight === undefined ? [] : [{ timestamp: point.date.getTime(), value: point.weight }],
+    );
+    const weightTrend = this.calculateWeightTrend(
+      weightPoints,
+      data.map((point) => point.date.getTime()),
+    );
 
     return { caloriesTrend, weightTrend };
   }

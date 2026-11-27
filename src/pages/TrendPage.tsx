@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAccount } from "@/lib/account";
 import { useMeals, useWeights } from "@/lib/data";
 import { TrendAnalyzer } from "../utils/TrendAnalyzer";
+import { DEFAULT_TIME_RANGE, TIME_RANGE_OPTIONS } from "../utils/timeRanges";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TrendPageErrorFallback } from "@/components/PageErrorFallback";
 import { NetworkErrorHandler, ConnectionStatus } from "@/components/NetworkErrorHandler";
@@ -128,7 +129,7 @@ function TrendPageContent() {
   const { profile } = useAccount();
   const mealEntries = useMeals();
   const weightEntries = useWeights();
-  const [timeRange, setTimeRange] = useState("30");
+  const [timeRange, setTimeRange] = useState(DEFAULT_TIME_RANGE);
   const [isLoading, setIsLoading] = useState(false);
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 640,
@@ -143,14 +144,6 @@ function TrendPageContent() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  const timeRangeOptions = [
-    { value: "7", label: "Last 7 days" },
-    { value: "14", label: "Last 14 days" },
-    { value: "30", label: "Last 30 days" },
-    { value: "60", label: "Last 60 days" },
-    { value: "90", label: "Last 90 days" },
-  ];
 
   // Prepare chart data using TrendAnalyzer with unit conversion
   const { chartData, summaryStats, calorieAxisConfig, weightAxisConfig, hasData, weightAxisLabel } =
@@ -187,11 +180,19 @@ function TrendPageContent() {
         };
       }
 
-      // Calculate trend lines using LOWESS
-      const trendLines = TrendAnalyzer.calculateTrendLines(combinedData);
+      // Fit the weight trend to every weigh-in, including ones on days without
+      // meals (no point in combinedData) and before the range.
+      const weighIns = TrendAnalyzer.prepareWeightData(weightEntries, profile, Infinity);
+      const trendLines = TrendAnalyzer.calculateTrendLines(combinedData, 0.3, weighIns);
       const stats = TrendAnalyzer.getSummaryStats(combinedData);
       const calorieAxis = TrendAnalyzer.calculateCalorieAxisConfig(combinedData);
-      const weightAxis = TrendAnalyzer.calculateWeightAxisConfig(combinedData);
+      // Size the weight axis to the trend too: it spans days with no weigh-in shown
+      const weightAxis = TrendAnalyzer.calculateWeightAxisConfig([
+        ...combinedData,
+        ...trendLines.weightTrend.flatMap((weight, i) =>
+          weight === undefined ? [] : [{ date: combinedData[i].date, weight }],
+        ),
+      ]);
 
       // Format data for Recharts
       const formattedData = combinedData.map((point, index) => ({
@@ -242,7 +243,7 @@ function TrendPageContent() {
                   <SelectValue placeholder="Select time range" />
                 </SelectTrigger>
                 <SelectContent>
-                  {timeRangeOptions.map((option) => (
+                  {TIME_RANGE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

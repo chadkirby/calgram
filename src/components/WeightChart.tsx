@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAccount } from "@/lib/account";
 import { useWeights } from "@/lib/data";
 import { TrendAnalyzer } from "../utils/TrendAnalyzer";
+import { TIME_RANGE_OPTIONS } from "../utils/timeRanges";
 import {
   Line,
   XAxis,
@@ -122,14 +123,6 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const timeRangeOptions = [
-    { value: "7", label: "Last 7 days" },
-    { value: "14", label: "Last 14 days" },
-    { value: "30", label: "Last 30 days" },
-    { value: "60", label: "Last 60 days" },
-    { value: "90", label: "Last 90 days" },
-  ];
-
   // Prepare chart data using TrendAnalyzer with unit conversion
   const { chartData, summaryStats, weightAxisConfig, hasData, axisLabel } = useMemo(() => {
     if (!weightEntries) {
@@ -157,9 +150,16 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
       };
     }
 
-    // Calculate trend lines using LOWESS
     const weightValues = weightData.map((point) => point.weight || 0);
-    const weightTrend = TrendAnalyzer.calculateLOWESSTrend(weightValues, 0.3);
+    const times = weightData.map((point) => point.date.getTime());
+    // Fit to every weigh-in, as on the Trends page, so earlier ones shape the start
+    const weightTrend = TrendAnalyzer.calculateWeightTrend(
+      TrendAnalyzer.prepareWeightData(weightEntries, profile, Infinity).map((point) => ({
+        timestamp: point.date.getTime(),
+        value: point.weight || 0,
+      })),
+      times,
+    );
 
     const stats: {
       totalDays: number;
@@ -213,7 +213,7 @@ export function WeightChart({ timeRange, onTimeRangeChange, isLoading = false }:
                 <SelectValue placeholder="Select time range" />
               </SelectTrigger>
               <SelectContent>
-                {timeRangeOptions.map((option) => (
+                {TIME_RANGE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
