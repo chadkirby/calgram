@@ -116,7 +116,7 @@ export async function startNewAccount(firstName: string) {
 
 export type ReturningResult =
   | { kind: "restored" }
-  | { kind: "classic" }
+  | { kind: "classic"; handle: Uint8Array }
   | { kind: "error"; message: string };
 
 /** "I've used calgram before": one passkey prompt, routed by its handle (KTD7). */

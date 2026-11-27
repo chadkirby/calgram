@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, type Browser, type CDPSession, type Locator, type Page } from "@playwright/test";
 
 /** A new visitor clicks Start and names themselves; resolves on the Daily page. */
@@ -91,4 +92,32 @@ export async function openWithAuthenticator(browser: Browser) {
     },
   });
   return { context, page, cdp, authenticatorId };
+}
+
+/** Open Settings, where Data has export and import. */
+export async function openDataCard(page: Page) {
+  await page.getByTitle("Application settings").filter({ visible: true }).click();
+  return page.getByRole("dialog", { name: "Settings" });
+}
+
+/** Import `data` (an object, or raw text) as a backup file. */
+export async function importFile(page: Page, data: unknown) {
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "backup.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(typeof data === "string" ? data : JSON.stringify(data)),
+  });
+}
+
+/** Export from the open Settings dialog; resolves with the parsed file. */
+export async function exportFile(page: Page) {
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    settings.getByRole("button", { name: "Export Data" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^calorie-tracker-export-[\dT-]+\.json$/);
+  // The server's copy was read too, so the backup isn't flagged as possibly incomplete.
+  await expect(settings.getByRole("alert")).toContainText("Data exported successfully!");
+  return JSON.parse(await readFile(await download.path(), "utf8"));
 }

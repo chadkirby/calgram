@@ -121,7 +121,7 @@ export interface ImportResult {
  * The server rejects an insert whose id exists or was deleted; for an import that means
  * the entry is already accounted for, so it isn't an error (KTD5).
  */
-const isAlreadyPresent = (error: unknown) =>
+export const isAlreadyPresent = (error: unknown) =>
   /object already exists|row already deleted/.test(String(error));
 
 function insertQuietly(write: { wait(options: { tier: "global" }): Promise<unknown> }) {

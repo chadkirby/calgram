@@ -375,9 +375,8 @@ flowchart TB
 - **Dependencies:** U5, U6, U8
 - **Files:**
   - `src/migration/migrate.ts` (key derivation, inserts, setup status)
-  - `src/migration/MigrationGate.tsx` (the flow in the High-Level Technical Design)
-  - `src/migration/MigrationFallback.tsx` (retry and download old data)
-  - `tests/fixtures/classicSeed.ts` (test-only: runs `jazz-classic` in the page to create a Classic account on the target hostname, registers its passkey on a Chromium virtual authenticator, and writes entries from an export file)
+  - `src/migration/MigrationGate.tsx` (the "Moving your data" screen, and the fallback with retry and download old data)
+  - `tests/harness/classic-harness.ts` (test-only: runs `jazz-classic` in the page to create a Classic account on Jazz Cloud v1, signs the browser in to it, and registers its passkey on a Chromium virtual authenticator)
   - tests: `src/migration/__tests__/migrate.test.ts`, `tests/migration.spec.ts`
 - **Approach:**
   1. Follow the visit flowchart, reading setup status from the server's copy (KTD6).
