@@ -86,7 +86,7 @@ export class CalorieCalculator {
    * @param isoString - ISO date string
    * @returns Date string in YYYY-MM-DD format
    */
-  private static getDateOnlyFromIso(isoString: string): string {
+  static getDateOnlyFromIso(isoString: string): string {
     // Normal path: explicit offset; preserve its local zone for calendar-day calculations
     if (/[+-]\d{2}:\d{2}$/.test(isoString)) {
       return DateTime.fromISO(isoString, { setZone: true }).toISODate() || "";

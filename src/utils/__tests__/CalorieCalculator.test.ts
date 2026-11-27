@@ -192,6 +192,20 @@ describe("CalorieCalculator", () => {
     });
   });
 
+  describe("getDateOnlyFromIso", () => {
+    // The Daily page finds a day's meals by matching this date as a substring of the
+    // stored timestamp, so it must be the date the string starts with.
+    it.each([
+      "2024-01-15T23:30:00.000+09:00",
+      "2024-01-15T00:30:00.000-12:00",
+      "2024-01-15T23:59:59.000Z",
+      "2024-01-15T12:00:00",
+      "2024-01-15",
+    ])("is the written date of %s", (timestamp) => {
+      expect(CalorieCalculator.getDateOnlyFromIso(timestamp)).toBe(timestamp.slice(0, 10));
+    });
+  });
+
   describe("isSameDay", () => {
     it("should return true for ISO strings on the same day", () => {
       const date1 = "2024-01-15T06:00:00.000Z";

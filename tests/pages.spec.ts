@@ -1,5 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { addMeal, chooseUnit, mealNames, openAddMeal, startNewAccount } from "./support/app";
+import { DateTime } from "luxon";
+import {
+  addMeal,
+  chooseUnit,
+  importFile,
+  mealNames,
+  openAddMeal,
+  openDataCard,
+  startNewAccount,
+} from "./support/app";
 
 // U5: every page reads and writes Jazz 2.
 
@@ -84,6 +93,71 @@ test("a food logged before prefills its calories per gram and category", async (
 
   await expect(dialog.getByLabel("Calorie density input")).toHaveValue("2.08");
   await expect(dialog.getByRole("group", { name: "Food Category" })).toContainText("People food");
+});
+
+test("after a reload, other days' meals and food suggestions are there from the start", async ({
+  page,
+}) => {
+  await startNewAccount(page);
+  await page.getByRole("button", { name: "Previous day" }).click();
+  await addMeal(page, { food: "Salmon", category: "People food", caloriesPerUnit: 2.08 });
+  await page.getByRole("button", { name: "Next day" }).click();
+  await addMeal(page, { food: "Kibble", category: "Dry food", caloriesPerUnit: 3.5 });
+
+  // Launch shows only today's meals at first and loads the rest after.
+  await page.reload();
+  await expect(mealNames(page)).toHaveText(["Kibble"]);
+  const dialog = await openAddMeal(page);
+  await dialog.getByLabel("Meal weight input").fill("123");
+  await dialog.getByRole("group", { name: "Food Name" }).getByRole("button").click();
+  await page.getByPlaceholder("Enter or select food name...").fill("Salmon");
+  await page.getByRole("option", { name: "Salmon" }).click();
+  await expect(dialog.getByLabel("Calorie density input")).toHaveValue("2.08");
+  await expect(dialog.getByLabel("Meal weight input")).toHaveValue("123");
+  await page.keyboard.press("Escape");
+
+  await page.reload();
+  await page.getByRole("button", { name: "Previous day" }).click();
+  await expect(mealNames(page)).toHaveText(["Salmon"]);
+});
+
+/** An imported meal named after its id. */
+const importedMeal = (id: string, timestamp: string) => ({
+  id,
+  timestamp,
+  foodName: id,
+  foodCategory: "Dry food",
+  caloriesPerGram: 1,
+  weightInGrams: 100,
+  totalCalories: 100,
+});
+
+test("a meal is listed on the date its timestamp was written with, whatever the offset", async ({
+  page,
+}) => {
+  const today = DateTime.now().toISODate()!;
+  const yesterday = DateTime.now().minus({ days: 1 }).toISODate()!;
+  await startNewAccount(page);
+  const settings = await openDataCard(page);
+  await importFile(page, {
+    version: "1.2",
+    exportDate: `${today}T00:00:00.000Z`,
+    profile: {},
+    mealEntries: [
+      importedMeal("co_zLate", `${today}T23:30:00.000+14:00`),
+      importedMeal("co_zEarly", `${today}T00:30:00.000-12:00`),
+      importedMeal("co_zYesterday", `${yesterday}T23:30:00.000-12:00`),
+    ],
+    weightEntries: [],
+  });
+  await expect(settings.getByRole("alert")).toContainText("Imported 3 meals");
+  await page.keyboard.press("Escape");
+
+  await page.reload();
+  // Listed by instant: 23:30 at +14:00 is earlier than 00:30 at -12:00.
+  await expect(mealNames(page)).toHaveText(["co_zLate", "co_zEarly"]);
+  await page.getByRole("button", { name: "Previous day" }).click();
+  await expect(mealNames(page)).toHaveText(["co_zYesterday"]);
 });
 
 test("weigh-ins can be added, edited and deleted, and the list and chart follow", async ({
