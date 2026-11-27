@@ -41,7 +41,7 @@ test("a passkey saved on one device restores the account and its rows on another
     credential: credentials[0],
   });
   await b.page.goto("/");
-  await b.page.getByRole("button", { name: "I've used calgram before" }).click();
+  await b.page.getByRole("button", { name: "I've used Sammygram before" }).click();
 
   await expect(b.page).toHaveURL(/\/daily$/, { timeout: 30_000 });
   await expect(mealNames(b.page)).toHaveText(["Oatmeal"], { timeout: 30_000 });
@@ -82,7 +82,7 @@ test("a signed-in account the server confirms has no setup status gets the name 
 
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "I've used calgram before" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "I've used Sammygram before" })).toHaveCount(0);
   await page.getByRole("button", { name: "Start", exact: true }).click();
   await page.getByLabel("First name").fill("Lee");
   await page.getByRole("button", { name: "Continue" }).click();
