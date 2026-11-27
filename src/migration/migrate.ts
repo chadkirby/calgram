@@ -67,8 +67,8 @@ const setupStatusOf = (rows: Parameters<typeof toProfile>[0][]) =>
  * server has acknowledged every one. "Already exists" and "already deleted" count as
  * acknowledged. Any other rejection rejects.
  */
-async function copyRows(
-  db: Db,
+export async function copyRows(
+  db: Pick<Db, "all" | "insert">,
   accountId: string,
   plan: ImportPlan,
   onCopied: () => void,
@@ -111,22 +111,65 @@ export function migratedProfile(plan: ImportPlan, identity: ClassicIdentity): Pr
   return { ...fields, classicAccountId: identity.accountId, setupStatus: "migrated" };
 }
 
-async function migrate(identity: ClassicIdentity): Promise<void> {
+/**
+ * Where rows carried from a "Start" account wait until the derived account has them, so
+ * a failed read or a reload after switching accounts doesn't lose them. Tagged with the
+ * Classic account they're carried into.
+ */
+export const CARRIED_ROWS_KEY = "calgram-migration-carried-rows";
+
+interface StoredCarry {
+  classicAccountId: string;
+  data: ExportedData;
+}
+
+/** Keep `data` until it's copied. Throws when storage refuses, before anything switches. */
+function storeCarried(identity: ClassicIdentity, data: ExportedData) {
+  const stored: StoredCarry = { classicAccountId: identity.accountId, data };
+  localStorage.setItem(CARRIED_ROWS_KEY, JSON.stringify(stored));
+}
+
+export function storedCarried(identity: ClassicIdentity): ExportedData | undefined {
+  try {
+    const stored = JSON.parse(
+      localStorage.getItem(CARRIED_ROWS_KEY) ?? "null",
+    ) as StoredCarry | null;
+    return stored?.classicAccountId === identity.accountId ? stored.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function forgetCarried() {
+  try {
+    localStorage.removeItem(CARRIED_ROWS_KEY);
+  } catch {
+    // Storage unavailable: nothing was kept.
+  }
+}
+
+async function migrate(
+  identity: ClassicIdentity,
+  report: (state: MigrationState) => void,
+): Promise<void> {
   const session = getJazzSession();
   const key = await deriveDeviceKey(identity.seed);
   await settled(session);
 
   // Another account signed in here: leave a migrated one alone, and carry a native
-  // one's rows into the derived account, so nothing logged under "Start" is lost.
-  let carried: ExportedData | undefined;
+  // one's rows into the derived account, so nothing logged under "Start" is lost. The
+  // rows are kept in storage before switching, and dropped only once they're copied.
   const current = session.getSnapshot().user;
   if (current && session.exportDeviceKey() !== key) {
     const status = setupStatusOf(await session.db.all(app.profile));
     if (status === "migrated") return;
-    carried = (await exportAccount(session.db, current.accountId, undefined)).data;
+    storeCarried(identity, (await exportAccount(session.db, current.accountId, undefined)).data);
+    await session.restoreDeviceAccount(key);
+  } else if (!current) {
+    await session.restoreDeviceAccount(key);
   }
-  if (!current || carried) await session.restoreDeviceAccount(key);
   await settled(session);
+  const carried = storedCarried(identity);
 
   const db = session.db;
   const accountId = session.getSnapshot().user?.accountId;
@@ -138,7 +181,7 @@ async function migrate(identity: ClassicIdentity): Promise<void> {
 
   let copied = 0;
   let total = 0;
-  const progress = () => setState({ kind: "moving", copied, total });
+  const progress = () => report({ kind: "moving", copied, total });
   const onCopied = () => {
     copied++;
     progress();
@@ -154,6 +197,7 @@ async function migrate(identity: ClassicIdentity): Promise<void> {
     progress();
     await copyRows(db, accountId, plan, onCopied);
     if (carriedPlan) await copyRows(db, accountId, carriedPlan, onCopied);
+    forgetCarried();
     const profile = db.insert(app.profile, migratedProfile(plan, identity), {
       id: await migratedProfileId(accountId),
     });
@@ -165,6 +209,7 @@ async function migrate(identity: ClassicIdentity): Promise<void> {
     }
   } else if (carried) {
     await copyRows(db, accountId, planOrThrow(carried), onCopied);
+    forgetCarried();
   }
 }
 
@@ -175,11 +220,19 @@ async function migrate(identity: ClassicIdentity): Promise<void> {
  */
 export function beginMigration(identity: ClassicIdentity): Promise<void> {
   running ??= (async () => {
+    // Progress from a run that already ended (a write acknowledged after another was
+    // rejected) must not replace the screen that run left behind.
+    let live = true;
+    const report = (next: MigrationState) => {
+      if (live) setState(next);
+    };
     if (state.kind !== "moving") setState({ kind: "checking" });
     try {
-      await migrate(identity);
+      await migrate(identity, report);
+      live = false;
       setState({ kind: "idle" });
     } catch (error) {
+      live = false;
       console.error("Migration failed:", error);
       setState({ kind: "failed", identity });
     } finally {

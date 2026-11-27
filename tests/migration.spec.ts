@@ -266,3 +266,54 @@ test("meals logged under Start are kept when this browser's Classic account is m
   expect(foods).toHaveLength(seed.meals.length + 2);
   expect(foods).toEqual(expect.arrayContaining(["New kibble", "New treat"]));
 });
+
+test("meals logged under Start survive a failed migration, a reload, and Try again", async ({
+  page,
+}) => {
+  await startNewAccount(page, "Fresh");
+  await addMeal(page, { food: "New kibble", category: "Dry food", caloriesPerUnit: 1 });
+  await addMeal(page, { food: "New treat", category: "Treats", caloriesPerUnit: 1 });
+
+  const account = await createClassic(page);
+  let reachable = false;
+  await page.routeWebSocket(/cloud\.jazz\.tools/, (ws) => {
+    if (reachable) ws.connectToServer();
+    else ws.close();
+  });
+  await signInToClassic(page, account);
+  await page.goto("/");
+  const failed = page.getByText("We couldn't move your data yet");
+  await expect(failed).toBeVisible({ timeout: 90_000 });
+  await page.reload();
+  await expect(failed).toBeVisible({ timeout: 90_000 });
+
+  reachable = true;
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expectMigrated(page);
+  const foods = (await exportRows(page)).mealEntries.map((m: { foodName: string }) => m.foodName);
+  expect(foods).toHaveLength(seed.meals.length + 2);
+  expect(foods).toEqual(expect.arrayContaining(["New kibble", "New treat"]));
+});
+
+test("a migrated account is left alone when another person's Classic session appears", async ({
+  page,
+}) => {
+  const mine = await createClassic(page);
+  await signInToClassic(page, mine);
+  await page.goto("/");
+  await expectMigrated(page);
+  const before = await exportRows(page);
+
+  const theirs = await createClassic(page, {
+    ...seed,
+    profile: { ...seed.profile, firstName: "Other" },
+    meals: [meal("Their meal", "2025-07-27")],
+  });
+  await signInToClassic(page, theirs);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/daily$/, { timeout: 60_000 });
+  await expect(page.getByText("Welcome, Sam!")).toBeVisible();
+  const after = await exportRows(page);
+  expect(after.accountId).toBe(before.accountId);
+  expect(after.mealEntries).toHaveLength(seed.meals.length);
+});
