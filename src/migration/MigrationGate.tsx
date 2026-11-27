@@ -48,7 +48,7 @@ function MovingData({ copied, total }: { copied: number; total: number }) {
 }
 
 /** The guided screen when migration fails (R7): retry, or download the old data. */
-export function MigrationFallback({ identity }: { identity: ClassicIdentity }) {
+function MigrationFallback({ identity }: { identity: ClassicIdentity }) {
   const [downloading, setDownloading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -58,8 +58,7 @@ export function MigrationFallback({ identity }: { identity: ClassicIdentity }) {
     try {
       const { readClassicAccount } = await import("./classicReader");
       const data = await readClassicAccount(identity);
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, "-");
-      DataExporter.downloadJsonFile(data, `calorie-tracker-export-${timestamp}.json`);
+      DataExporter.downloadJsonFile(data, DataExporter.exportFilename());
     } catch (error) {
       console.error("Downloading the old data failed:", error);
       setMessage("Couldn't reach your old data either. Please try again in a little while.");

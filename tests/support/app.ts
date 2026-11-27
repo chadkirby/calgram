@@ -94,13 +94,11 @@ export async function openWithAuthenticator(browser: Browser) {
   return { context, page, cdp, authenticatorId };
 }
 
-/** Open Settings, where Data has export and import. */
 export async function openDataCard(page: Page) {
   await page.getByTitle("Application settings").filter({ visible: true }).click();
   return page.getByRole("dialog", { name: "Settings" });
 }
 
-/** Import `data` (an object, or raw text) as a backup file. */
 export async function importFile(page: Page, data: unknown) {
   await page.locator('input[type="file"]').setInputFiles({
     name: "backup.json",
@@ -109,7 +107,6 @@ export async function importFile(page: Page, data: unknown) {
   });
 }
 
-/** Export from the open Settings dialog; resolves with the parsed file. */
 export async function exportFile(page: Page) {
   const settings = page.getByRole("dialog", { name: "Settings" });
   const [download] = await Promise.all([

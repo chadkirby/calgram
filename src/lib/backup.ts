@@ -108,7 +108,7 @@ export async function planRowWrites<T>(
   return result;
 }
 
-const idsOf = (rows: readonly { id: string }[]) => new Set(rows.map((row) => row.id));
+export const idsOf = (rows: readonly { id: string }[]) => new Set(rows.map((row) => row.id));
 
 export interface ImportResult {
   mealCount: number;

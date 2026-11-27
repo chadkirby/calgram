@@ -44,10 +44,9 @@ const Root = co.map({ mealEntries: co.list(Meal), weightEntries: co.list(Weight)
 // a failed load into an empty account (KTD6).
 const Account = co.account({ profile: Profile, root: Root });
 
-/** How long the whole read may take before it counts as failed. */
-export const CLASSIC_READ_TIMEOUT_MS = 30_000;
+const CLASSIC_READ_TIMEOUT_MS = 30_000;
 
-export const CLASSIC_PEER_URL = `wss://cloud.jazz.tools/?key=${encodeURIComponent(apiKey)}`;
+const CLASSIC_PEER_URL = `wss://cloud.jazz.tools/?key=${encodeURIComponent(apiKey)}`;
 
 export interface ClassicReadOptions {
   peerUrl?: string;

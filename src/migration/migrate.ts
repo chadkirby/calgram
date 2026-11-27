@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { Db } from "jazz-tools";
 import { app, type ProfileInsert } from "../../jazz/jazz.generated";
-import { exportAccount, isAlreadyPresent, planRowWrites } from "@/lib/backup";
+import { exportAccount, idsOf, isAlreadyPresent, planRowWrites } from "@/lib/backup";
 import { toProfile } from "@/lib/data";
 import { getJazzSession } from "@/lib/jazz";
 import { DataImporter, type ImportPlan } from "@/utils/DataImporter";
@@ -32,7 +32,7 @@ function setState(next: MigrationState) {
   for (const listener of listeners) listener();
 }
 
-export const getMigrationState = () => state;
+const getMigrationState = () => state;
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
@@ -43,7 +43,6 @@ function subscribe(listener: () => void) {
 
 export const useMigration = () => useSyncExternalStore(subscribe, getMigrationState);
 
-/** Resolve once the session has settled: signed in, signed out, or failed. */
 function settled(session = getJazzSession()) {
   return new Promise<void>((resolve) => {
     const check = () => {
@@ -57,10 +56,22 @@ function settled(session = getJazzSession()) {
   });
 }
 
-const idsOf = (rows: { id: string }[]) => new Set(rows.map((row) => row.id));
-
 const setupStatusOf = (rows: Parameters<typeof toProfile>[0][]) =>
   rows.map(toProfile).find((row) => row.setupStatus)?.setupStatus;
+
+type Write = { wait(options: { tier: "global" }): Promise<unknown> };
+
+/**
+ * Resolve once the server has `write`. "Already exists" and "already deleted" count as
+ * having it: another device, or an earlier run, wrote that row first.
+ */
+async function acknowledged(write: Write): Promise<void> {
+  try {
+    await write.wait({ tier: "global" });
+  } catch (error) {
+    if (!isAlreadyPresent(error)) throw error;
+  }
+}
 
 /**
  * Insert each planned row that isn't there yet under its KTD5 id, and resolve once the
@@ -74,23 +85,14 @@ export async function copyRows(
   onCopied: () => void,
 ): Promise<void> {
   const [meals, weights] = await Promise.all([db.all(app.mealEntries), db.all(app.weightEntries)]);
-  const mealWrites = await planRowWrites(accountId, plan.meals, idsOf(meals));
-  const weightWrites = await planRowWrites(accountId, plan.weights, idsOf(weights));
-  const acknowledged = async (write: { wait(options: { tier: "global" }): Promise<unknown> }) => {
-    try {
-      await write.wait({ tier: "global" });
-    } catch (error) {
-      if (!isAlreadyPresent(error)) throw error;
-    }
-    onCopied();
-  };
+  const [mealWrites, weightWrites] = await Promise.all([
+    planRowWrites(accountId, plan.meals, idsOf(meals)),
+    planRowWrites(accountId, plan.weights, idsOf(weights)),
+  ]);
+  const copy = (write: Write) => acknowledged(write).then(onCopied);
   await Promise.all([
-    ...mealWrites.inserts.map(({ id, row }) =>
-      acknowledged(db.insert(app.mealEntries, row, { id })),
-    ),
-    ...weightWrites.inserts.map(({ id, row }) =>
-      acknowledged(db.insert(app.weightEntries, row, { id })),
-    ),
+    ...mealWrites.inserts.map(({ id, row }) => copy(db.insert(app.mealEntries, row, { id }))),
+    ...weightWrites.inserts.map(({ id, row }) => copy(db.insert(app.weightEntries, row, { id }))),
   ]);
 }
 
@@ -143,9 +145,7 @@ export function storedCarried(identity: ClassicIdentity): ExportedData | undefin
 function forgetCarried() {
   try {
     localStorage.removeItem(CARRIED_ROWS_KEY);
-  } catch {
-    // Storage unavailable: nothing was kept.
-  }
+  } catch {}
 }
 
 async function migrate(
@@ -153,8 +153,7 @@ async function migrate(
   report: (state: MigrationState) => void,
 ): Promise<void> {
   const session = getJazzSession();
-  const key = await deriveDeviceKey(identity.seed);
-  await settled(session);
+  const [key] = await Promise.all([deriveDeviceKey(identity.seed), settled(session)]);
 
   // Another account signed in here: leave a migrated one alone, and carry a native
   // one's rows into the derived account, so nothing logged under "Start" is lost. The
@@ -181,7 +180,14 @@ async function migrate(
 
   let copied = 0;
   let total = 0;
-  const progress = () => report({ kind: "moving", copied, total });
+  // One update per percent: thousands of acknowledgements would otherwise each re-render.
+  let shown: { percent: number; total: number } | undefined;
+  const progress = () => {
+    const percent = total > 0 ? Math.floor((copied * 100) / total) : 0;
+    if (shown?.percent === percent && shown.total === total && copied !== total) return;
+    shown = { percent, total };
+    report({ kind: "moving", copied, total });
+  };
   const onCopied = () => {
     copied++;
     progress();
@@ -198,15 +204,8 @@ async function migrate(
     await copyRows(db, accountId, plan, onCopied);
     if (carriedPlan) await copyRows(db, accountId, carriedPlan, onCopied);
     forgetCarried();
-    const profile = db.insert(app.profile, migratedProfile(plan, identity), {
-      id: await migratedProfileId(accountId),
-    });
-    try {
-      await profile.wait({ tier: "global" });
-    } catch (error) {
-      // Another device finished first and wrote the same row.
-      if (!isAlreadyPresent(error)) throw error;
-    }
+    const id = await migratedProfileId(accountId);
+    await acknowledged(db.insert(app.profile, migratedProfile(plan, identity), { id }));
   } else if (carried) {
     await copyRows(db, accountId, planOrThrow(carried), onCopied);
     forgetCarried();
@@ -242,7 +241,6 @@ export function beginMigration(identity: ClassicIdentity): Promise<void> {
   return running;
 }
 
-/** On load: migrate this browser's Classic session, if it has a real one (R4, KTD13). */
 export function migrateClassicSession() {
   const identity = findClassicSession();
   if (identity) void beginMigration(identity);

@@ -58,7 +58,6 @@ const peer = () =>
   createWebSocketPeer({ id: "jazz-cloud", websocket: new WebSocket(PEER_URL), role: "server" });
 
 const harness = {
-  /** Create a Classic account holding `data`, and wait until Jazz Cloud has all of it. */
   async create(data: ClassicSeed): Promise<ClassicAccount> {
     const crypto = await WasmCrypto.create();
     const seed = crypto.newRandomSecretSeed();
@@ -97,7 +96,6 @@ const harness = {
     return account;
   },
 
-  /** Sign this browser in to `account`, as the Classic app's passkey log-in did. */
   signIn(account: ClassicAccount, provider = "passkey") {
     localStorage.setItem(
       CLASSIC_SESSION_KEY,
@@ -110,7 +108,6 @@ const harness = {
     );
   },
 
-  /** Register `account`'s Classic passkey on this browser's (virtual) authenticator. */
   async registerPasskey(account: ClassicAccount) {
     const handle = new Uint8Array(51);
     handle.set(account.seed);
@@ -128,7 +125,6 @@ const harness = {
     });
   },
 
-  /** What Jazz Cloud holds for `account`, read the way the app reads it. */
   read: (account: ClassicAccount) =>
     readClassicAccount({ seed: Uint8Array.from(account.seed), accountId: account.accountID }),
 };

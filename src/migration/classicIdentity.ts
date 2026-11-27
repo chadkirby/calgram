@@ -8,7 +8,6 @@ import { formatDeviceKey } from "@/lib/passkey";
 export interface ClassicIdentity {
   /** The 32-byte Classic secret seed: the root of both accounts. */
   seed: Uint8Array;
-  /** The Classic account id (`co_z…`). */
   accountId: string;
 }
 
@@ -45,7 +44,6 @@ export function readClassicSession(storage: Pick<Storage, "getItem"> = localStor
   return { seed: Uint8Array.from(secretSeed as number[]), accountId: accountID };
 }
 
-/** This browser's Classic session (KTD13), or undefined when storage can't be read. */
 export function findClassicSession(): ClassicIdentity | undefined {
   try {
     return readClassicSession();

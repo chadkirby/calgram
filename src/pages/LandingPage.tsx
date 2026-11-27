@@ -65,7 +65,6 @@ export function LandingPage() {
     const result = await signInWithPasskey();
     if (result.kind === "error") setMessage(result.message);
     setBusy(false);
-    // A Classic passkey: migrate it (R5). The migration screens take over from here.
     if (result.kind === "classic") {
       await migrateFromPasskey(classicIdentityFromHandle(result.handle)).catch((error: unknown) => {
         console.error("Starting the migration failed:", error);
