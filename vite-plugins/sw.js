@@ -2,14 +2,21 @@
 // the app needs no network; Jazz then reads the data stored on this device.
 //
 // Updates: the browser fetches this file on each launch. A new build installs its cache
-// in the background and takes over on the next launch (no skipWaiting), so an open page
-// never loses the chunks it was built with.
+// in the background and waits. The page (src/lib/appUpdate.ts) asks it to take over
+// ("skip-waiting") when the app opens or returns to the screen, or when a file the old
+// build needs has gone from the server, and reloads once it has; every open page of the
+// old build reloads with it, so none is left without its chunks.
 //
 // The build (vite-plugins/service-worker.ts) replaces the line below with the real list.
 const BUILD = { version: "dev", files: [] };
 
 const CACHE = `sammygram-${BUILD.version}`;
 const PRECACHED = new Set(BUILD.files);
+
+// The page asks a waiting build to take over (src/lib/appUpdate.ts).
+self.addEventListener("message", (event) => {
+  if (event.data === "skip-waiting") self.skipWaiting();
+});
 
 self.addEventListener("install", (event) => {
   // All or nothing, straight from the server: a half-filled or stale cache never installs.
@@ -23,8 +30,9 @@ self.addEventListener("install", (event) => {
 });
 
 /**
- * Drop earlier builds' caches. Safe whenever this worker is active: without skipWaiting
- * it only activates once no page from an earlier build is open.
+ * Drop earlier builds' caches. Safe whenever this worker is active: it activates only
+ * once no page of an earlier build is open, or when a page asked it to take over, and
+ * then every open page reloads onto this build.
  */
 const deleteOldCaches = () =>
   caches
