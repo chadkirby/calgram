@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDb } from "jazz-tools/react";
 import { DateTime } from "luxon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -432,7 +433,10 @@ function DailyPageContent() {
                                 </AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDeleteMeal(meal.id)}
-                                  className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90 touch-manipulation"
+                                  className={cn(
+                                    buttonVariants({ variant: "destructive" }),
+                                    "w-full sm:w-auto touch-manipulation",
+                                  )}
                                 >
                                   Delete
                                 </AlertDialogAction>
