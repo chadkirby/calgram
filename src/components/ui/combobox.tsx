@@ -114,7 +114,9 @@ export function Combobox({
             className="text-sm sm:text-base"
           />
           <CommandList className="max-h-[40vh] sm:max-h-[300px]">
-            <CommandEmpty className="text-sm sm:text-base py-6">{emptyText}</CommandEmpty>
+            <CommandEmpty className="px-3 py-6 text-center text-sm sm:text-base">
+              {emptyText}
+            </CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => (
                 <CommandItem
