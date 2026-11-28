@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -172,7 +172,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => setDeleteEntry(entry)}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       title="Delete entry"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -214,7 +214,7 @@ export function WeightEntryList({ onEdit, addButton }: WeightEntryListProps) {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
+              className={buttonVariants({ variant: "destructive" })}
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
