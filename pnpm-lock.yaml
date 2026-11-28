@@ -245,6 +245,9 @@ importers:
       cmdk:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@19.3.0(@types/react@19.3.1))(@types/react@19.3.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      cn:
+        specifier: ^0.5.2
+        version: 0.5.2
       cojson:
         specifier: 0.15.13
         version: 0.15.13
@@ -2421,6 +2424,11 @@ packages:
     peerDependencies:
       react: ^18 || ^19 || ^19.0.0-rc
       react-dom: ^18 || ^19 || ^19.0.0-rc
+
+  cn@0.5.2:
+    resolution: {integrity: sha512-wm10E6iuJ37rALOw3D+3cfaXXZSLNMh2uxpQn3dNICqfJM59yXqgbA9/9Iiz155j5kYNLdK6WreNdW3NQtx3OQ==}
+    engines: {node: '>=22'}
+    hasBin: true
 
   cojson-storage-indexeddb@0.15.13:
     resolution: {integrity: sha512-sUts1kvem1VYlSKDMjpQThjzeG9ufNIQd8zup60vBpouRaJulBX2sBG6+83YQdz9OTc3RL0ESkJLCs1JjOE6QA==}
@@ -5273,6 +5281,8 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
       - '@types/react-dom'
+
+  cn@0.5.2: {}
 
   cojson-storage-indexeddb@0.15.13:
     dependencies:

@@ -40,6 +40,32 @@ test("a logged meal survives a reload and counts toward the day's total", async 
   await expect(page.getByTestId("daily-total")).toHaveText("0.0");
 });
 
+test("food thrown out is logged as negative grams and comes off the day's total", async ({
+  page,
+}) => {
+  await startNewAccount(page);
+  await addMeal(page, { food: "Kibble", category: "Dry food", grams: 100, caloriesPerUnit: 3.5 });
+  await addMeal(page, { food: "Kibble", category: "Dry food", grams: 20, thrownOut: true });
+
+  await expect(page.getByTestId("daily-total")).toHaveText("280.0");
+  const thrown = page.getByTestId("meal-entry").filter({ hasText: "-70.0 cal" });
+  await expect(thrown).toContainText("-20");
+
+  // Editing it shows the amount weighed, with Thrown out already chosen.
+  await thrown.getByRole("button").first().click();
+  const edit = page.getByRole("dialog", { name: "Edit Meal Entry" });
+  await expect(edit.getByLabel("Meal weight input")).toHaveValue("20");
+  await expect(edit.getByRole("tab", { name: "Thrown out" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await edit.getByLabel("Meal weight input").click();
+  await edit.getByLabel("Meal weight input").fill("30");
+  await edit.getByRole("button", { name: "Update Meal" }).click();
+  await expect(edit).toBeHidden();
+  await expect(page.getByTestId("daily-total")).toHaveText("245.0");
+});
+
 test("a meal backdated to earlier in the day is listed in time order", async ({ page }) => {
   await startNewAccount(page);
   await addMeal(page, {
@@ -51,7 +77,7 @@ test("a meal backdated to earlier in the day is listed in time order", async ({ 
   await addMeal(page, {
     food: "Breakfast",
     category: "Dry food",
-    time: "7:05 AM",
+    time: "7:00 AM",
     caloriesPerUnit: 1,
   });
   await addMeal(page, {
@@ -88,7 +114,7 @@ test("a food logged before prefills its calories per gram and category", async (
 
   const dialog = await openAddMeal(page);
   await dialog.getByRole("group", { name: "Food Name" }).getByRole("button").click();
-  await page.getByPlaceholder("Enter or select food name...").fill("Salmon");
+  await page.getByPlaceholder("Choose a food").fill("Salmon");
   await page.getByRole("option", { name: "Salmon" }).click();
 
   await expect(dialog.getByLabel("Calorie density input")).toHaveValue("2.08");
@@ -110,7 +136,7 @@ test("after a reload, other days' meals and food suggestions are there from the 
   const dialog = await openAddMeal(page);
   await dialog.getByLabel("Meal weight input").fill("123");
   await dialog.getByRole("group", { name: "Food Name" }).getByRole("button").click();
-  await page.getByPlaceholder("Enter or select food name...").fill("Salmon");
+  await page.getByPlaceholder("Choose a food").fill("Salmon");
   await page.getByRole("option", { name: "Salmon" }).click();
   await expect(dialog.getByLabel("Calorie density input")).toHaveValue("2.08");
   await expect(dialog.getByLabel("Meal weight input")).toHaveValue("123");
@@ -156,6 +182,16 @@ test("a meal is listed on the date its timestamp was written with, whatever the 
   await page.reload();
   // Listed by instant: 23:30 at +14:00 is earlier than 00:30 at -12:00.
   await expect(mealNames(page)).toHaveText(["co_zLate", "co_zEarly"]);
+  await page.getByRole("button", { name: "Previous day" }).click();
+  await expect(mealNames(page)).toHaveText(["co_zYesterday"]);
+
+  // Saving an edit that leaves the date and time alone keeps the timestamp as written, so the
+  // meal stays on the day it was listed on rather than moving to its local-time date.
+  await page.getByTestId("meal-entry").getByRole("button").first().click();
+  const edit = page.getByRole("dialog", { name: "Edit Meal Entry" });
+  await edit.getByRole("button", { name: "Update Meal" }).click();
+  await expect(edit).toBeHidden();
+  await page.reload();
   await page.getByRole("button", { name: "Previous day" }).click();
   await expect(mealNames(page)).toHaveText(["co_zYesterday"]);
 });

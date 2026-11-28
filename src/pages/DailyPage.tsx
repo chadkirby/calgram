@@ -17,9 +17,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit, Plus } from "lucide-react";
-import { MealEntryForm } from "@/components/MealEntryForm";
+import { MealEntryForm, mealSheetClassName } from "@/components/MealEntryForm";
 import {
   PieChart,
   Pie,
@@ -133,10 +133,14 @@ function DailyPageContent() {
   const categoryBreakdown = CalorieCalculator.calculateCategoryBreakdown(meals, selectedDate);
 
   // Prepare pie chart data
-  const pieChartData = Object.entries(categoryBreakdown).map(([category, calories]) => ({
+  // A category can net to zero or below when more of it was thrown out than eaten; it has no slice.
+  // Percentages are of the slices shown, so they add up to 100.
+  const slices = Object.entries(categoryBreakdown).filter(([, calories]) => calories > 0);
+  const slicesTotal = slices.reduce((sum, [, calories]) => sum + calories, 0);
+  const pieChartData = slices.map(([category, calories]) => ({
     name: category,
     value: calories,
-    percentage: dailyCalories > 0 ? ((calories / dailyCalories) * 100).toFixed(1) : "0",
+    percentage: slicesTotal > 0 ? ((calories / slicesTotal) * 100).toFixed(1) : "0",
   }));
 
   // Color palette for pie chart
@@ -472,12 +476,9 @@ function DailyPageContent() {
         </CardContent>
       </Card>
 
-      {/* Edit Meal Dialog */}
+      {/* Edit Meal Sheet */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Meal Entry</DialogTitle>
-          </DialogHeader>
+        <DialogContent className={mealSheetClassName}>
           {editingMeal && (
             <MealEntryForm
               mode="edit"
@@ -490,12 +491,9 @@ function DailyPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Meal Dialog */}
+      {/* Add Meal Sheet */}
       <Dialog open={isAddMealDialogOpen} onOpenChange={setIsAddMealDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Meal Entry</DialogTitle>
-          </DialogHeader>
+        <DialogContent className={mealSheetClassName}>
           <MealEntryForm
             mode="create"
             onSuccess={handleAddMealSuccess}

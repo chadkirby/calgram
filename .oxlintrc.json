@@ -10,7 +10,14 @@
     "builtin": true,
     "browser": true
   },
-  "ignorePatterns": ["dist", "worker-configuration.d.ts", "spikes", "jazz/jazz.generated.ts"],
+  "ignorePatterns": [
+    "dist",
+    "worker-configuration.d.ts",
+    "spikes",
+    "jazz/jazz.generated.ts",
+    "src/components/reui",
+    "src/components/ui/input-group.tsx"
+  ],
   "rules": {
     "react/react-in-jsx-scope": "off",
     "typescript/no-extraneous-class": "off",
