@@ -17,9 +17,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Trash2, Edit, Plus } from "lucide-react";
-import { MealEntryForm } from "@/components/MealEntryForm";
+import { MealEntryForm, mealSheetClassName } from "@/components/MealEntryForm";
 import {
   PieChart,
   Pie,
@@ -472,12 +472,9 @@ function DailyPageContent() {
         </CardContent>
       </Card>
 
-      {/* Edit Meal Dialog */}
+      {/* Edit Meal Sheet */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Meal Entry</DialogTitle>
-          </DialogHeader>
+        <DialogContent className={mealSheetClassName}>
           {editingMeal && (
             <MealEntryForm
               mode="edit"
@@ -490,12 +487,9 @@ function DailyPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Meal Dialog */}
+      {/* Add Meal Sheet */}
       <Dialog open={isAddMealDialogOpen} onOpenChange={setIsAddMealDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Meal Entry</DialogTitle>
-          </DialogHeader>
+        <DialogContent className={mealSheetClassName}>
           <MealEntryForm
             mode="create"
             onSuccess={handleAddMealSuccess}

@@ -11,23 +11,30 @@ export async function startNewAccount(page: Page, firstName = "Tester") {
   await expect(page.getByTestId("main-tabs")).toBeVisible();
 }
 
-/** Set a TimePicker (the button showing the current time) to a 12-hour clock time. */
+/**
+ * Set the meal form's time picker to a 12-hour clock time. The picker has a 24-hour hour
+ * column and 15-minute steps, so `time` must be on a quarter hour.
+ */
 async function setTime(page: Page, dialog: Locator, time: string) {
   const [, h, m, period] = /^(\d+):(\d+) (AM|PM)$/.exec(time)!;
+  const hour = String((Number(h) % 12) + (period === "PM" ? 12 : 0)).padStart(2, "0");
   await dialog.getByRole("group", { name: "Time" }).getByRole("button").click();
   const popover = page.locator("[data-radix-popper-content-wrapper]").last();
-  await popover.getByPlaceholder("HH").fill(h);
-  await popover.getByPlaceholder("MM").fill(m);
-  await popover.locator("select").selectOption(period);
+  await popover
+    .getByRole("listbox")
+    .first()
+    .getByRole("option", { name: hour, exact: true })
+    .click();
+  await popover.getByRole("listbox").last().getByRole("option", { name: m, exact: true }).click();
   await popover.getByRole("button", { name: "Done" }).click();
+  await expect(popover).toBeHidden();
 }
 
 /** Type into the meal form's Combobox for `field` ("Food Name" or "Food Category"). */
 async function fillCombobox(page: Page, dialog: Locator, field: string, value: string) {
   await dialog.getByRole("group", { name: field }).getByRole("button").click();
-  const input = page
-    .locator("[cmdk-input]")
-    .and(page.getByPlaceholder(new RegExp(field.split(" ").pop()!, "i")));
+  // The search box of the list that just opened.
+  const input = page.locator("[data-radix-popper-content-wrapper] [cmdk-input]");
   await input.fill(value);
   await input.press("Enter");
   await expect(input).toBeHidden();
@@ -45,7 +52,7 @@ export interface MealInput {
 /** Open Add Meal on the Daily page. */
 export async function openAddMeal(page: Page) {
   await page.getByRole("button", { name: "Add Meal" }).click();
-  return page.getByRole("dialog", { name: "Add New Meal Entry" });
+  return page.getByRole("dialog", { name: /^Log a meal for / });
 }
 
 export async function addMeal(page: Page, meal: MealInput) {

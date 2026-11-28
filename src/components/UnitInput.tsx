@@ -51,6 +51,8 @@ interface UnitInputProps<T extends string> {
   units: UnitConfig<T>[];
   placeholder?: string;
   className?: string;
+  /** Classes for the number field itself, e.g. a larger readout. */
+  inputClassName?: string;
   disabled?: boolean;
   error?: boolean;
   "aria-label"?: string;
@@ -78,6 +80,7 @@ export function UnitInput<T extends string>({
   units,
   placeholder = "0.0",
   className,
+  inputClassName,
   disabled = false,
   error = false,
   "aria-label": ariaLabel,
@@ -230,6 +233,7 @@ export function UnitInput<T extends string>({
           "min-h-[40px] w-full min-w-0",
           // Touch ergonomics
           "touch-manipulation",
+          inputClassName,
         )}
       />
 

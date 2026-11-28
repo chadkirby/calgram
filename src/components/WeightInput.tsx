@@ -24,6 +24,7 @@ interface WeightInputProps {
   availableUnits: WeightUnit[];
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
   disabled?: boolean;
   error?: boolean;
   "aria-label"?: string;
@@ -42,6 +43,7 @@ export function WeightInput({
   availableUnits,
   placeholder = "0.0",
   className,
+  inputClassName,
   disabled = false,
   error = false,
   "aria-label": ariaLabel,
@@ -65,6 +67,7 @@ export function WeightInput({
       units={filteredUnits}
       placeholder={placeholder}
       className={className}
+      inputClassName={inputClassName}
       disabled={disabled}
       error={error}
       aria-label={ariaLabel}

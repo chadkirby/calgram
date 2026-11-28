@@ -51,7 +51,7 @@ test("a meal backdated to earlier in the day is listed in time order", async ({ 
   await addMeal(page, {
     food: "Breakfast",
     category: "Dry food",
-    time: "7:05 AM",
+    time: "7:00 AM",
     caloriesPerUnit: 1,
   });
   await addMeal(page, {
@@ -88,7 +88,7 @@ test("a food logged before prefills its calories per gram and category", async (
 
   const dialog = await openAddMeal(page);
   await dialog.getByRole("group", { name: "Food Name" }).getByRole("button").click();
-  await page.getByPlaceholder("Enter or select food name...").fill("Salmon");
+  await page.getByPlaceholder("Choose a food").fill("Salmon");
   await page.getByRole("option", { name: "Salmon" }).click();
 
   await expect(dialog.getByLabel("Calorie density input")).toHaveValue("2.08");
@@ -110,7 +110,7 @@ test("after a reload, other days' meals and food suggestions are there from the 
   const dialog = await openAddMeal(page);
   await dialog.getByLabel("Meal weight input").fill("123");
   await dialog.getByRole("group", { name: "Food Name" }).getByRole("button").click();
-  await page.getByPlaceholder("Enter or select food name...").fill("Salmon");
+  await page.getByPlaceholder("Choose a food").fill("Salmon");
   await page.getByRole("option", { name: "Salmon" }).click();
   await expect(dialog.getByLabel("Calorie density input")).toHaveValue("2.08");
   await expect(dialog.getByLabel("Meal weight input")).toHaveValue("123");
