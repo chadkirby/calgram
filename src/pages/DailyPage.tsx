@@ -133,10 +133,14 @@ function DailyPageContent() {
   const categoryBreakdown = CalorieCalculator.calculateCategoryBreakdown(meals, selectedDate);
 
   // Prepare pie chart data
-  const pieChartData = Object.entries(categoryBreakdown).map(([category, calories]) => ({
+  // A category can net to zero or below when more of it was thrown out than eaten; it has no slice.
+  // Percentages are of the slices shown, so they add up to 100.
+  const slices = Object.entries(categoryBreakdown).filter(([, calories]) => calories > 0);
+  const slicesTotal = slices.reduce((sum, [, calories]) => sum + calories, 0);
+  const pieChartData = slices.map(([category, calories]) => ({
     name: category,
     value: calories,
-    percentage: dailyCalories > 0 ? ((calories / dailyCalories) * 100).toFixed(1) : "0",
+    percentage: slicesTotal > 0 ? ((calories / slicesTotal) * 100).toFixed(1) : "0",
   }));
 
   // Color palette for pie chart

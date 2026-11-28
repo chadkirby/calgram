@@ -10,6 +10,7 @@ import {
   TimePickerTrigger,
 } from "@/components/reui/time-picker";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { WeightInput } from "@/components/WeightInput";
 import { CalorieInput } from "@/components/CalorieInput";
@@ -112,7 +113,8 @@ export function MealEntryForm({
         foodCategory: initialData.foodCategory,
         caloriesPerDisplayValue: caloriesPerDisplayValue,
         calorieUnit: calorieUnit,
-        weightValue: weightValue,
+        // Thrown-out food is stored as negative grams; the field shows the amount, the switch the sign.
+        weightValue: Math.abs(weightValue),
         weightUnit: displayUnit,
         notes: initialData.notes || "",
       };
@@ -133,6 +135,10 @@ export function MealEntryForm({
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [formData, setFormData] = React.useState<MealFormValues>(getInitialFormData);
+  // Thrown out: food weighed after it was taken away, logged as negative grams and calories.
+  const initiallyThrownOut = mode === "edit" && !!initialData && initialData.weightInGrams < 0;
+  const [thrownOut, setThrownOut] = React.useState(initiallyThrownOut);
+  const sign = thrownOut ? -1 : 1;
   const [errors, setErrors] = React.useState<Partial<Record<keyof MealFormValues, string>>>({});
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [prefilled, setPrefilled] = React.useState<{
@@ -305,9 +311,9 @@ export function MealEntryForm({
     try {
       const validatedData = validationResult.data;
 
-      // Convert weight to grams for storage and calculations
-      const weightInGrams = WeightConverter.toGrams(
-        validatedData.weightValue,
+      // Convert weight to grams for storage and calculations (the field is always positive)
+      const gramsWeighed = WeightConverter.toGrams(
+        Math.abs(validatedData.weightValue),
         validatedData.weightUnit,
       );
 
@@ -317,11 +323,10 @@ export function MealEntryForm({
         validatedData.calorieUnit,
       );
 
-      // Calculate total calories (always use grams)
-      const mealTotalCalories = CalorieCalculator.calculateMealCalories(
-        weightInGrams,
-        caloriesPerGram,
-      );
+      // Calculate total calories (always use grams); thrown-out food counts against the day
+      const weightInGrams = sign * gramsWeighed;
+      const mealTotalCalories =
+        sign * CalorieCalculator.calculateMealCalories(gramsWeighed, caloriesPerGram);
 
       // Save user's unit preference
       if (profile?.mealWeightUnit !== validatedData.weightUnit) {
@@ -379,6 +384,7 @@ export function MealEntryForm({
           weightUnit: preferredWeightUnit,
           notes: "",
         });
+        setThrownOut(false);
         setErrors({});
       }
     } catch (error) {
@@ -414,6 +420,7 @@ export function MealEntryForm({
         notes: "",
       });
     }
+    setThrownOut(initiallyThrownOut);
     setErrors({});
   };
 
@@ -466,10 +473,13 @@ export function MealEntryForm({
           <p className="text-center tabular-nums" aria-live="polite">
             {totalCalories > 0 ? (
               <>
-                <span className="text-xl font-bold">+{fmt(totalCalories)} cal</span>
+                <span className="text-xl font-bold">
+                  {thrownOut ? "−" : "+"}
+                  {fmt(totalCalories)} cal
+                </span>
                 <span className="text-muted-foreground">
                   {" "}
-                  · {dayLabel} {fmt(dayTotalBefore)} → {fmt(dayTotalBefore + totalCalories)}
+                  · {dayLabel} {fmt(dayTotalBefore)} → {fmt(dayTotalBefore + sign * totalCalories)}
                 </span>
               </>
             ) : (
@@ -478,6 +488,19 @@ export function MealEntryForm({
               </span>
             )}
           </p>
+          <Tabs
+            value={thrownOut ? "thrown-out" : "eaten"}
+            onValueChange={(value) => setThrownOut(value === "thrown-out")}
+          >
+            <TabsList aria-label="Eaten or thrown out">
+              <TabsTrigger value="eaten" className="px-4">
+                Eaten
+              </TabsTrigger>
+              <TabsTrigger value="thrown-out" className="px-4">
+                Thrown out
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </section>
 
         {/* Everything else, as short rows */}
@@ -689,7 +712,9 @@ export function MealEntryForm({
               : "Logging..."
             : mode === "edit"
               ? "Update Meal"
-              : "Log Meal"}
+              : thrownOut
+                ? "Log Thrown Out"
+                : "Log Meal"}
         </Button>
       </div>
     </form>

@@ -40,6 +40,32 @@ test("a logged meal survives a reload and counts toward the day's total", async 
   await expect(page.getByTestId("daily-total")).toHaveText("0.0");
 });
 
+test("food thrown out is logged as negative grams and comes off the day's total", async ({
+  page,
+}) => {
+  await startNewAccount(page);
+  await addMeal(page, { food: "Kibble", category: "Dry food", grams: 100, caloriesPerUnit: 3.5 });
+  await addMeal(page, { food: "Kibble", category: "Dry food", grams: 20, thrownOut: true });
+
+  await expect(page.getByTestId("daily-total")).toHaveText("280.0");
+  const thrown = page.getByTestId("meal-entry").filter({ hasText: "-70.0 cal" });
+  await expect(thrown).toContainText("-20");
+
+  // Editing it shows the amount weighed, with Thrown out already chosen.
+  await thrown.getByRole("button").first().click();
+  const edit = page.getByRole("dialog", { name: "Edit Meal Entry" });
+  await expect(edit.getByLabel("Meal weight input")).toHaveValue("20");
+  await expect(edit.getByRole("tab", { name: "Thrown out" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await edit.getByLabel("Meal weight input").click();
+  await edit.getByLabel("Meal weight input").fill("30");
+  await edit.getByRole("button", { name: "Update Meal" }).click();
+  await expect(edit).toBeHidden();
+  await expect(page.getByTestId("daily-total")).toHaveText("245.0");
+});
+
 test("a meal backdated to earlier in the day is listed in time order", async ({ page }) => {
   await startNewAccount(page);
   await addMeal(page, {

@@ -45,8 +45,10 @@ export interface MealInput {
   category?: string;
   grams?: number;
   caloriesPerUnit?: number;
-  time?: string; // "7:05 AM"
+  time?: string; // "7:00 AM", on a quarter hour
   unit?: "g" | "oz" | "lb" | "kg";
+  /** Log the weight as food thrown out rather than eaten. */
+  thrownOut?: boolean;
 }
 
 /** Open Add Meal on the Daily page. */
@@ -68,7 +70,10 @@ export async function addMeal(page: Page, meal: MealInput) {
   if (meal.caloriesPerUnit !== undefined) {
     await dialog.getByLabel("Calorie density input").fill(String(meal.caloriesPerUnit));
   }
-  await dialog.getByRole("button", { name: "Log Meal" }).click();
+  if (meal.thrownOut) await dialog.getByRole("tab", { name: "Thrown out" }).click();
+  await dialog
+    .getByRole("button", { name: meal.thrownOut ? "Log Thrown Out" : "Log Meal" })
+    .click();
   await expect(dialog).toBeHidden();
 }
 
