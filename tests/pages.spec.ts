@@ -184,6 +184,16 @@ test("a meal is listed on the date its timestamp was written with, whatever the 
   await expect(mealNames(page)).toHaveText(["co_zLate", "co_zEarly"]);
   await page.getByRole("button", { name: "Previous day" }).click();
   await expect(mealNames(page)).toHaveText(["co_zYesterday"]);
+
+  // Saving an edit that leaves the date and time alone keeps the timestamp as written, so the
+  // meal stays on the day it was listed on rather than moving to its local-time date.
+  await page.getByTestId("meal-entry").getByRole("button").first().click();
+  const edit = page.getByRole("dialog", { name: "Edit Meal Entry" });
+  await edit.getByRole("button", { name: "Update Meal" }).click();
+  await expect(edit).toBeHidden();
+  await page.reload();
+  await page.getByRole("button", { name: "Previous day" }).click();
+  await expect(mealNames(page)).toHaveText(["co_zYesterday"]);
 });
 
 test("weigh-ins can be added, edited and deleted, and the list and chart follow", async ({

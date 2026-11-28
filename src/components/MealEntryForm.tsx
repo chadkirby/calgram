@@ -333,9 +333,17 @@ export function MealEntryForm({
         saveProfile({ mealWeightUnit: validatedData.weightUnit });
       }
 
-      // Combine date and time to create ISO timestamp
-      const combinedDateTime = DateTime.fromISO(`${validatedData.date}T${validatedData.time}`);
-      const isoTimestamp = combinedDateTime.toISO();
+      // Combine date and time to create ISO timestamp. An edit that leaves both alone keeps the
+      // meal's own timestamp, seconds and offset included, instead of rebuilding it from HH:mm.
+      const original =
+        mode === "edit" && initialData ? DateTime.fromISO(initialData.timestamp) : null;
+      const timeUnchanged =
+        !!original &&
+        original.toISODate() === validatedData.date &&
+        original.toFormat("HH:mm") === validatedData.time;
+      const isoTimestamp = timeUnchanged
+        ? initialData!.timestamp
+        : DateTime.fromISO(`${validatedData.date}T${validatedData.time}`).toISO();
 
       if (!isoTimestamp) {
         throw new Error("Invalid date/time combination");
